@@ -162,49 +162,151 @@ def format_speed(bytes_per_sec):
     return f"{bytes_per_sec:.1f} TB/s"
 
 
+DISK_EMERGENCY_THRESHOLD_PERCENT = float(os.environ.get("DISK_EMERGENCY_THRESHOLD_PERCENT", "85"))
+DISK_EMERGENCY_MIN_FREE_GB = float(os.environ.get("DISK_EMERGENCY_MIN_FREE_GB", "2"))
+
+
+def format_bytes(bytes_val: int) -> str:
+    if bytes_val is None:
+        return "0 B"
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if bytes_val < 1024:
+            return f"{bytes_val:.1f} {unit}"
+        bytes_val /= 1024
+    return f"{bytes_val:.1f} PB"
+
+
+def get_disk_status():
+    try:
+        total, used, free = shutil.disk_usage(DOWNLOAD_DIR)
+        percent = round((used / total) * 100, 1) if total > 0 else 0
+        return {
+            "total_bytes": total,
+            "used_bytes": used,
+            "free_bytes": free,
+            "total_formatted": format_bytes(total),
+            "used_formatted": format_bytes(used),
+            "free_formatted": format_bytes(free),
+            "percent_used": percent,
+            "is_emergency": (percent >= DISK_EMERGENCY_THRESHOLD_PERCENT) or (free < (DISK_EMERGENCY_MIN_FREE_GB * (1024**3))),
+        }
+    except Exception as e:
+        return {
+            "total_bytes": 0, "used_bytes": 0, "free_bytes": 0,
+            "total_formatted": "N/A", "used_formatted": "N/A", "free_formatted": "N/A",
+            "percent_used": 0, "is_emergency": False, "error": str(e),
+        }
+
+
+def purge_downloads(force_all=False):
+    cleaned_count = 0
+    reclaimed_bytes = 0
+    with JOBS_LOCK:
+        active_ids = {
+            jid for jid, j in JOBS.items()
+            if j.get("status") in ("queued", "downloading", "processing")
+        }
+        stale_ids = [
+            jid for jid, j in JOBS.items()
+            if force_all or j.get("status") in ("finished", "error")
+        ]
+
+    for jid in stale_ids:
+        with JOBS_LOCK:
+            job = JOBS.pop(jid, None)
+        if job and job.get("filepath") and os.path.exists(job["filepath"]):
+            try:
+                size = os.path.getsize(job["filepath"])
+                os.remove(job["filepath"])
+                reclaimed_bytes += size
+                cleaned_count += 1
+            except OSError:
+                pass
+
+    if os.path.exists(DOWNLOAD_DIR):
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry == ".gitkeep":
+                continue
+            entry_path = os.path.join(DOWNLOAD_DIR, entry)
+            job_id_guess = entry.split("_", 1)[0].replace(".zip", "")
+            if job_id_guess in active_ids and not force_all:
+                continue
+            try:
+                if os.path.isdir(entry_path):
+                    for root, _, files in os.walk(entry_path):
+                        for f in files:
+                            reclaimed_bytes += os.path.getsize(os.path.join(root, f))
+                    shutil.rmtree(entry_path, ignore_errors=True)
+                    cleaned_count += 1
+                else:
+                    size = os.path.getsize(entry_path)
+                    os.remove(entry_path)
+                    reclaimed_bytes += size
+                    cleaned_count += 1
+            except OSError:
+                pass
+
+    return {
+        "cleaned_count": cleaned_count,
+        "reclaimed_bytes": reclaimed_bytes,
+        "reclaimed_formatted": format_bytes(reclaimed_bytes),
+    }
+
+
 def cleanup_loop():
     while True:
         time.sleep(max(CLEANUP_CHECK_INTERVAL_MINUTES, 1) * 60)
-        if CLEANUP_AFTER_HOURS <= 0:
-            continue
-        cutoff = time.time() - (CLEANUP_AFTER_HOURS * 3600)
         try:
-            with JOBS_LOCK:
-                active_ids = {
-                    jid for jid, j in JOBS.items()
-                    if j.get("status") in ("queued", "downloading", "processing")
-                }
-                stale_ids = [
-                    jid for jid, j in JOBS.items()
-                    if j.get("status") in ("finished", "error")
-                    and j.get("finished_at", 0) < cutoff
-                ]
+            # 1. Emergency disk auto-purge
+            disk_info = get_disk_status()
+            if disk_info.get("is_emergency"):
+                purge_downloads(force_all=False)
 
-            for jid in stale_ids:
+            # 2. Regular TTL cleanup
+            if CLEANUP_AFTER_HOURS > 0:
+                cutoff = time.time() - (CLEANUP_AFTER_HOURS * 3600)
                 with JOBS_LOCK:
-                    job = JOBS.pop(jid, None)
-                if job and job.get("filepath") and os.path.exists(job["filepath"]):
-                    os.remove(job["filepath"])
+                    active_ids = {
+                        jid for jid, j in JOBS.items()
+                        if j.get("status") in ("queued", "downloading", "processing")
+                    }
+                    stale_ids = [
+                        jid for jid, j in JOBS.items()
+                        if j.get("status") in ("finished", "error")
+                        and j.get("finished_at", 0) < cutoff
+                    ]
 
-            for entry in os.listdir(DOWNLOAD_DIR):
-                entry_path = os.path.join(DOWNLOAD_DIR, entry)
-                job_id_guess = entry.split("_", 1)[0].replace(".zip", "")
-                if job_id_guess in active_ids:
-                    continue
-                try:
-                    mtime = os.path.getmtime(entry_path)
-                except OSError:
-                    continue
-                if mtime < cutoff:
-                    if os.path.isdir(entry_path):
-                        shutil.rmtree(entry_path, ignore_errors=True)
-                    else:
-                        os.remove(entry_path)
+                for jid in stale_ids:
+                    with JOBS_LOCK:
+                        job = JOBS.pop(jid, None)
+                    if job and job.get("filepath") and os.path.exists(job["filepath"]):
+                        try:
+                            os.remove(job["filepath"])
+                        except OSError:
+                            pass
+
+                for entry in os.listdir(DOWNLOAD_DIR):
+                    if entry == ".gitkeep":
+                        continue
+                    entry_path = os.path.join(DOWNLOAD_DIR, entry)
+                    job_id_guess = entry.split("_", 1)[0].replace(".zip", "")
+                    if job_id_guess in active_ids:
+                        continue
+                    try:
+                        mtime = os.path.getmtime(entry_path)
+                    except OSError:
+                        continue
+                    if mtime < cutoff:
+                        if os.path.isdir(entry_path):
+                            shutil.rmtree(entry_path, ignore_errors=True)
+                        else:
+                            os.remove(entry_path)
         except Exception:
             pass
 
 
 threading.Thread(target=cleanup_loop, daemon=True).start()
+
 
 
 def safe_filename(name: str) -> str:
@@ -289,7 +391,38 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
 
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
+
+
+def normalize_url(url: str) -> str:
+    url = url.strip()
+    # Normalize YouTube Shorts to standard watch URL for maximum compatibility
+    shorts_match = re.match(r"^https?://(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]+)", url)
+    if shorts_match:
+        video_id = shorts_match.group(1)
+        return f"https://www.youtube.com/watch?v={video_id}"
+    return url
+
+
+def detect_platform(url: str) -> str:
+    url_lower = url.lower()
+    if "youtube.com/shorts" in url_lower:
+        return "YouTube Shorts"
+    if "youtube.com" in url_lower or "youtu.be" in url_lower:
+        return "YouTube"
+    if "instagram.com" in url_lower:
+        return "Instagram"
+    if "facebook.com" in url_lower or "fb.watch" in url_lower:
+        return "Facebook"
+    if "twitch.tv" in url_lower:
+        return "Twitch"
+    if "kick.com" in url_lower:
+        return "Kick"
+    if "tiktok.com" in url_lower:
+        return "TikTok"
+    if "twitter.com" in url_lower or "x.com" in url_lower:
+        return "Twitter / X"
+    return "Web"
 
 
 @app.route("/")
@@ -305,13 +438,60 @@ def api_version():
     })
 
 
+@app.route("/api/disk-status")
+def api_disk_status():
+    return jsonify(get_disk_status())
+
+
+@app.route("/api/cleanup", methods=["POST"])
+def api_cleanup():
+    res = purge_downloads(force_all=False)
+    disk = get_disk_status()
+    return jsonify({
+        "success": True,
+        "cleaned_count": res["cleaned_count"],
+        "reclaimed_formatted": res["reclaimed_formatted"],
+        "disk": disk,
+    })
+
+
+@app.route("/api/recent-downloads")
+def recent_downloads():
+    items = []
+    if os.path.exists(DOWNLOAD_DIR):
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry == ".gitkeep":
+                continue
+            entry_path = os.path.join(DOWNLOAD_DIR, entry)
+            if os.path.isfile(entry_path):
+                try:
+                    stat = os.stat(entry_path)
+                    parts = entry.split("_", 1)
+                    job_id = parts[0].replace(".zip", "")
+                    clean_name = parts[1] if len(parts) > 1 else entry
+                    items.append({
+                        "job_id": job_id,
+                        "filename": clean_name,
+                        "size_bytes": stat.st_size,
+                        "size_formatted": format_bytes(stat.st_size),
+                        "mtime": stat.st_mtime,
+                        "download_url": f"/api/files/{job_id}",
+                    })
+                except OSError:
+                    continue
+    items.sort(key=lambda x: x["mtime"], reverse=True)
+    return jsonify({"downloads": items[:20]})
+
 
 @app.route("/api/info", methods=["POST"])
 def info():
     data = request.get_json(force=True)
-    url = (data or {}).get("url", "").strip()
-    if not url:
+    raw_url = (data or {}).get("url", "").strip()
+    if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
+
+    url = normalize_url(raw_url)
+    platform = detect_platform(raw_url)
 
     ydl_opts = {
         "quiet": True,
@@ -332,6 +512,7 @@ def info():
             "type": "playlist",
             "title": result.get("title", "Playlist"),
             "count": len(entries),
+            "platform": platform,
             "thumbnail": (entries[0].get("thumbnails", [{}])[-1].get("url")
                           if entries and entries[0].get("thumbnails") else None),
         })
@@ -341,8 +522,10 @@ def info():
             "type": "video",
             "title": result.get("title", "Video"),
             "duration": result.get("duration"),
+            "platform": platform,
             "thumbnail": thumbs[-1]["url"] if thumbs else result.get("thumbnail"),
         })
+
 
 
 COBALT_QUALITY_MAP = {
@@ -573,7 +756,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
 @app.route("/api/download", methods=["POST"])
 def download():
     data = request.get_json(force=True)
-    url = (data or {}).get("url", "").strip()
+    raw_url = (data or {}).get("url", "").strip()
     quality = (data or {}).get("quality", "best")
     playlist_mode = bool((data or {}).get("playlist", False))
     total_count = int((data or {}).get("total_count") or 0)
@@ -582,8 +765,10 @@ def download():
     engine = (data or {}).get("engine", "ytdlp")
     video_title = (data or {}).get("video_title", "")
 
-    if not url:
+    if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
+
+    url = normalize_url(raw_url)
 
     if engine == "cobalt" and playlist_mode:
         return jsonify({"error": "Cobalt no soporta descargar playlists completas todavía, usá yt-dlp para eso"}), 400
@@ -642,10 +827,21 @@ def status(job_id):
 def files(job_id):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-    if not job or job.get("status") != "finished":
-        abort(404)
-    return send_file(job["filepath"], as_attachment=True, download_name=job["filename"])
+    if job and job.get("status") == "finished" and job.get("filepath") and os.path.exists(job["filepath"]):
+        return send_file(job["filepath"], as_attachment=True, download_name=job.get("filename"))
+
+    # Fallback to search in DOWNLOAD_DIR
+    if os.path.exists(DOWNLOAD_DIR):
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry.startswith(job_id):
+                full_path = os.path.join(DOWNLOAD_DIR, entry)
+                if os.path.isfile(full_path):
+                    disp_name = entry[len(job_id):].lstrip("_-") or entry
+                    return send_file(full_path, as_attachment=True, download_name=disp_name)
+
+    abort(404)
 
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+

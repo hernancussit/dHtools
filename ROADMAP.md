@@ -18,19 +18,17 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-## 🚀 Próximas Versiones Planificadas
+## 🎯 Versión `v1.1.0` (Completado)
+- [x] **Limpieza de Descargas a Demanda y Protección de Espacio en Disco:**
+  - [x] **Botón "Limpiar":** Forzar el borrado inmediato de archivos finalizados o huérfanos.
+  - [x] **Monitoreo de disco:** Widget visual en la interfaz con porcentaje y espacio libre real del VPS.
+  - [x] **Limpieza de emergencia automática:** Purga automática en segundo plano si el disco supera el 85% o quedan <2 GB.
+- [x] **Soporte de Plataformas de Video y Redes Sociales:**
+  - [x] **YouTube Shorts:** Detección automática y descarga optimizada.
+  - [x] **Instagram, Facebook, Twitch, Kick, TikTok, X:** Reconocimiento de URLs e insignia en preview.
+- [x] **Historial Reciente de Descargas:**
+  - [x] Panel desplegable para re-descargar archivos generados en el servidor sin reprocesar.
 
-### 📌 Versión 1.1.0 — Gestión de Disco, Limpieza de Emergencia y Redes Sociales
-- [ ] **Limpieza de Descargas a Demanda y Protección de Espacio en Disco:**
-  - **Botón "Limpiar descargas ahora":** Permite al administrador forzar el borrado inmediato de archivos finalizados o temporales huérfanos.
-  - **Limpieza de emergencia automática:** Monitoreo del almacenamiento del VPS (si el disco supera el 85% de uso o quedan menos de 2 GB disponibles, se purgan automáticamente las descargas más antiguas para evitar saturar el servidor).
-- [ ] **Soporte de Plataformas de Video y Redes Sociales:**
-  - **YouTube Shorts:** Detección automática y descarga optimizada en formato vertical.
-  - **Instagram:** Descarga de Reels y publicaciones de video.
-  - **Facebook:** Descarga de videos públicos y Reels.
-  - **Twitch & Kick:** Soporte para clips y transmisiones grabadas (VODs).
-- [ ] **Historial Reciente de Descargas:**
-  - Lista desplegable de archivos listos para descargar sin reprocesar mientras no hayan expirado.
 
 ---
 

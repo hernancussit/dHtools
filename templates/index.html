@@ -4,15 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<title>Descargador de YouTube</title>
+<title>Descargador Multimedia</title>
 <style>
   :root {
     --bg: #0f172a;
     --card: #1e293b;
     --accent: #ef4444;
     --accent-2: #f87171;
+    --accent-blue: #3b82f6;
     --text: #f1f5f9;
     --muted: #94a3b8;
+    --border: #334155;
+    --success: #16a34a;
+    --warning: #f59e0b;
   }
   * { box-sizing: border-box; }
   body {
@@ -24,43 +28,93 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 20px;
   }
   .card {
     background: var(--card);
     border-radius: 16px;
-    padding: 32px;
+    padding: 28px;
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
   }
   h1 {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
     margin: 0 0 4px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
-  p.subtitle { color: var(--muted); margin: 0 0 24px; font-size: 0.9rem; }
+  p.subtitle { color: var(--muted); margin: 0 0 16px; font-size: 0.88rem; }
+  
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .disk-widget {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: #0f172a;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .disk-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    display: inline-block;
+  }
+  .disk-dot.warning { background: var(--warning); }
+  .disk-dot.danger { background: var(--accent); }
+
+  .platform-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .tag {
+    font-size: 0.72rem;
+    background: #0f172a;
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
   input[type=text] {
     width: 100%;
     padding: 12px 14px;
     border-radius: 10px;
-    border: 1px solid #334155;
+    border: 1px solid var(--border);
     background: #0f172a;
     color: var(--text);
     font-size: 0.95rem;
     outline: none;
+    transition: border-color 0.2s;
   }
-  input[type=text]:focus { border-color: var(--accent); }
-  .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  input[type=text]:focus { border-color: var(--accent-blue); }
+  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   select {
     flex: 1;
     padding: 10px;
     border-radius: 10px;
-    border: 1px solid #334155;
+    border: 1px solid var(--border);
     background: #0f172a;
     color: var(--text);
+    outline: none;
   }
   label.checkbox {
     display: flex;
@@ -68,9 +122,10 @@
     gap: 6px;
     color: var(--muted);
     font-size: 0.85rem;
+    cursor: pointer;
   }
-  button {
-    margin-top: 18px;
+  button.btn-main {
+    margin-top: 16px;
     width: 100%;
     padding: 13px;
     border: none;
@@ -82,12 +137,32 @@
     cursor: pointer;
     transition: background 0.2s;
   }
-  button:hover { background: var(--accent-2); }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  #preview { margin-top: 20px; display: none; }
-  #preview img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
-  #preview .title { font-weight: 600; }
-  #preview .meta { color: var(--muted); font-size: 0.85rem; }
+  button.btn-main:hover { background: var(--accent-2); }
+  button.btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-sm {
+    width: auto;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary {
+    background: #0f172a;
+    color: var(--text);
+  }
+  .btn-secondary:hover { background: #334155; }
+
+  #preview { margin-top: 20px; display: none; background: #0f172a; padding: 14px; border-radius: 12px; border: 1px solid var(--border); }
+  #preview img { width: 100%; border-radius: 8px; margin-bottom: 10px; max-height: 240px; object-fit: cover; }
+  #preview .title { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
+  #preview .meta { color: var(--muted); font-size: 0.82rem; margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+  .badge-platform { background: #334155; color: #38bdf8; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; }
+
   #progressWrap { margin-top: 18px; display: none; }
   .bar-bg {
     width: 100%;
@@ -107,7 +182,7 @@
     display: none;
     margin-top: 14px;
     text-align: center;
-    background: #16a34a;
+    background: var(--success);
     color: white;
     padding: 12px;
     border-radius: 10px;
@@ -115,33 +190,127 @@
     font-weight: 600;
   }
   .error { color: #f87171; font-size: 0.85rem; margin-top: 8px; }
+  .toast { padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 10px; display: none; }
+  .toast-info { background: #1e3a8a; color: #93c5fd; }
+  .toast-success { background: #14532d; color: #86efac; }
+
+  /* Recent Downloads */
+  .recent-section {
+    margin-top: 22px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .recent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    user-select: none;
+  }
+  .recent-header:hover { color: var(--text); }
+  .recent-list {
+    margin-top: 10px;
+    display: none;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0f172a;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    border: 1px solid #1e293b;
+  }
+  .recent-item-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 320px;
+    color: var(--text);
+  }
+  .recent-item-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .recent-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    background: #1e293b;
+    border: 1px solid var(--border);
+    color: #38bdf8;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .recent-btn:hover { background: #334155; }
+  .recent-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 12px 0; }
+
   footer {
     margin-top: 20px;
     font-size: 0.75rem;
     color: var(--muted);
     text-align: center;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 </style>
 </head>
 <body>
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-      <div>
-        <h1>🎬 Descargador de YouTube</h1>
-        <p class="subtitle">Pegá el link de un video o playlist para descargarlo.</p>
+    <div class="top-bar">
+      <div id="diskWidget" class="disk-widget">
+        <span class="disk-dot" id="diskDot"></span>
+        <span id="diskText">Disco VPS: consultando...</span>
       </div>
-      <button id="updateBtn" style="width:auto; margin-top:0; padding:8px 12px; font-size:0.75rem; background:#334155;">
-        ⟳ Actualizar yt-dlp
-      </button>
+      <div style="display:flex; gap:6px;">
+        <button id="cleanBtn" title="Forzar limpieza de descargas" class="btn-sm btn-secondary">
+          🧹 Limpiar
+        </button>
+        <button id="updateBtn" title="Actualizar motor yt-dlp" class="btn-sm btn-secondary">
+          ⟳ yt-dlp
+        </button>
+      </div>
     </div>
-    <div id="updateStatus" style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:none;"></div>
 
-    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...">
+    <div>
+      <h1>🎬 Descargador Multimedia</h1>
+      <p class="subtitle">Descargá videos, playlists o audios pegando el enlace.</p>
+    </div>
+
+    <div class="platform-tags">
+      <span class="tag">YouTube</span>
+      <span class="tag">Shorts</span>
+      <span class="tag">Instagram</span>
+      <span class="tag">Facebook</span>
+      <span class="tag">Twitch</span>
+      <span class="tag">Kick</span>
+      <span class="tag">TikTok</span>
+      <span class="tag">X / Twitter</span>
+    </div>
+
+    <div id="toastAlert" class="toast toast-info"></div>
+
+    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=... o /shorts/...">
 
     <div class="row">
       <select id="engine">
-        <option value="ytdlp">Motor: yt-dlp</option>
-        <option value="cobalt">Motor: Cobalt (beta)</option>
+        <option value="ytdlp">Motor: yt-dlp (Recomendado)</option>
+        <option value="cobalt">Motor: Cobalt (Alta velocidad)</option>
       </select>
     </div>
 
@@ -151,40 +320,41 @@
           <option value="best">Mejor calidad</option>
           <option value="2160p">4K (2160p)</option>
           <option value="1440p">1440p (2K)</option>
-          <option value="1080p">1080p</option>
-          <option value="720p">720p</option>
-          <option value="480p">480p</option>
+          <option value="1080p">1080p Full HD</option>
+          <option value="720p">720p HD</option>
+          <option value="480p">480p SD</option>
         </optgroup>
         <optgroup label="Solo audio (MP3)">
-          <option value="audio_320">320 kbps</option>
-          <option value="audio_256">256 kbps</option>
-          <option value="audio_192">192 kbps</option>
-          <option value="audio_128">128 kbps</option>
+          <option value="audio_320">MP3 320 kbps (Máxima fidelidad)</option>
+          <option value="audio_256">MP3 256 kbps</option>
+          <option value="audio_192">MP3 192 kbps (Estándar)</option>
+          <option value="audio_128">MP3 128 kbps (Ligero)</option>
         </optgroup>
       </select>
     </div>
+    
     <label class="checkbox" style="margin-top:10px;" id="playlistLabel">
-      <input type="checkbox" id="playlistCheck"> Descargar toda la playlist (si el link es una playlist)
+      <input type="checkbox" id="playlistCheck"> Descargar toda la playlist (se empaqueta en .zip)
     </label>
-    <div class="meta" id="engineNote" style="display:none; margin-top:6px;"></div>
+    <div class="meta" id="engineNote" style="display:none; margin-top:6px; font-size:0.8rem; color:#f59e0b;"></div>
 
     <div id="trimSection" style="display:none; margin-top:14px;">
       <label class="checkbox">
         <input type="checkbox" id="trimCheck"> Recortar (solo video individual)
       </label>
       <div class="row" id="trimInputs" style="display:none;">
-        <input type="text" id="trimStart" placeholder="Desde (00:00:00)" style="flex:1;">
-        <input type="text" id="trimEnd" placeholder="Hasta (00:05:30)" style="flex:1;">
+        <input type="text" id="trimStart" placeholder="Desde (ej. 00:00:00)" style="flex:1;">
+        <input type="text" id="trimEnd" placeholder="Hasta (ej. 00:05:30)" style="flex:1;">
       </div>
     </div>
 
-    <button id="infoBtn">Buscar</button>
+    <button id="infoBtn" class="btn-main">Buscar</button>
 
     <div id="preview">
       <img id="previewImg" src="" alt="">
       <div class="title" id="previewTitle"></div>
       <div class="meta" id="previewMeta"></div>
-      <button id="downloadBtn">Descargar</button>
+      <button id="downloadBtn" class="btn-main" style="margin-top:12px;">Descargar</button>
     </div>
 
     <div id="progressWrap">
@@ -193,19 +363,29 @@
       </div>
       <div id="currentTitle" style="font-size:0.85rem; margin-bottom:6px; display:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
       <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
-      <div id="statusText">Iniciando...</div>
+      <div id="statusText">Iniciando descarga...</div>
       <div id="speedText" style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:none;"></div>
     </div>
 
     <a id="downloadLink" href="#">Guardar archivo</a>
     <div class="error" id="errorText"></div>
 
-    <footer style="margin-top:20px; font-size:0.75rem; color:var(--muted); text-align:center; border-top:1px solid #334155; padding-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-      <span>Usá esta herramienta solo con contenido que tengas derecho a descargar.</span>
-      <span style="background:#0f172a; padding:2px 8px; border-radius:12px; border:1px solid #334155;">Versión: <strong style="color:var(--text);">v{{ version or '1.0.0' }}</strong></span>
+    <!-- Recent Downloads Section -->
+    <div class="recent-section">
+      <div class="recent-header" id="recentHeader">
+        <span>📂 Descargas Recientes en Servidor</span>
+        <span id="recentToggleIcon">▼</span>
+      </div>
+      <div class="recent-list" id="recentList" style="display:none;">
+        <div class="recent-empty" id="recentEmpty">Cargando...</div>
+      </div>
+    </div>
+
+    <footer>
+      <span>Uso privado para contenido autorizado.</span>
+      <span style="background:#0f172a; padding:2px 8px; border-radius:12px; border:1px solid var(--border);">Versión: <strong style="color:var(--text);">v{{ version or '1.1.0' }}</strong></span>
     </footer>
   </div>
-
 
 <script>
 const urlInput = document.getElementById('urlInput');
@@ -223,7 +403,11 @@ const statusText = document.getElementById('statusText');
 const downloadLink = document.getElementById('downloadLink');
 const errorText = document.getElementById('errorText');
 const updateBtn = document.getElementById('updateBtn');
-const updateStatus = document.getElementById('updateStatus');
+const cleanBtn = document.getElementById('cleanBtn');
+const toastAlert = document.getElementById('toastAlert');
+const diskWidget = document.getElementById('diskWidget');
+const diskText = document.getElementById('diskText');
+const diskDot = document.getElementById('diskDot');
 const playlistInfo = document.getElementById('playlistInfo');
 const plIndex = document.getElementById('plIndex');
 const plTotal = document.getElementById('plTotal');
@@ -238,6 +422,104 @@ const trimEnd = document.getElementById('trimEnd');
 const engineSelect = document.getElementById('engine');
 const engineNote = document.getElementById('engineNote');
 const playlistLabel = document.getElementById('playlistLabel');
+const recentHeader = document.getElementById('recentHeader');
+const recentList = document.getElementById('recentList');
+const recentToggleIcon = document.getElementById('recentToggleIcon');
+const recentEmpty = document.getElementById('recentEmpty');
+
+function showToast(msg, type = 'info', timeout = 4000) {
+  toastAlert.className = `toast toast-${type}`;
+  toastAlert.textContent = msg;
+  toastAlert.style.display = 'block';
+  if (timeout) {
+    setTimeout(() => { toastAlert.style.display = 'none'; }, timeout);
+  }
+}
+
+async function updateDiskStatus() {
+  try {
+    const res = await fetch('/api/disk-status');
+    const data = await res.json();
+    if (data.percent_used !== undefined) {
+      diskText.textContent = `Disco VPS: ${data.free_formatted} libres (${data.percent_used}% usado)`;
+      diskDot.className = 'disk-dot';
+      if (data.percent_used >= 85) diskDot.classList.add('danger');
+      else if (data.percent_used >= 70) diskDot.classList.add('warning');
+    }
+  } catch (e) {
+    diskText.textContent = 'Disco VPS: OK';
+  }
+}
+
+async function loadRecentDownloads() {
+  try {
+    const res = await fetch('/api/recent-downloads');
+    const data = await res.json();
+    const items = data.downloads || [];
+    recentList.innerHTML = '';
+    if (items.length === 0) {
+      recentList.innerHTML = '<div class="recent-empty">No hay archivos descargados en el servidor.</div>';
+      return;
+    }
+    items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'recent-item';
+      row.innerHTML = `
+        <div style="overflow:hidden;">
+          <div class="recent-item-title" title="${it.filename}">${it.filename}</div>
+          <div class="recent-item-meta">${it.size_formatted}</div>
+        </div>
+        <a href="${it.download_url}" class="recent-btn" download>Descargar</a>
+      `;
+      recentList.appendChild(row);
+    });
+  } catch (e) {
+    recentList.innerHTML = '<div class="recent-empty">Error al cargar descargas recientes.</div>';
+  }
+}
+
+recentHeader.addEventListener('click', () => {
+  const isHidden = recentList.style.display === 'none' || recentList.style.display === '';
+  recentList.style.display = isHidden ? 'flex' : 'none';
+  recentToggleIcon.textContent = isHidden ? '▲' : '▼';
+  if (isHidden) loadRecentDownloads();
+});
+
+cleanBtn.addEventListener('click', async () => {
+  if (!confirm('¿Estás seguro de que deseas forzar la limpieza de todas las descargas del servidor?')) return;
+  cleanBtn.disabled = true;
+  showToast('Limpiando descargas del servidor...', 'info', 0);
+  try {
+    const res = await fetch('/api/cleanup', { method: 'POST' });
+    const data = await res.json();
+    showToast(`¡Limpieza completada! ${data.cleaned_count} archivo(s) eliminados (${data.reclaimed_formatted} liberados).`, 'success', 5000);
+    updateDiskStatus();
+    loadRecentDownloads();
+  } catch (e) {
+    showToast('Error al limpiar descargas: ' + e.message, 'info');
+  } finally {
+    cleanBtn.disabled = false;
+  }
+});
+
+updateBtn.addEventListener('click', async () => {
+  showToast('Buscando actualizaciones de yt-dlp...', 'info', 0);
+  updateBtn.disabled = true;
+  try {
+    const res = await fetch('/api/update-ytdlp', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message, 'success', 5000);
+    if (data.updated) {
+      setTimeout(() => window.location.reload(), 4000);
+    } else {
+      updateBtn.disabled = false;
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'info');
+    updateBtn.disabled = false;
+  }
+});
 
 function applyEngineConstraints() {
   const isCobalt = engineSelect.value === 'cobalt';
@@ -262,28 +544,7 @@ trimCheck.addEventListener('change', () => {
   trimInputs.style.display = trimCheck.checked ? 'flex' : 'none';
 });
 
-updateBtn.addEventListener('click', async () => {
-  updateStatus.style.display = 'block';
-  updateStatus.textContent = 'Buscando actualizaciones de yt-dlp...';
-  updateBtn.disabled = true;
-  try {
-    const res = await fetch('/api/update-ytdlp', { method: 'POST' });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    updateStatus.textContent = data.message;
-    if (data.updated) {
-      setTimeout(() => window.location.reload(), 5000);
-    } else {
-      updateBtn.disabled = false;
-    }
-  } catch (e) {
-    updateStatus.textContent = 'Error: ' + e.message;
-    updateBtn.disabled = false;
-  }
-});
-
 let currentInfo = null;
-
 function resetError() { errorText.textContent = ''; }
 
 infoBtn.addEventListener('click', async () => {
@@ -309,9 +570,12 @@ infoBtn.addEventListener('click', async () => {
     previewImg.src = data.thumbnail || '';
     previewImg.style.display = data.thumbnail ? 'block' : 'none';
     previewTitle.textContent = data.title;
-    previewMeta.textContent = data.type === 'playlist'
+    
+    const platformBadge = `<span class="badge-platform">${data.platform || 'Video'}</span>`;
+    const metaText = data.type === 'playlist'
       ? `Playlist · ${data.count} videos`
-      : (data.duration ? `Video · ${Math.round(data.duration/60)} min` : 'Video');
+      : (data.duration ? `${Math.round(data.duration/60)} min` : '');
+    previewMeta.innerHTML = `${platformBadge} <span>${metaText}</span>`;
 
     playlistCheck.disabled = data.type !== 'playlist';
     if (data.type === 'playlist') playlistCheck.checked = true;
@@ -416,6 +680,8 @@ function poll(jobId) {
       downloadLink.href = `/api/files/${jobId}`;
       downloadLink.style.display = 'block';
       downloadBtn.disabled = false;
+      updateDiskStatus();
+      loadRecentDownloads();
     } else if (job.status === 'error') {
       clearInterval(interval);
       errorText.textContent = job.error || 'Ocurrió un error';
@@ -423,6 +689,10 @@ function poll(jobId) {
     }
   }, 1200);
 }
+
+// Initial load
+updateDiskStatus();
+setInterval(updateDiskStatus, 30000);
 </script>
 </body>
 </html>

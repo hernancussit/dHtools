@@ -6,6 +6,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ---
 
+## [1.1.0] - 2026-08-31
+
+### ✨ Novedades y Características
+- **Protección y Monitoreo de Almacenamiento:**
+  - Widget en tiempo real del espacio en disco del VPS en la interfaz web (`GET /api/disk-status`).
+  - Botón interactivo **"🧹 Limpiar"** para forzar la eliminación de archivos descargados a demanda (`POST /api/cleanup`).
+  - **Auto-purga de emergencia:** Activación automática si el disco supera el 85% de uso o si quedan menos de 2 GB libres.
+- **Historial de Descargas Recientes:**
+  - Sección desplegable en la interfaz con los últimos archivos listos para descargar en el servidor (`GET /api/recent-downloads`), permitiendo re-descargar sin reprocesar.
+  - Soporte de re-descarga de archivos incluso tras reinicios del servidor.
+- **Soporte Multi-Plataforma y Normalización:**
+  - Normalización inteligente de **YouTube Shorts** (`/shorts/` -> visualización y descarga directa).
+  - Reconocimiento de plataformas adicionales: **Instagram**, **Facebook**, **Twitch**, **Kick**, **TikTok** y **X/Twitter**.
+  - Insignia con el nombre de la plataforma detectada en la tarjeta de previsualización.
+
+---
+
 ## [1.0.0] - 2026-08-31
 
 ### ✨ Novedades y Características
