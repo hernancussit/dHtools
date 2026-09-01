@@ -4,7 +4,19 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.4.0] - 2026-09-01
+
+### ✨ Novedades y Diagnóstico
+- **Detección y Monitoreo del Motor Deno JS:**
+  - Corrección de la clave de disponibilidad en `/api/admin/services-status` y visualización en tiempo real de la versión activa de Deno (`v2.9.5`).
+  - Tarjeta dedicada en la pestaña de motores del Panel de Administración para el motor **Deno JS Runtime**.
+- **Prueba Unitaria y Diagnóstico de Deno JS:**
+  - Nuevo endpoint `POST /api/admin/test-deno` y botón **"🧪 Probar Deno JS"** para evaluar compilación y ejecución de scripts JavaScript, diagnosticar desafíos de YouTube (n-sig / player JS) y analizar errores futuros.
+
+---
+
 ## [2.3.1] - 2026-09-01
+
 
 ### 🐛 Correcciones (Fix)
 - **Corrección de Mapeo de Calidades de Video en yt-dlp:**

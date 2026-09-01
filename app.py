@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.3.1"
+APP_VERSION = "2.4.0"
+
 
 
 
@@ -1243,10 +1244,11 @@ def admin_services_status():
     except Exception:
         pass
 
+    deno_path = shutil.which("deno") or "/usr/local/bin/deno"
     deno_installed = False
     deno_ver = ""
     try:
-        dr = subprocess.run(["deno", "--version"], capture_output=True, text=True, timeout=3)
+        dr = subprocess.run([deno_path, "--version"], capture_output=True, text=True, timeout=3)
         if dr.returncode == 0:
             deno_installed = True
             deno_ver = dr.stdout.splitlines()[0]
@@ -1258,15 +1260,48 @@ def admin_services_status():
         "app": {"version": APP_VERSION, "uptime_seconds": uptime_s},
         "potprovider": {"online": pot_ok, "latency_ms": pot_lat},
         "cobalt": {"online": cobalt_ok, "latency_ms": cobalt_lat},
-        "deno": {"installed": deno_installed, "version": deno_ver},
+        "deno": {"installed": deno_installed, "available": deno_installed, "version": deno_ver},
         "disk": get_disk_status(),
         "ram": get_ram_status(),
     })
 
 
+@app.route("/api/admin/test-deno", methods=["POST"])
+@require_admin
+def admin_test_deno():
+    deno_path = shutil.which("deno") or "/usr/local/bin/deno"
+    try:
+        t0 = time.time()
+        js_test_code = "const payload = { engine: 'Deno JS Runtime', status: 'OK', calc: (1337 * 7), timestamp: Date.now() }; console.log(JSON.stringify(payload));"
+        res = subprocess.run(
+            [deno_path, "eval", js_test_code],
+            capture_output=True, text=True, timeout=5
+        )
+        ver_res = subprocess.run([deno_path, "--version"], capture_output=True, text=True, timeout=3)
+        elapsed_ms = round((time.time() - t0) * 1000)
+
+        if res.returncode == 0:
+            return jsonify({
+                "success": True,
+                "version": ver_res.stdout.strip(),
+                "output": res.stdout.strip(),
+                "elapsed_ms": elapsed_ms,
+                "message": f"Motor Deno JS probado con éxito ({elapsed_ms}ms)."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": res.stderr.strip() or "Error al ejecutar Deno",
+                "message": f"Deno retornó código de error {res.returncode}."
+            }), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/admin/check-updates")
 @require_admin
 def admin_check_updates():
+
     curr = get_ytdlp_version()
     latest = curr
     has_update = False

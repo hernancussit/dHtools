@@ -120,6 +120,16 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Instalación PWA desde Pantalla de Acceso (`/login`):**
   - [x] Botón interactivo "📲 Instalar App" presente en el formulario de login.
 
+---
+
+## 🎯 Versión `v2.4.0` (Completado)
+- [x] **Detección y Monitoreo en Vivo de Deno JS:**
+  - [x] Corrección de lectura de estado y despliegue de versión en tiempo real (`v2.9.5`).
+  - [x] Tarjeta dedicada para Deno JS Runtime en la pestaña de Motores.
+- [x] **Herramienta de Diagnóstico Unitario Deno JS:**
+  - [x] Endpoint `POST /api/admin/test-deno` y botón interactivo para probar compilación JS y diagnosticar algoritmos de YouTube.
+
+
 
 
 

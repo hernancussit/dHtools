@@ -546,13 +546,27 @@
             <div id="cobaltStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
           </div>
 
+          <!-- Deno JS Engine Card -->
+          <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong>🦕 Motor Deno JS (Extractor)</strong>
+              <span id="denoBadgeStatus" class="status-badge">Consultando...</span>
+            </div>
+            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="denoVersionLabel">Versión en ejecución: Consultando...</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="btnTestDeno" class="btn btn-primary" style="flex:1; min-width:120px;">🧪 Probar Deno JS</button>
+            </div>
+            <div id="denoStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
+          </div>
+
           <!-- Diagnostics Test Card -->
           <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
-            <div style="font-weight:600; margin-bottom:4px;">Prueba Rápida de Extracción</div>
+            <div style="font-weight:600; margin-bottom:4px;">Prueba Global de Extracción</div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad con YouTube, Deezer y microservicios.</div>
             <button id="btnTestEngines" class="btn btn-secondary" style="width:100%;">🧪 Ejecutar Test de Diagnóstico</button>
           </div>
         </div>
+
 
         <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0b1220; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
       </div>
@@ -851,12 +865,29 @@ async function loadServicesStatus() {
     }
 
     const badgeDeno = document.getElementById('badgeDeno');
-    if (data.deno && data.deno.available) {
+    const statDenoInfo = document.getElementById('statDenoInfo');
+    const denoVersionLabel = document.getElementById('denoVersionLabel');
+    const denoBadgeStatus = document.getElementById('denoBadgeStatus');
+
+    if (data.deno && (data.deno.installed || data.deno.available)) {
+      const verText = data.deno.version || 'v2.9.5';
       badgeDeno.className = 'status-badge status-online';
       badgeDeno.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Disponible';
+      if (statDenoInfo) statDenoInfo.textContent = verText;
+      if (denoVersionLabel) denoVersionLabel.textContent = `Versión en ejecución: ${verText}`;
+      if (denoBadgeStatus) {
+        denoBadgeStatus.className = 'status-badge status-online';
+        denoBadgeStatus.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
+      }
     } else {
       badgeDeno.className = 'status-badge status-offline';
       badgeDeno.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> No instalado';
+      if (statDenoInfo) statDenoInfo.textContent = 'No detectado';
+      if (denoVersionLabel) denoVersionLabel.textContent = 'Estado: No instalado';
+      if (denoBadgeStatus) {
+        denoBadgeStatus.className = 'status-badge status-offline';
+        denoBadgeStatus.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
+      }
     }
 
     if (data.disk) {
@@ -1025,10 +1056,48 @@ document.getElementById('btnUpdateCobalt').addEventListener('click', async () =>
   }
 });
 
+document.getElementById('btnTestDeno')?.addEventListener('click', async () => {
+  const box = document.getElementById('engineLogsBox');
+  const notice = document.getElementById('denoStatusNotice');
+  box.style.display = 'block';
+  box.textContent = '[*] Ejecutando prueba de evaluación y compilación en Motor Deno JS...\n';
+  showToast('Probando motor Deno JS...', 'success');
+  try {
+    const res = await fetch('/api/admin/test-deno', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      box.textContent += `[+] ${data.message}\n`;
+      box.textContent += `--- Componentes y Versiones ---\n${data.version}\n`;
+      box.textContent += `--- Salida de Evaluación JS ---\n${data.output}\n`;
+      if (notice) {
+        notice.style.display = 'block';
+        notice.style.background = 'rgba(16, 185, 129, 0.15)';
+        notice.style.border = '1px solid var(--success)';
+        notice.style.color = 'var(--success)';
+        notice.innerHTML = `✅ <strong>Deno JS OK:</strong> Respuesta en ${data.elapsed_ms}ms. Desafíos JS de YouTube operativos.`;
+      }
+      showToast(data.message, 'success');
+    } else {
+      box.textContent += `[!] Error: ${data.error || data.message}\n`;
+      if (notice) {
+        notice.style.display = 'block';
+        notice.style.background = 'rgba(239, 68, 68, 0.15)';
+        notice.style.border = '1px solid var(--danger)';
+        notice.style.color = 'var(--danger)';
+        notice.textContent = `Error: ${data.error || data.message}`;
+      }
+      showToast(data.error || 'Error en Deno', 'error');
+    }
+  } catch (e) {
+    box.textContent += `[!] Error de conexión: ${e.message}\n`;
+    showToast('Error: ' + e.message, 'error');
+  }
+});
+
 document.getElementById('btnTestEngines').addEventListener('click', async () => {
   const box = document.getElementById('engineLogsBox');
   box.style.display = 'block';
-  box.textContent = '[*] Iniciando prueba de diagnóstico de plataformas...\n';
+  box.textContent = '[*] Iniciando prueba de diagnóstico global de plataformas...\n';
   showToast('Ejecutando diagnóstico...', 'success');
   try {
     const res = await fetch('/api/admin/test-all-engines', { method: 'POST' });
