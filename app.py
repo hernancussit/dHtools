@@ -1854,14 +1854,17 @@ def admin_git_status():
 
 
 
-def ensure_git_safe_and_https():
+def ensure_git_safe_and_remote():
     try:
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
-        rem = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, timeout=3)
-        if rem.returncode == 0 and "git@github.com:" in rem.stdout:
-            https_url = rem.stdout.strip().replace("git@github.com:", "https://github.com/")
-            subprocess.run(["git", "remote", "set-url", "origin", https_url], capture_output=True, timeout=3)
+        rem = subprocess.run(["git", "remote", "get-url", "origin"], cwd="/app", capture_output=True, text=True, timeout=3)
+        if rem.returncode == 0:
+            rem_url = rem.stdout.strip()
+            if os.path.exists("/root/.ssh/github_key") or os.path.exists("/root/.ssh/id_ed25519") or os.path.exists("/root/.ssh/id_rsa"):
+                if "https://github.com/" in rem_url:
+                    ssh_url = rem_url.replace("https://github.com/", "git@github.com:")
+                    subprocess.run(["git", "remote", "set-url", "origin", ssh_url], cwd="/app", capture_output=True, timeout=3)
     except Exception:
         pass
 
@@ -1874,13 +1877,14 @@ def admin_git_switch_branch():
     if target_branch not in ("main", "dev"):
         return jsonify({"error": "Rama inválida. Solo se permite 'main' (estable) o 'dev' (desarrollo)."}), 400
 
-    ensure_git_safe_and_https()
+    ensure_git_safe_and_remote()
+    app_dir = os.path.dirname(os.path.abspath(__file__))
     try:
-        subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, timeout=30, check=True)
-        r = subprocess.run(["git", "checkout", target_branch], capture_output=True, text=True, timeout=15)
+        subprocess.run(["git", "fetch", "origin"], cwd=app_dir, capture_output=True, text=True, timeout=30, check=True)
+        r = subprocess.run(["git", "checkout", target_branch], cwd=app_dir, capture_output=True, text=True, timeout=15)
         if r.returncode != 0:
-            subprocess.run(["git", "checkout", "-B", target_branch, f"origin/{target_branch}"], capture_output=True, text=True, timeout=15, check=True)
-        subprocess.run(["git", "pull", "origin", target_branch], capture_output=True, text=True, timeout=30)
+            subprocess.run(["git", "checkout", "-B", target_branch, f"origin/{target_branch}"], cwd=app_dir, capture_output=True, text=True, timeout=15, check=True)
+        subprocess.run(["git", "pull", "origin", target_branch], cwd=app_dir, capture_output=True, text=True, timeout=30)
 
         restart_process_soon(1.5)
         return jsonify({"success": True, "message": f"Cambiado a rama '{target_branch}' con éxito. Reiniciando servicio..."})
@@ -1891,10 +1895,11 @@ def admin_git_switch_branch():
 @app.route("/api/admin/git-update", methods=["POST"])
 @require_admin
 def admin_git_update():
-    ensure_git_safe_and_https()
+    ensure_git_safe_and_remote()
     git_info = get_git_info()
     current_commit = git_info.get("commit")
     current_branch = git_info.get("branch") or "main"
+    app_dir = os.path.dirname(os.path.abspath(__file__))
 
     try:
         save_rollback_state({
@@ -1904,12 +1909,12 @@ def admin_git_update():
             "date": time.strftime("%Y-%m-%d %H:%M:%S")
         })
 
-        subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, timeout=30, check=True)
-        pull_res = subprocess.run(["git", "pull", "origin", current_branch], capture_output=True, text=True, timeout=45, check=True)
+        subprocess.run(["git", "fetch", "origin"], cwd=app_dir, capture_output=True, text=True, timeout=30, check=True)
+        pull_res = subprocess.run(["git", "pull", "origin", current_branch], cwd=app_dir, capture_output=True, text=True, timeout=45, check=True)
 
-        req_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
+        req_file = os.path.join(app_dir, "requirements.txt")
         if os.path.exists(req_file):
-            subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "-r", req_file], capture_output=True, text=True, timeout=120)
+            subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "-r", req_file], cwd=app_dir, capture_output=True, text=True, timeout=120)
 
         restart_process_soon(1.5)
         return jsonify({
@@ -1924,14 +1929,15 @@ def admin_git_update():
 @app.route("/api/admin/git-rollback", methods=["POST"])
 @require_admin
 def admin_git_rollback():
-    ensure_git_safe_and_https()
+    ensure_git_safe_and_remote()
     rollback = load_rollback_state()
     prev_commit = rollback.get("previous_commit")
     if not prev_commit:
         return jsonify({"error": "No hay una versión anterior registrada para realizar rollback."}), 400
 
+    app_dir = os.path.dirname(os.path.abspath(__file__))
     try:
-        r = subprocess.run(["git", "checkout", prev_commit], capture_output=True, text=True, timeout=30)
+        r = subprocess.run(["git", "checkout", prev_commit], cwd=app_dir, capture_output=True, text=True, timeout=30)
         if r.returncode != 0:
             return jsonify({"error": f"Git checkout falló: {r.stderr}"}), 500
 
@@ -1940,6 +1946,7 @@ def admin_git_rollback():
         return jsonify({"success": True, "message": f"Rollback al commit '{prev_commit}' ejecutado con éxito. Reiniciando servidor..."})
     except Exception as e:
         return jsonify({"error": f"Error durante el rollback: {e}"}), 500
+
 
 
 @app.route("/api/admin/check-updates")
