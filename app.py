@@ -795,8 +795,9 @@ def get_spotify_info(url: str):
     return None
 
 
-def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None):
+def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None, owner: str = "admin", user_cloud_sync: dict = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
+
     os.makedirs(job_dir, exist_ok=True)
 
     try:
@@ -1690,10 +1691,11 @@ def download():
     if platform in ("Deezer", "Spotify") and not playlist_mode:
         thread = threading.Thread(
             target=run_download_music,
-            args=(job_id, raw_url, quality, deezer_arl, owner, user_cloud_sync),
+            args=(job_id, raw_url, quality, deezer_arl, None, owner, user_cloud_sync),
             daemon=True,
         )
         thread.start()
+
         return jsonify({"job_id": job_id})
 
     if engine == "cobalt":
@@ -1794,9 +1796,10 @@ def batch_download():
         if platform in ("Deezer", "Spotify"):
             t = threading.Thread(
                 target=run_download_music,
-                args=(job_id, raw_url, quality, deezer_arl, owner, user_cloud_sync),
+                args=(job_id, raw_url, quality, deezer_arl, None, owner, user_cloud_sync),
                 daemon=True,
             )
+
         elif engine == "cobalt":
             t = threading.Thread(
                 target=run_download_cobalt,
