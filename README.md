@@ -98,6 +98,33 @@ tu-dominio.com {
 
 ---
 
+## 🍪 Configuración de Cookies de YouTube (Opcional / Avanzado)
+
+**dHtools** cuenta con evasión antibot automática (`pot-provider` + Deno + Cobalt) y funciona **sin cookies** para el 95% de las descargas públicas. Sin embargo, si deseas descargar **videos con restricción de edad (+18)**, **contenido para miembros del canal** o **listas privadas**, puedes suministrar un archivo `cookies.txt`.
+
+### ⚠️ Reglas Críticas de Seguridad y Operación:
+> [!WARNING]
+> 1. **Usá SIEMPRE una cuenta secundaria (desechable):** NUNCA exportes cookies de tu cuenta de Google/YouTube principal. La actividad constante de descargas desde una IP de servidor puede gatillar bloqueos temporales o suspensiones de cuenta por parte de Google.
+> 2. **NO utilices esa sesión en tu navegador tras exportarla:** Una vez descargado el `cookies.txt`, no navegues con esa cuenta en tu navegador ni cierres sesión manualmente. El uso continuo en el navegador rota los tokens criptográficos de sesión de Google e invalida las cookies exportadas de inmediato.
+
+### 📥 Paso a Paso: Cómo extraer tu `cookies.txt`
+1. Abre una ventana de incógnito en tu navegador (Chrome, Firefox, Brave o Edge).
+2. Entra a [YouTube](https://www.youtube.com) e inicia sesión con tu **cuenta secundaria**.
+3. Instala una extensión de exportación de cookies en formato Netscape estándar:
+   - **Recomendada:** [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) (Código abierto, segura y sin servidores externos).
+   - **Alternativa:** [Cookie-Editor](https://cookie-editor.com/) (Abrir en YouTube ➔ *Export* ➔ *Export as Netscape*).
+4. Estando en la pestaña de YouTube, abre la extensión y haz clic en **"Export"** o **"Descargar cookies.txt"**.
+5. Guarda el archivo `.txt` en tu computadora.
+
+### 🚀 Cómo instalarlo en dHtools
+- **Desde la Web (Recomendado):**  
+  Ingresa al **Panel de Administración (`/admin`)** ➔ pestaña **"⚙️ Parámetros & Cookies"** ➔ haz clic en **"Seleccionar nuevo cookies.txt"** ➔ presiona **"🚀 Validar y Guardar"**. El sistema validará automáticamente las cookies contra YouTube antes de guardarlas en el servidor.
+- **Vía Terminal / Docker:**  
+  Copia el archivo generado en la raíz del proyecto como `cookies.txt` y reinicia el contenedor (`docker compose restart dhtools`).
+
+
+---
+
 ## 🌿 Canales de Actualización
 
 | Canal | Rama Git | Descripción |

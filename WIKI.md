@@ -12,6 +12,7 @@ Documentación técnica detallada sobre el funcionamiento interno, componentes, 
    - [Deezer (Con ARL vs. Sin ARL)](#32-deezer-con-arl-vs-sin-arl)
    - [Spotify (Extracción de Metadatos + Audio Matching)](#33-spotify-extracción-de-metadatos--audio-matching)
    - [Redes Sociales (TikTok, Instagram, Facebook, Twitch, Kick, X)](#34-redes-sociales)
+   - [Gestión y Ciclo de Vida de Cookies de YouTube](#35-gestión-y-ciclo-de-vida-de-cookies-de-youtube)
 4. [Motor de Cola por Lotes (Batch Queue)](#4-motor-de-cola-por-lotes-batch-queue)
 5. [Módulo de Sincronización en la Nube (Cloud Sync)](#5-módulo-de-sincronización-en-la-nube-cloud-sync)
 6. [Gestión de Almacenamiento & Auto-Purga](#6-gestión-de-almacenamiento--auto-purga)
@@ -121,6 +122,23 @@ Spotify protege el 100% de sus archivos de audio con **DRM Widevine (cifrado AES
 - **Instagram:** Descarga de Reels, videos del feed y publicaciones públicas.
 - **Twitch & Kick:** Extracción de clips y transmisiones pasadas (VODs).
 - **Facebook & X (Twitter):** Extracción de videos nativos en máxima resolución disponible.
+
+---
+
+### 3.5. Gestión y Ciclo de Vida de Cookies de YouTube
+El sistema de extracción de **dHtools** funciona por defecto de manera 100% autónoma sin requerir inicio de sesión gracias a la combinación de `pot-provider` (PoTokens) y `Deno`. Sin embargo, para acceder a contenido restringido, se ofrece soporte para el estándar de cookies Netscape.
+
+#### ¿Cuándo se utilizan las Cookies?
+1. **Contenido Restringido por Edad (+18 / NSFW):** YouTube exige validación de cuenta de usuario autenticada con fecha de nacimiento verificada.
+2. **Videos Exclusivos para Miembros del Canal:** Contenido accesible únicamente tras verificar la suscripción activa de la cuenta.
+3. **Listas de Reproducción y Videos Privados:** Enlaces no públicos pertenecientes a la cuenta del usuario.
+4. **Protección contra Rate Limiting Severo:** En servidores cuyas direcciones IP son compartidas o se encuentran bajo escrutinio de Google.
+
+#### ⚠️ Directivas Obligatorias de Seguridad y Preservación de Sesión:
+- **Rotación de Tokens de Google:** Al navegar en YouTube desde el navegador habitual, Google renueva periódicamente los tokens criptográficos de sesión (`SAPISID`, `SSID`, `__Secure-*`). Si continúas utilizando la cuenta en el navegador después de exportar el archivo `cookies.txt`, las cookies exportadas quedarán invalidadas en cuestión de horas.
+- **Cuentas Secundarias / Desechables:** **NUNCA utilices tu cuenta principal de Google**. El tráfico automatizado constante de un servidor de descargas puede ser detectado por los algoritmos de abuso de Google, conllevando suspensiones temporales de la cuenta. Utiliza siempre una cuenta secundaria creada exclusivamente para el descargador.
+- **Procedimiento Óptimo:** Inicia sesión con la cuenta secundaria en una **ventana de incógnito limpia**, exporta el `cookies.txt` con extensiones como *Get cookies.txt LOCALLY* o *Cookie-Editor (Netscape format)*, y **cierra la ventana de incógnito sin cerrar sesión**.
+- **Validación Automática en dHtools:** El backend verifica mediante una prueba de extracción en vivo contra YouTube que el archivo sea funcional antes de reemplazar el archivo activo en el servidor.
 
 ---
 
