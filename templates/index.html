@@ -1198,14 +1198,15 @@ if (updateBtn) {
     }
   });
 }
+{% endif %}
+
 // Logout handler
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
   if (confirm('¿Cerrar sesión de la cuenta actual?')) {
-    fetch('/logout', { headers: { 'Authorization': 'Basic logout:logout' } }).finally(() => {
-      window.location.href = '/logout';
-    });
+    window.location.href = '/logout';
   }
 });
+
 
 // Initial load
 loadRecentDownloads();
