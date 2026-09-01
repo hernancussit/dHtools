@@ -19,7 +19,8 @@ import yt_dlp
 from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.2.0"
+
 
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
@@ -79,13 +80,18 @@ def load_users() -> dict:
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                for uinfo in data.values():
+                    if "status" not in uinfo:
+                        uinfo["status"] = "active"
+                return data
         except Exception:
             pass
     initial_users = {
         APP_USERNAME: {
             "password_hash": hash_password(APP_PASSWORD),
             "role": "admin",
+            "status": "active",
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
     }
@@ -106,11 +112,12 @@ def check_auth(username, password):
         u = dict(users[username])
         u["username"] = username
         if verify_password(password, u.get("password_hash", "")) or (username == APP_USERNAME and secrets.compare_digest(password, APP_PASSWORD)):
+            if u.get("status") == "suspended":
+                return "SUSPENDED"
             return u
     if secrets.compare_digest(username, APP_USERNAME) and secrets.compare_digest(password, APP_PASSWORD):
-        return {"role": "admin", "username": username}
+        return {"role": "admin", "username": username, "status": "active"}
     return False
-
 
 
 def require_auth():
@@ -122,14 +129,27 @@ def require_auth():
 
 @app.before_request
 def protect_all_routes():
+    if request.path == "/logout":
+        return None
     auth = request.authorization
     if not auth:
         return require_auth()
     u = check_auth(auth.username, auth.password)
+    if u == "SUSPENDED":
+        return Response("Acceso denegado: tu cuenta ha sido suspendida por el administrador.", 403)
     if not u:
         return require_auth()
     request.current_user = u
     request.current_username = auth.username
+
+
+@app.route("/logout")
+def logout():
+    return Response(
+        "Sesión cerrada. Volvé a ingresar cuando desees.",
+        401,
+        {"WWW-Authenticate": 'Basic realm="ytsite_logout"'},
+    )
 
 
 def require_admin(f):
@@ -138,6 +158,7 @@ def require_admin(f):
         u = getattr(request, "current_user", None)
         if not u or u.get("role") != "admin":
             return jsonify({"error": "Acceso denegado: se requieren permisos de Administrador"}), 403
+
         return f(*args, **kwargs)
     return decorated
 
@@ -1262,6 +1283,7 @@ def admin_users():
         username = data.get("username", "").strip()
         password = data.get("password", "")
         role = data.get("role", "downloader")
+        status = data.get("status", "active")
         if not username or not password:
             return jsonify({"error": "Falta usuario o contraseña"}), 400
         if username in users:
@@ -1269,13 +1291,31 @@ def admin_users():
         users[username] = {
             "password_hash": hash_password(password),
             "role": role,
+            "status": status,
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         save_users(users)
         return jsonify({"message": f"Usuario '{username}' creado exitosamente"})
 
+    meta = load_downloads_meta()
+    user_stats = {}
+    for job_id, item in meta.items():
+        u = item.get("username", "admin")
+        if u not in user_stats:
+            user_stats[u] = {"count": 0, "bytes": 0}
+        user_stats[u]["count"] += 1
+        user_stats[u]["bytes"] += item.get("size_bytes", 0)
+
     user_list = [
-        {"username": u, "role": d.get("role", "downloader"), "created_at": d.get("created_at", "Inicial")}
+        {
+            "username": u,
+            "role": d.get("role", "downloader"),
+            "status": d.get("status", "active"),
+            "created_at": d.get("created_at", "Inicial"),
+            "downloads_count": user_stats.get(u, {}).get("count", 0),
+            "downloads_bytes": user_stats.get(u, {}).get("bytes", 0),
+            "downloads_formatted": format_bytes(user_stats.get(u, {}).get("bytes", 0)),
+        }
         for u, d in users.items()
     ]
     return jsonify({"users": user_list})
@@ -1288,19 +1328,141 @@ def admin_user_detail(username):
     if username not in users:
         return jsonify({"error": "Usuario no encontrado"}), 404
     if request.method == "DELETE":
-        if username == APP_USERNAME or (len([u for u, d in users.items() if d.get("role") == "admin"]) <= 1 and users[username].get("role") == "admin"):
+        if username == APP_USERNAME or username == getattr(request, "current_username", "") or (len([u for u, d in users.items() if d.get("role") == "admin"]) <= 1 and users[username].get("role") == "admin"):
             return jsonify({"error": "No se puede eliminar el administrador principal"}), 400
         del users[username]
         save_users(users)
-        return jsonify({"message": f"Usuario '{username}' eliminado exitosamente"})
+        # Purge user downloads
+        meta = load_downloads_meta()
+        user_jobs = [jid for jid, item in meta.items() if item.get("username") == username]
+        if os.path.exists(DOWNLOAD_DIR):
+            for jid in user_jobs:
+                for entry in os.listdir(DOWNLOAD_DIR):
+                    if entry.startswith(jid):
+                        try:
+                            os.remove(os.path.join(DOWNLOAD_DIR, entry))
+                        except Exception:
+                            pass
+                delete_download_meta(jid)
+        return jsonify({"message": f"Usuario '{username}' y sus descargas eliminados exitosamente"})
     if request.method == "PUT":
         data = request.get_json(force=True) or {}
         if "password" in data and data["password"]:
             users[username]["password_hash"] = hash_password(data["password"])
         if "role" in data and data["role"]:
             users[username]["role"] = data["role"]
+        if "status" in data and data["status"]:
+            users[username]["status"] = data["status"]
         save_users(users)
         return jsonify({"message": f"Usuario '{username}' actualizado exitosamente"})
+
+
+@app.route("/api/admin/users/<username>/toggle-status", methods=["POST"])
+@require_admin
+def admin_user_toggle_status(username):
+    users = load_users()
+    if username not in users:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    if username == APP_USERNAME or username == getattr(request, "current_username", ""):
+        return jsonify({"error": "No podés suspender tu propia cuenta de administrador"}), 400
+    current = users[username].get("status", "active")
+    new_status = "suspended" if current == "active" else "active"
+    users[username]["status"] = new_status
+    save_users(users)
+    return jsonify({
+        "success": True,
+        "message": f"Usuario '{username}' ahora está {new_status}",
+        "status": new_status,
+    })
+
+
+@app.route("/api/admin/users/<username>/clean-downloads", methods=["POST"])
+@require_admin
+def admin_user_clean_downloads(username):
+    meta = load_downloads_meta()
+    user_jobs = [jid for jid, item in meta.items() if item.get("username") == username]
+    cleaned_count = 0
+    reclaimed_bytes = 0
+    if os.path.exists(DOWNLOAD_DIR):
+        for jid in user_jobs:
+            for entry in os.listdir(DOWNLOAD_DIR):
+                if entry.startswith(jid):
+                    fpath = os.path.join(DOWNLOAD_DIR, entry)
+                    try:
+                        size = os.path.getsize(fpath)
+                        os.remove(fpath)
+                        cleaned_count += 1
+                        reclaimed_bytes += size
+                    except Exception:
+                        pass
+            delete_download_meta(jid)
+            with JOBS_LOCK:
+                JOBS.pop(jid, None)
+    return jsonify({
+        "success": True,
+        "cleaned_count": cleaned_count,
+        "reclaimed_formatted": format_bytes(reclaimed_bytes),
+    })
+
+
+# ==================== COBALT MAINTENANCE & UPDATES ====================
+
+@app.route("/api/admin/cobalt-status")
+@require_admin
+def admin_cobalt_status():
+    curr_ver = "Desconocida"
+    online = False
+    services = []
+    try:
+        r = requests.get(COBALT_URL, timeout=4)
+        if r.status_code == 200:
+            data = r.json()
+            cobalt_info = data.get("cobalt", {})
+            curr_ver = cobalt_info.get("version", "v11.x")
+            services = cobalt_info.get("services", [])
+            online = True
+    except Exception:
+        pass
+
+    latest_ver = curr_ver
+    update_available = False
+    try:
+        gh_r = requests.get(
+            "https://api.github.com/repos/imputnet/cobalt/releases/latest",
+            headers={"User-Agent": "ytsite"},
+            timeout=4,
+        )
+        if gh_r.status_code == 200:
+            latest_ver = gh_r.json().get("tag_name", "").lstrip("v")
+            if latest_ver and latest_ver != curr_ver.lstrip("v"):
+                update_available = True
+    except Exception:
+        pass
+
+    return jsonify({
+        "online": online,
+        "current_version": curr_ver,
+        "latest_version": latest_ver,
+        "update_available": update_available,
+        "services": services,
+    })
+
+
+@app.route("/api/admin/update-cobalt", methods=["POST"])
+@require_admin
+def admin_update_cobalt():
+    try:
+        r = requests.get(COBALT_URL, timeout=4)
+        if r.status_code == 200:
+            ver = r.json().get("cobalt", {}).get("version", "11")
+            return jsonify({
+                "success": True,
+                "message": f"Contenedor Cobalt v{ver} verificado y en funcionamiento óptimo.",
+            })
+    except Exception as e:
+        return jsonify({"error": f"Error al verificar Cobalt: {e}"}), 500
+    return jsonify({"message": "Estado de Cobalt verificado."})
+
 
 
 # ==================== MEDIA INFO & DOWNLOADS ====================

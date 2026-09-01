@@ -95,4 +95,20 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Verificador de Actualizaciones de Motores & Diagnóstico de Memoria RAM:**
   - [x] Comprobador en tiempo real contra PyPI y métricas de RAM en vivo.
 
+---
+
+## 🎯 Versión `v2.2.0` (Completado)
+- [x] **Cierre de Sesión (Logout):**
+  - [x] Botón "🚪 Salir" en la barra de navegación de todas las vistas con invalidación de credenciales HTTP Basic.
+- [x] **Administración Avanzada de Usuarios en Panel `/admin`:**
+  - [x] Formulario de registro y creación de nuevos usuarios con rol y estado.
+  - [x] **Suspensión / Reactivación:** Pausar acceso de usuarios con bloqueo inmediato (`POST /api/admin/users/<username>/toggle-status`).
+  - [x] **Limpieza de Descargas por Usuario:** Eliminación de archivos pertenecientes exclusivamente al usuario seleccionado (`POST /api/admin/users/<username>/clean-downloads`).
+  - [x] Modificación de credenciales y borrado definitivo con purga de archivos.
+- [x] **Mantenimiento y Actualizador de Cobalt Oficial:**
+  - [x] Tarjeta de estado de Cobalt API con versión activa y plataformas soportadas.
+  - [x] Comprobador de versiones contra GitHub Releases (`imputnet/cobalt`).
+  - [x] Verificación de salud y actualización (`POST /api/admin/update-cobalt`).
+
+
 

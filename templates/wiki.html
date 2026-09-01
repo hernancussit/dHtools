@@ -259,8 +259,10 @@
         </select>
         <a href="/" class="btn">⬅ Descargador</a>
         <a href="/admin" class="btn">⚙️ Admin</a>
+        <button id="logoutBtn" class="btn" style="background:#450a0a; border-color:#7f1d1d; color:#fca5a5;">🚪 Salir</button>
       </div>
     </div>
+
 
     <div class="layout">
       <!-- SIDEBAR TOC -->
@@ -424,6 +426,15 @@ themeSelector.addEventListener('change', (e) => {
   document.documentElement.setAttribute('data-theme', chosen);
   localStorage.setItem('site_theme', chosen);
 });
+
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+  if (confirm('¿Cerrar sesión?')) {
+    fetch('/logout', { headers: { 'Authorization': 'Basic logout:logout' } }).finally(() => {
+      window.location.href = '/logout';
+    });
+  }
+});
 </script>
 </body>
 </html>
+

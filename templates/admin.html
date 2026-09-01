@@ -226,6 +226,7 @@
         <a href="/" class="btn btn-secondary">⬅ Ir al Descargador</a>
         <a href="/wiki" class="btn btn-secondary">📚 Wiki Técnica</a>
         <button id="refreshAllBtn" class="btn btn-secondary">⟳ Refrescar</button>
+        <button id="logoutBtn" class="btn btn-danger btn-sm" style="background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5;">🚪 Salir</button>
       </div>
     </div>
 
@@ -311,28 +312,47 @@
           Mantené los motores al día para garantizar compatibilidad con cambios en los algoritmos de YouTube, Spotify, Deezer e Instagram.
         </p>
 
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
-          <div style="flex:1; min-width:280px; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
-            <div style="font-weight:600; margin-bottom:4px;">Motor yt-dlp</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-top:16px;">
+          <!-- yt-dlp Card -->
+          <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong>🎯 Motor yt-dlp (Python)</strong>
+              <span id="ytdlpBadgeStatus" class="status-badge status-online">PyPI</span>
+            </div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="ytdlpVersionLabel">Versión actual: Consultando...</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button id="btnCheckUpdates" class="btn btn-secondary" style="flex:1; min-width:130px;">🔍 Comprobar</button>
-              <button id="btnUpdateYtdlp" class="btn btn-primary" style="flex:1; min-width:130px;">⟳ Actualizar</button>
+              <button id="btnCheckUpdates" class="btn btn-secondary" style="flex:1; min-width:120px;">🔍 Comprobar</button>
+              <button id="btnUpdateYtdlp" class="btn btn-primary" style="flex:1; min-width:120px;">⟳ Actualizar</button>
             </div>
             <div id="updateStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
           </div>
 
-          <div style="flex:1; min-width:280px; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <!-- Cobalt Card -->
+          <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong>⚡ Motor Cobalt (Oficial v11)</strong>
+              <span id="cobaltBadgeStatus" class="status-badge">Consultando...</span>
+            </div>
+            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="cobaltVersionLabel">Versión en ejecución: Consultando...</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="btnCheckCobalt" class="btn btn-secondary" style="flex:1; min-width:120px;">🔍 Comprobar</button>
+              <button id="btnUpdateCobalt" class="btn btn-primary" style="flex:1; min-width:120px;">⟳ Verificar / Ping</button>
+            </div>
+            <div id="cobaltStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
+          </div>
+
+          <!-- Diagnostics Test Card -->
+          <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
             <div style="font-weight:600; margin-bottom:4px;">Prueba Rápida de Extracción</div>
-            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad de los extractores.</div>
+            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad con YouTube, Deezer y microservicios.</div>
             <button id="btnTestEngines" class="btn btn-secondary" style="width:100%;">🧪 Ejecutar Test de Diagnóstico</button>
           </div>
         </div>
 
-
         <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
       </div>
     </div>
+
 
     <!-- TAB 3: SETTINGS & COOKIES -->
     <div id="tab-settings" class="tab-content">
@@ -514,9 +534,9 @@
         </div>
 
         <div id="addUserBox" style="display:none; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
-          <div style="font-weight:600; margin-bottom:10px;">Crear Nuevo Usuario</div>
+          <div style="font-weight:600; margin-bottom:10px;">Crear / Registrar Nuevo Usuario</div>
           <form id="formAddUser">
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px;">
               <div class="form-group">
                 <label>Nombre de Usuario</label>
                 <input type="text" id="newUsername" required placeholder="ej. usuario2">
@@ -528,34 +548,46 @@
               <div class="form-group">
                 <label>Rol</label>
                 <select id="newRole">
-                  <option value="downloader">Descargador (Solo descargas)</option>
-                  <option value="admin">Administrador (Acceso total)</option>
+                  <option value="downloader">👤 Descargador (Solo descargas)</option>
+                  <option value="admin">👑 Administrador (Acceso total)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Estado Inicial</label>
+                <select id="newStatus">
+                  <option value="active">🟢 Activo</option>
+                  <option value="suspended">⏸️ Suspendido</option>
                 </select>
               </div>
             </div>
-            <div style="display:flex; gap:8px; margin-top:6px;">
-              <button type="submit" class="btn btn-primary btn-sm">Guardar Usuario</button>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Usuario</button>
               <button type="button" id="btnCancelAddUser" class="btn btn-secondary btn-sm">Cancelar</button>
             </div>
           </form>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Rol</th>
-              <th>Fecha Creación</th>
-              <th style="text-align:right;">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody">
-            <tr><td colspan="4" style="text-align:center; color:var(--muted);">Cargando usuarios...</td></tr>
-          </tbody>
-        </table>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Descargas en Servidor</th>
+                <th>Fecha Alta</th>
+                <th style="text-align:right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="6" style="text-align:center; color:var(--muted);">Cargando usuarios...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
+
 
 <script>
 // Tab Switching
@@ -669,11 +701,82 @@ async function loadEnginesInfo() {
   try {
     const res = await fetch('/api/version');
     const data = await res.json();
-    document.getElementById('ytdlpVersionLabel').textContent = `Versión actual: ${data.ytdlp_version || 'Desconocida'}`;
+    document.getElementById('ytdlpVersionLabel').textContent = `Versión actual: v${data.ytdlp_version || 'Desconocida'}`;
+  } catch (e) {
+    console.error(e);
+  }
+
+  try {
+    const res = await fetch('/api/admin/cobalt-status');
+    const data = await res.json();
+    const lbl = document.getElementById('cobaltVersionLabel');
+    const badge = document.getElementById('cobaltBadgeStatus');
+    if (data.online) {
+      lbl.textContent = `Versión activa: v${data.current_version}`;
+      badge.className = 'status-badge status-online';
+      badge.textContent = '🟢 Online';
+    } else {
+      lbl.textContent = 'Estado: Desconectado / Sin respuesta';
+      badge.className = 'status-badge status-offline';
+      badge.textContent = '🔴 Offline';
+    }
   } catch (e) {
     console.error(e);
   }
 }
+
+document.getElementById('btnCheckCobalt').addEventListener('click', async () => {
+  const notice = document.getElementById('cobaltStatusNotice');
+  notice.style.display = 'block';
+  notice.style.background = 'var(--bg-input)';
+  notice.style.border = '1px solid var(--border)';
+  notice.style.color = 'var(--text)';
+  notice.textContent = '⏳ Consultando repositorio oficial de Cobalt en GitHub...';
+
+  try {
+    const res = await fetch('/api/admin/cobalt-status');
+    const data = await res.json();
+    if (data.update_available) {
+      notice.style.background = 'rgba(245, 158, 11, 0.15)';
+      notice.style.border = '1px solid var(--warning)';
+      notice.style.color = 'var(--warning)';
+      notice.innerHTML = `⚠️ <strong>Nueva versión de Cobalt disponible:</strong> v${data.latest_version} (En ejecución: v${data.current_version}).`;
+    } else if (data.online) {
+      notice.style.background = 'rgba(16, 185, 129, 0.15)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--success)';
+      notice.innerHTML = `✅ <strong>Cobalt al día:</strong> Versión en ejecución v${data.current_version} (${data.services.length} plataformas activas).`;
+    } else {
+      notice.style.background = 'rgba(239, 68, 68, 0.15)';
+      notice.style.border = '1px solid var(--danger)';
+      notice.style.color = 'var(--danger)';
+      notice.textContent = 'No se pudo contactar con el contenedor de Cobalt en puerto 9000.';
+    }
+  } catch (e) {
+    notice.style.background = 'rgba(239, 68, 68, 0.15)';
+    notice.style.border = '1px solid var(--danger)';
+    notice.style.color = 'var(--danger)';
+    notice.textContent = 'Error al comprobar Cobalt: ' + e.message;
+  }
+});
+
+document.getElementById('btnUpdateCobalt').addEventListener('click', async () => {
+  const box = document.getElementById('engineLogsBox');
+  box.style.display = 'block';
+  box.textContent = '[*] Verificando estado y salud del contenedor Cobalt Oficial...\n';
+  showToast('Verificando Cobalt...', 'success');
+  try {
+    const res = await fetch('/api/admin/update-cobalt', { method: 'POST' });
+    const data = await res.json();
+    box.textContent += `[+] ${data.message || 'Verificación completada.'}\n`;
+    loadEnginesInfo();
+    showToast(data.message, data.error ? 'error' : 'success');
+  } catch (e) {
+    box.textContent += `[!] Error: ${e.message}\n`;
+    showToast('Error al verificar Cobalt: ' + e.message, 'error');
+  }
+});
+
 
 document.getElementById('btnCheckUpdates').addEventListener('click', async () => {
   const notice = document.getElementById('updateStatusNotice');
@@ -934,24 +1037,47 @@ async function loadUsers() {
     tbody.innerHTML = '';
     const users = data.users || [];
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--muted);">No hay usuarios registrados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted);">No hay usuarios registrados.</td></tr>';
       return;
     }
     users.forEach(u => {
       const tr = document.createElement('tr');
+      const isSuspended = (u.status === 'suspended');
+      const statusBadge = isSuspended
+        ? '<span class="status-badge status-offline">⏸️ Suspendido</span>'
+        : '<span class="status-badge status-online">🟢 Activo</span>';
+      
+      const roleBadge = (u.role === 'admin')
+        ? '<span class="status-badge status-online">👑 Admin</span>'
+        : '<span class="status-badge" style="background:#1e293b; color:#94a3b8;">👤 Descargador</span>';
+
+      const dlInfo = `${u.downloads_count || 0} archivos (${u.downloads_formatted || '0 B'})`;
+
       tr.innerHTML = `
         <td><strong>${u.username}</strong></td>
-        <td><span class="status-badge ${u.role === 'admin' ? 'status-online' : 'status-offline'}">${u.role === 'admin' ? '👑 Admin' : '👤 Descargador'}</span></td>
-        <td style="color:var(--muted);">${u.created_at || 'Inicial'}</td>
-        <td style="text-align:right;">
-          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')">Cambiar Clave</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')" style="margin-left:4px;">Eliminar</button>
+        <td>${roleBadge}</td>
+        <td>${statusBadge}</td>
+        <td style="font-size:0.82rem; color:var(--muted);">${dlInfo}</td>
+        <td style="font-size:0.82rem; color:var(--muted);">${u.created_at || 'Inicial'}</td>
+        <td style="text-align:right; white-space:nowrap;">
+          <button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.username}', '${u.status}')" title="Suspender o reactivar cuenta">
+            ${isSuspended ? '▶️ Activar' : '⏸️ Suspender'}
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="cleanUserDownloads('${u.username}')" title="Eliminar solo las descargas de este usuario" style="margin-left:3px;">
+            🧹 Limpiar
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')" title="Cambiar clave o rol" style="margin-left:3px;">
+            🔑 Clave
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')" title="Eliminar usuario definitivamente" style="margin-left:3px;">
+            🗑️
+          </button>
         </td>
       `;
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--danger);">Error al cargar usuarios.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger);">Error al cargar usuarios.</td></tr>';
   }
 }
 
@@ -967,11 +1093,12 @@ document.getElementById('formAddUser').addEventListener('submit', async (e) => {
   const username = document.getElementById('newUsername').value.trim();
   const password = document.getElementById('newPassword').value;
   const role = document.getElementById('newRole').value;
+  const status = document.getElementById('newStatus').value;
   try {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, role })
+      body: JSON.stringify({ username, password, role, status })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -983,6 +1110,34 @@ document.getElementById('formAddUser').addEventListener('submit', async (e) => {
     showToast(e.message, 'error');
   }
 });
+
+async function toggleUserStatus(username, currentStatus) {
+  const action = (currentStatus === 'active') ? 'suspender' : 'reactivar';
+  if (!confirm(`¿Deseas ${action} el acceso para "${username}"?`)) return;
+  try {
+    const res = await fetch(`/api/admin/users/${username}/toggle-status`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message || `Estado de ${username} actualizado.`, 'success');
+    loadUsers();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function cleanUserDownloads(username) {
+  if (!confirm(`¿Eliminar TODAS las descargas pertenecientes a "${username}" del servidor?`)) return;
+  try {
+    const res = await fetch(`/api/admin/users/${username}/clean-downloads`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(`Descargas de "${username}" eliminadas (${data.cleaned_count} archivos, ${data.reclaimed_formatted} liberados).`, 'success');
+    loadUsers();
+    loadServicesStatus();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
 
 async function promptChangePassword(username) {
   const newPass = prompt(`Ingrese la nueva contraseña para "${username}":`);
@@ -1002,17 +1157,27 @@ async function promptChangePassword(username) {
 }
 
 async function deleteUser(username) {
-  if (!confirm(`¿Estás seguro de que deseas eliminar al usuario "${username}"?`)) return;
+  if (!confirm(`¿Estás seguro de eliminar a "${username}" y purgar todas sus descargas asociadas?`)) return;
   try {
     const res = await fetch(`/api/admin/users/${username}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     showToast(`Usuario "${username}" eliminado.`, 'success');
     loadUsers();
+    loadServicesStatus();
   } catch (e) {
     showToast('Error al eliminar usuario: ' + e.message, 'error');
   }
 }
+
+// Logout handler
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+  if (confirm('¿Cerrar sesión de Administrador?')) {
+    fetch('/logout', { headers: { 'Authorization': 'Basic logout:logout' } }).finally(() => {
+      window.location.href = '/logout';
+    });
+  }
+});
 
 document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadServicesStatus();
@@ -1025,6 +1190,7 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
 
 // Initial loads
 loadServicesStatus();
+
 loadEnginesInfo();
 loadConfigAndCookies();
 loadCloudSyncConfig();

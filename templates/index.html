@@ -506,8 +506,12 @@
       <a href="/wiki" title="Documentación y Wiki Técnica" class="btn-sm">
         📚 Wiki
       </a>
+      <button id="logoutBtn" title="Cerrar Sesión" class="btn-sm" style="background:#450a0a; border-color:#7f1d1d; color:#fca5a5;">
+        🚪 Salir
+      </button>
     </div>
   </div>
+
 
   <div id="toast" class="toast"></div>
 
@@ -1194,10 +1198,18 @@ if (updateBtn) {
     }
   });
 }
-{% endif %}
+// Logout handler
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+  if (confirm('¿Cerrar sesión de la cuenta actual?')) {
+    fetch('/logout', { headers: { 'Authorization': 'Basic logout:logout' } }).finally(() => {
+      window.location.href = '/logout';
+    });
+  }
+});
 
 // Initial load
 loadRecentDownloads();
 </script>
+
 </body>
 </html>

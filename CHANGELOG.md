@@ -4,9 +4,27 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.2.0] - 2026-09-01
+
+### ✨ Novedades y Características
+- **Cierre de Sesión (Logout):**
+  - Botón **"🚪 Salir"** disponible en la barra de navegación de todas las vistas (`/`, `/admin`, `/wiki`).
+  - Endpoint `/logout` que invalida las credenciales HTTP Basic Auth en caché y redirige a la pantalla de acceso.
+- **Gestión Avanzada de Usuarios en Panel `/admin`:**
+  - Registro y creación de nuevos usuarios con rol (`admin` / `downloader`) y estado inicial.
+  - **Suspensión de Usuarios:** Posibilidad de pausar/suspender el acceso a cualquier usuario con un clic (`POST /api/admin/users/<username>/toggle-status`).
+  - **Limpieza de Descargas por Usuario:** Endpoint `POST /api/admin/users/<username>/clean-downloads` para eliminar todos los archivos descargados pertenecientes a un usuario específico y liberar espacio en el VPS.
+  - Modificación de credenciales, roles y eliminación definitiva con purga de archivos asociados.
+- **Mantenimiento y Comprobación de Cobalt Oficial (v11):**
+  - Módulo en la pestaña de motores para el motor oficial **Cobalt API**.
+  - Visualización de la versión activa en ejecución (ej. `v11.7.1`) y plataformas soportadas.
+  - Botón **"🔍 Comprobar Cobalt"** que consulta la API oficial de GitHub Releases (`imputnet/cobalt`) y avisa si hay una nueva versión disponible.
+  - Botón **"⟳ Verificar / Actualizar Cobalt"** (`POST /api/admin/update-cobalt`) para monitorear la salud del microservicio.
+
 ---
 
 ## [2.1.0] - 2026-09-01
+
 
 ### ✨ Novedades y Características
 - **Rediseño Visual Amplio (Full-Screen 2-Column Dashboard):**
