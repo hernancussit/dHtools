@@ -1858,15 +1858,30 @@ def ensure_git_safe_and_remote():
     try:
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
+
+        ssh_key_candidates = [
+            "/root/.ssh/github_key",
+            "/root/.ssh/id_ed25519",
+            "/root/.ssh/id_rsa",
+            os.path.expanduser("~/.ssh/github_key"),
+            os.path.expanduser("~/.ssh/id_ed25519"),
+        ]
+        for key_path in ssh_key_candidates:
+            if os.path.exists(key_path):
+                ssh_cmd = f"ssh -i {key_path} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -F /dev/null"
+                subprocess.run(["git", "config", "--global", "core.sshCommand", ssh_cmd], capture_output=True, timeout=2)
+                os.environ["GIT_SSH_COMMAND"] = ssh_cmd
+                break
+
         rem = subprocess.run(["git", "remote", "get-url", "origin"], cwd="/app", capture_output=True, text=True, timeout=3)
         if rem.returncode == 0:
             rem_url = rem.stdout.strip()
-            if os.path.exists("/root/.ssh/github_key") or os.path.exists("/root/.ssh/id_ed25519") or os.path.exists("/root/.ssh/id_rsa"):
-                if "https://github.com/" in rem_url:
-                    ssh_url = rem_url.replace("https://github.com/", "git@github.com:")
-                    subprocess.run(["git", "remote", "set-url", "origin", ssh_url], cwd="/app", capture_output=True, timeout=3)
+            if os.environ.get("GIT_SSH_COMMAND") and "https://github.com/" in rem_url:
+                ssh_url = rem_url.replace("https://github.com/", "git@github.com:")
+                subprocess.run(["git", "remote", "set-url", "origin", ssh_url], cwd="/app", capture_output=True, timeout=3)
     except Exception:
         pass
+
 
 
 @app.route("/api/admin/git-switch-branch", methods=["POST"])
