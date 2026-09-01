@@ -159,6 +159,21 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Consola de Actividad del Usuario en Modo Avanzado:**
   - [x] Panel de terminal informativo en tiempo real (`#userActivityConsole`), lectura segura y botón de limpieza.
 
+---
+
+## 🎯 Versión `v2.7.0` (Completado)
+- [x] **Sistema de Cola en Segundo Plano y Persistencia Server-Side:**
+  - [x] Daemon worker continuo en servidor (`background_queue_worker`) con persistencia en `queue_state.json`.
+  - [x] Procesamiento secuencial que persiste si se cierra la ventana o navegador.
+- [x] **Panel de Gestión de Cola Interactivo:**
+  - [x] Reordenamiento de elementos pendientes (`⬆️ Subir`, `⬇️ Bajar`), cancelación individual y vaciado total de la cola.
+  - [x] Badge dinámico con contador de pendientes en la barra lateral y monitoreo en vivo de descarga activa.
+- [x] **Agrupación de Descargas por Carpetas / Colecciones:**
+  - [x] Detección de playlists, álbumes y lotes agrupados dentro de tarjetas desplegables tipo Carpeta.
+  - [x] Generación de archivo `.ZIP` bajo demanda para descargar toda la carpeta en un solo clic.
+  - [x] Eliminación completa de carpeta y archivos individuales desde la interfaz.
+
+
 
 
 

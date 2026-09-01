@@ -20,12 +20,7 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.6.0"
-
-
-
-
-
+APP_VERSION = "2.7.0"
 
 
 
@@ -38,11 +33,17 @@ USERS_FILE = os.environ.get("USERS_FILE", "/app/users.json")
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "/app/config.json")
 CLOUD_CONFIG_FILE = os.environ.get("CLOUD_CONFIG_FILE", "/app/cloud_sync.json")
 DOWNLOADS_META_FILE = os.environ.get("DOWNLOADS_META_FILE", "/app/downloads_meta.json")
+QUEUE_STATE_FILE = os.environ.get("QUEUE_STATE_FILE", "/app/queue_state.json")
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://potprovider:4416")
 COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
 
 BATCH_JOBS = {}
+BATCH_LOCK = threading.Lock()
+QUEUE_LIST = []
+QUEUE_LOCK = threading.Lock()
+ACTIVE_WORKER_JOB = None
+
 BATCH_LOCK = threading.Lock()
 
 
@@ -401,7 +402,7 @@ def save_downloads_meta(meta: dict):
         print(f"Error saving downloads meta: {e}")
 
 
-def record_download_meta(job_id: str, filename: str, username: str, size_bytes: int):
+def record_download_meta(job_id: str, filename: str, username: str, size_bytes: int, folder_name: str = None, group_id: str = None):
     meta = load_downloads_meta()
     meta[job_id] = {
         "job_id": job_id,
@@ -409,6 +410,8 @@ def record_download_meta(job_id: str, filename: str, username: str, size_bytes: 
         "username": username or "admin",
         "size_bytes": size_bytes,
         "created_at": time.time(),
+        "folder_name": folder_name,
+        "group_id": group_id,
     }
     save_downloads_meta(meta)
 
@@ -418,6 +421,50 @@ def delete_download_meta(job_id: str):
     if job_id in meta:
         meta.pop(job_id, None)
         save_downloads_meta(meta)
+
+
+def save_queue_state():
+    try:
+        with QUEUE_LOCK:
+            q_ids = list(QUEUE_LIST)
+        with JOBS_LOCK:
+            jobs_to_save = {
+                jid: {k: v for k, v in JOBS[jid].items() if k not in ("user_cloud_sync",)}
+                for jid in q_ids if jid in JOBS and JOBS[jid].get("status") in ("queued", "downloading")
+            }
+        state = {"queue": q_ids, "jobs": jobs_to_save}
+        with open(QUEUE_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def load_queue_state():
+    global QUEUE_LIST
+    if os.path.exists(QUEUE_STATE_FILE):
+        try:
+            with open(QUEUE_STATE_FILE, "r", encoding="utf-8") as f:
+                state = json.load(f)
+                saved_jobs = state.get("jobs", {})
+                with JOBS_LOCK:
+                    for jid, data in saved_jobs.items():
+                        if jid not in JOBS:
+                            data["status"] = "queued"
+                            JOBS[jid] = data
+                with QUEUE_LOCK:
+                    QUEUE_LIST = [jid for jid in state.get("queue", []) if jid in saved_jobs]
+        except Exception:
+            pass
+
+
+def enqueue_job(job_id: str, job_spec: dict):
+    with JOBS_LOCK:
+        JOBS[job_id] = job_spec
+    with QUEUE_LOCK:
+        if job_id not in QUEUE_LIST:
+            QUEUE_LIST.append(job_id)
+    save_queue_state()
+
 
 
 def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_cloud_cfg: dict = None):
@@ -965,7 +1012,7 @@ def get_spotify_info(url: str):
     return None
 
 
-def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None, owner: str = "admin", user_cloud_sync: dict = None):
+def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None, owner: str = "admin", user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
 
     os.makedirs(job_dir, exist_ok=True)
@@ -1017,39 +1064,29 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                     })
 
         if not downloaded_direct:
-            search_query = f"{artist} - {title}"
+            search_query = f"ytsearch1:{artist} - {title} audio"
             with JOBS_LOCK:
                 JOBS[job_id].update({
                     "status": "downloading",
-                    "current_title": f"Buscando y descargando audio ({display_name})...",
-                    "file_percent": 30,
+                    "current_title": f"Buscando audio de alta calidad para '{display_name}'...",
+                    "file_percent": 20,
                 })
             ydl_opts = {
-                "outtmpl": os.path.join(job_dir, "raw_audio.%(ext)s"),
-                "format": "ba/b",
-                "format_sort": ["acodec:opus", "abr", "asr"],
+                "format": "bestaudio/best",
+                "outtmpl": raw_audio_tmpl,
                 "quiet": True,
-                "no_warnings": True,
-                "noplaylist": True,
                 **cookies_opts(),
             }
-            extract_with_fallback(f"ytsearch1:{search_query}", ydl_opts, download=True)
+            extract_with_fallback(search_query, ydl_opts, download=True)
 
-
-        actual_audio = None
-        for f in os.listdir(job_dir):
-            if f.startswith("raw_audio"):
-                actual_audio = os.path.join(job_dir, f)
-                break
-
-        if not actual_audio or not os.path.exists(actual_audio):
-            raise RuntimeError("No se pudo obtener el archivo de audio base")
+        found_files = [f for f in os.listdir(job_dir) if f.startswith("raw_audio.")]
+        if not found_files:
+            raise RuntimeError("No se pudo descargar el stream de audio")
+        actual_audio = os.path.join(job_dir, found_files[0])
 
         with JOBS_LOCK:
             JOBS[job_id].update({
                 "status": "processing",
-                "percent": 80,
-                "file_percent": 80,
                 "current_title": "Incrustando carátula y metadatos ID3...",
             })
 
@@ -1107,7 +1144,7 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
             job_snap = dict(JOBS[job_id])
 
         if os.path.exists(final_path):
-            record_download_meta(job_id, final_filename, owner, os.path.getsize(final_path))
+            record_download_meta(job_id, final_filename, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
         threading.Thread(target=sync_to_cloud, args=(final_path, final_filename, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
@@ -1116,6 +1153,7 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 "error": str(e),
                 "finished_at": time.time(),
             })
+        raise
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
 
@@ -1179,7 +1217,9 @@ def recent_downloads():
     show_all = is_admin and (request.args.get("all") == "1")
 
     meta = load_downloads_meta()
-    items = []
+    standalone_items = []
+    folders = {}
+
     if os.path.exists(DOWNLOAD_DIR):
         for entry in os.listdir(DOWNLOAD_DIR):
             if entry == ".gitkeep":
@@ -1192,7 +1232,8 @@ def recent_downloads():
                     job_id = parts[0].replace(".zip", "")
                     clean_name = parts[1] if len(parts) > 1 else entry
 
-                    item_owner = meta.get(job_id, {}).get("username")
+                    item_meta = meta.get(job_id, {})
+                    item_owner = item_meta.get("username")
                     if not item_owner:
                         with JOBS_LOCK:
                             job = JOBS.get(job_id)
@@ -1204,8 +1245,10 @@ def recent_downloads():
                     if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
                         continue
 
+                    folder_name = item_meta.get("folder_name")
+                    group_id = item_meta.get("group_id")
 
-                    items.append({
+                    item_obj = {
                         "job_id": job_id,
                         "filename": clean_name,
                         "size_bytes": stat.st_size,
@@ -1213,11 +1256,110 @@ def recent_downloads():
                         "mtime": stat.st_mtime,
                         "owner": item_owner,
                         "download_url": f"/api/files/{job_id}",
-                    })
+                    }
+
+                    if folder_name and group_id:
+                        if group_id not in folders:
+                            folders[group_id] = {
+                                "group_id": group_id,
+                                "folder_name": folder_name,
+                                "owner": item_owner,
+                                "items": [],
+                                "total_bytes": 0,
+                                "mtime": stat.st_mtime,
+                            }
+                        folders[group_id]["items"].append(item_obj)
+                        folders[group_id]["total_bytes"] += stat.st_size
+                        if stat.st_mtime > folders[group_id]["mtime"]:
+                            folders[group_id]["mtime"] = stat.st_mtime
+                    else:
+                        standalone_items.append(item_obj)
                 except OSError:
                     continue
-    items.sort(key=lambda x: x["mtime"], reverse=True)
-    return jsonify({"downloads": items[:30], "is_admin": is_admin, "user": username})
+
+    standalone_items.sort(key=lambda x: x["mtime"], reverse=True)
+    folder_list = list(folders.values())
+    for f in folder_list:
+        f["total_formatted"] = format_bytes(f["total_bytes"])
+        f["count"] = len(f["items"])
+        f["items"].sort(key=lambda x: x["mtime"], reverse=False)
+    folder_list.sort(key=lambda x: x["mtime"], reverse=True)
+
+    return jsonify({
+        "items": standalone_items[:40],
+        "folders": folder_list[:30],
+        "downloads": standalone_items[:40],
+        "is_admin": is_admin,
+        "user": username,
+    })
+
+
+@app.route("/api/my-downloads/folder/<group_id>", methods=["DELETE"])
+def delete_folder_downloads(group_id):
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    meta = load_downloads_meta()
+    matching_jids = [
+        jid for jid, info in meta.items()
+        if info.get("group_id") == group_id and (is_admin or info.get("username") == username)
+    ]
+
+    deleted_count = 0
+    if os.path.exists(DOWNLOAD_DIR):
+        for jid in matching_jids:
+            for entry in os.listdir(DOWNLOAD_DIR):
+                if entry.startswith(jid):
+                    try:
+                        os.remove(os.path.join(DOWNLOAD_DIR, entry))
+                        deleted_count += 1
+                    except Exception:
+                        pass
+            delete_download_meta(jid)
+
+    return jsonify({"success": True, "deleted_count": deleted_count})
+
+
+@app.route("/api/my-downloads/folder-zip/<group_id>")
+def folder_download_zip(group_id):
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    meta = load_downloads_meta()
+    matching_jids = {
+        jid: info for jid, info in meta.items()
+        if info.get("group_id") == group_id and (is_admin or info.get("username") == username)
+    }
+
+    if not matching_jids:
+        abort(404)
+
+    folder_name = next(iter(matching_jids.values())).get("folder_name", f"folder_{group_id[:8]}")
+    safe_f_name = safe_filename(folder_name)
+    zip_path = os.path.join(DOWNLOAD_DIR, f"folder_{group_id}.zip")
+
+    files_added = 0
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for jid in matching_jids:
+            for entry in os.listdir(DOWNLOAD_DIR):
+                if entry.startswith(jid) and entry != f"folder_{group_id}.zip":
+                    fpath = os.path.join(DOWNLOAD_DIR, entry)
+                    disp_name = entry[len(jid):].lstrip("_-") or entry
+                    if os.path.isfile(fpath):
+                        zf.write(fpath, arcname=disp_name)
+                        files_added += 1
+
+    if files_added == 0:
+        abort(404)
+
+    return send_file(
+        zip_path,
+        as_attachment=True,
+        download_name=f"{safe_f_name}.zip",
+        mimetype="application/zip",
+    )
 
 
 @app.route("/api/my-downloads/<job_id>", methods=["DELETE"])
@@ -1283,6 +1425,7 @@ def cleanup_my_downloads():
         "cleaned_count": cleaned_count,
         "reclaimed_formatted": format_bytes(reclaimed_bytes),
     })
+
 
 
 @app.route("/wiki")
@@ -1779,7 +1922,7 @@ def append_job_log(job_id: str, message: str):
                 job["logs"] = job["logs"][-150:]
 
 
-def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin", user_cloud_sync: dict = None):
+def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin", user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
     append_job_log(job_id, f"[*] [Cobalt v11] Solicitando stream para: {url}")
@@ -1869,7 +2012,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
             })
             job_snap = dict(JOBS[job_id])
         if os.path.exists(final_path):
-            record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+            record_download_meta(job_id, final_name, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
         append_job_log(job_id, f"[+] Archivo completado: {final_name}")
         threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
@@ -1884,7 +2027,8 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
 def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
                   start_time=None, end_time=None, video_format="mp4", subtitles="none",
                   owner: str = "admin", user_cloud_sync: dict = None,
-                  selected_indexes: list = None, playlist_delivery: str = "zip"):
+                  selected_indexes: list = None, playlist_delivery: str = "zip",
+                  folder_name: str = None, group_id: str = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
     append_job_log(job_id, f"[*] [yt-dlp] Iniciando proceso de descarga ({quality})...")
@@ -2003,13 +2147,15 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
 
         if playlist_mode and playlist_delivery == "individual":
             individual_files = []
+            f_group_name = folder_name or f"Playlist {job_id[:8]}"
+            f_group_id = group_id or job_id
             for f in files:
                 fname = f"{job_id}_{f}"
                 fpath = os.path.join(DOWNLOAD_DIR, fname)
                 shutil.move(os.path.join(job_dir, f), fpath)
                 fsize = os.path.getsize(fpath) if os.path.exists(fpath) else 0
                 item_jid = f"{job_id}_{len(individual_files)+1}"
-                record_download_meta(item_jid, f, owner, fsize)
+                record_download_meta(item_jid, f, owner, fsize, folder_name=f_group_name, group_id=f_group_id)
                 individual_files.append({"name": f, "path": fpath, "size": fsize, "job_id": item_jid})
             
             final_path = individual_files[0]["path"] if individual_files else None
@@ -2051,7 +2197,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     "delivery": "zip",
                 })
             if os.path.exists(final_path):
-                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
             append_job_log(job_id, f"[+] Archivo ZIP generado: {final_name}")
         else:
             final_filename = f"{job_id}_{files[0]}"
@@ -2069,7 +2215,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     "owner": owner,
                 })
             if os.path.exists(final_path):
-                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
             append_job_log(job_id, f"[+] Archivo descargado: {final_name}")
 
         job_snap = dict(JOBS[job_id])
@@ -2088,7 +2234,8 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                          start_time=None, end_time=None, video_format="mp4", subtitles="none",
                          owner: str = "admin", user_cloud_sync: dict = None,
                          selected_indexes: list = None, playlist_delivery: str = "zip",
-                         video_title: str = "", deezer_arl: str = ""):
+                         video_title: str = "", deezer_arl: str = "",
+                         folder_name: str = None, group_id: str = None):
     attempts = []
     platform = detect_platform(url)
     append_job_log(job_id, f"[*] [Cascada Inteligente] Analizando contenido ({platform})...")
@@ -2097,7 +2244,7 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
     if not playlist_mode and start_time is None and end_time is None and subtitles == "none":
         append_job_log(job_id, "[*] [1/3] Probando extracción con Motor Cobalt Oficial...")
         try:
-            run_download_cobalt(job_id, url, quality, video_title, owner, user_cloud_sync)
+            run_download_cobalt(job_id, url, quality, video_title, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id)
             with JOBS_LOCK:
                 if JOBS.get(job_id, {}).get("status") == "finished":
                     append_job_log(job_id, "[+] Proceso finalizado exitosamente con Cobalt.")
@@ -2111,7 +2258,7 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
     if platform in ("Deezer", "Spotify") and not playlist_mode:
         append_job_log(job_id, f"[*] [2/3] Probando Motor Musical Especializado ({platform})...")
         try:
-            run_download_music(job_id, url, quality, deezer_arl, None, owner, user_cloud_sync)
+            run_download_music(job_id, url, quality, deezer_arl, None, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id)
             with JOBS_LOCK:
                 if JOBS.get(job_id, {}).get("status") == "finished":
                     append_job_log(job_id, "[+] Proceso finalizado exitosamente con Motor Musical.")
@@ -2126,7 +2273,8 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
     try:
         run_download(
             job_id, url, quality, playlist_mode, total_count, start_time, end_time,
-            video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery
+            video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery,
+            folder_name=folder_name, group_id=group_id
         )
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "finished":
@@ -2148,6 +2296,102 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
     append_job_log(job_id, "[!] ERROR: Se agotaron todos los métodos de descarga disponibles.")
 
 
+# ==================== BACKGROUND QUEUE WORKER ====================
+
+def background_queue_worker():
+    global ACTIVE_WORKER_JOB
+    while True:
+        job_id = None
+        with QUEUE_LOCK:
+            for jid in list(QUEUE_LIST):
+                with JOBS_LOCK:
+                    j = JOBS.get(jid)
+                    if j and j.get("status") == "queued":
+                        job_id = jid
+                        break
+                    elif j and j.get("status") in ("finished", "error", "cancelled"):
+                        if jid in QUEUE_LIST:
+                            QUEUE_LIST.remove(jid)
+
+        if not job_id:
+            ACTIVE_WORKER_JOB = None
+            time.sleep(1)
+            continue
+
+        ACTIVE_WORKER_JOB = job_id
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("status") == "cancelled":
+                with QUEUE_LOCK:
+                    if job_id in QUEUE_LIST:
+                        QUEUE_LIST.remove(job_id)
+                ACTIVE_WORKER_JOB = None
+                continue
+            job["status"] = "downloading"
+            job["started_at"] = time.time()
+
+        save_queue_state()
+
+        try:
+            engine = job.get("engine", "auto")
+            url = job.get("url")
+            quality = job.get("quality", "best")
+            playlist_mode = job.get("playlist", False)
+            total_count = job.get("total_count", 0)
+            start_time = job.get("start_time")
+            end_time = job.get("end_time")
+            video_format = job.get("video_format", "mp4")
+            subtitles = job.get("subtitles", "none")
+            owner = job.get("owner", "admin")
+            user_cloud_sync = job.get("user_cloud_sync")
+            selected_indexes = job.get("selected_indexes")
+            playlist_delivery = job.get("playlist_delivery", "zip")
+            video_title = job.get("video_title", "")
+            deezer_arl = job.get("deezer_arl", "")
+            folder_name = job.get("folder_name")
+            group_id = job.get("group_id")
+
+            if engine in ("auto", "cascade"):
+                run_download_cascade(
+                    job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                    video_format, subtitles, owner, user_cloud_sync, selected_indexes,
+                    playlist_delivery, video_title, deezer_arl, folder_name=folder_name, group_id=group_id
+                )
+            elif detect_platform(url) in ("Deezer", "Spotify") and not playlist_mode:
+                run_download_music(
+                    job_id, url, quality, deezer_arl, None, owner, user_cloud_sync,
+                    folder_name=folder_name, group_id=group_id
+                )
+            elif engine == "cobalt":
+                run_download_cobalt(
+                    job_id, url, quality, video_title, owner, user_cloud_sync,
+                    folder_name=folder_name, group_id=group_id
+                )
+            else:
+                run_download(
+                    job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                    video_format, subtitles, owner, user_cloud_sync, selected_indexes,
+                    playlist_delivery, folder_name=folder_name, group_id=group_id
+                )
+        except Exception as e:
+            with JOBS_LOCK:
+                if job_id in JOBS:
+                    JOBS[job_id]["status"] = "error"
+                    JOBS[job_id]["error"] = str(e)
+                    JOBS[job_id]["finished_at"] = time.time()
+        finally:
+            with QUEUE_LOCK:
+                if job_id in QUEUE_LIST:
+                    QUEUE_LIST.remove(job_id)
+            ACTIVE_WORKER_JOB = None
+            save_queue_state()
+
+
+# Load persisted queue and start worker
+load_queue_state()
+threading.Thread(target=background_queue_worker, daemon=True).start()
+
+
 @app.route("/api/download", methods=["POST"])
 def download():
     data = request.get_json(force=True)
@@ -2164,6 +2408,8 @@ def download():
     user_cloud_sync = (data or {}).get("user_cloud_sync")
     selected_indexes = (data or {}).get("selected_indexes") or []
     playlist_delivery = (data or {}).get("playlist_delivery", "zip")
+    folder_name = (data or {}).get("folder_name")
+    group_id = (data or {}).get("group_id")
 
     user = getattr(request, "current_user", {}) or {}
     owner = user.get("username", "admin")
@@ -2189,56 +2435,169 @@ def download():
             return jsonify({"error": "Cobalt no soporta recorte de video todavía, usá yt-dlp para eso"}), 400
 
     job_id = uuid.uuid4().hex
-    with JOBS_LOCK:
-        JOBS[job_id] = {
-            "status": "queued",
-            "percent": 0,
-            "completed_count": 0,
-            "total_count": total_count if not selected_indexes else len(selected_indexes),
-            "current_index": None,
-            "current_title": None,
-            "file_percent": 0,
-            "speed": None,
-            "eta_seconds": None,
-            "owner": owner,
-            "logs": [{"time": time.strftime("%H:%M:%S"), "text": "[*] Solicitud recibida y encolada."}],
-            "attempts": [],
-        }
-
     deezer_arl = (data or {}).get("deezer_arl", "").strip()
-    platform = detect_platform(raw_url)
 
-    if engine in ("auto", "cascade"):
-        thread = threading.Thread(
-            target=run_download_cascade,
-            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time,
-                  video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery, video_title, deezer_arl),
-            daemon=True,
-        )
-    elif platform in ("Deezer", "Spotify") and not playlist_mode:
-        thread = threading.Thread(
-            target=run_download_music,
-            args=(job_id, raw_url, quality, deezer_arl, None, owner, user_cloud_sync),
-            daemon=True,
-        )
-    elif engine == "cobalt":
-        thread = threading.Thread(
-            target=run_download_cobalt, args=(job_id, url, quality, video_title, owner, user_cloud_sync), daemon=True
-        )
-    else:
-        thread = threading.Thread(
-            target=run_download,
-            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time,
-                  video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery),
-            daemon=True,
-        )
-    thread.start()
+    job_spec = {
+        "status": "queued",
+        "percent": 0,
+        "completed_count": 0,
+        "total_count": total_count if not selected_indexes else len(selected_indexes),
+        "current_index": None,
+        "current_title": video_title or url,
+        "file_percent": 0,
+        "speed": None,
+        "eta_seconds": None,
+        "owner": owner,
+        "url": url,
+        "quality": quality,
+        "video_format": video_format,
+        "subtitles": subtitles,
+        "playlist": playlist_mode,
+        "selected_indexes": selected_indexes,
+        "playlist_delivery": playlist_delivery,
+        "engine": engine,
+        "video_title": video_title,
+        "deezer_arl": deezer_arl,
+        "folder_name": folder_name,
+        "group_id": group_id,
+        "user_cloud_sync": user_cloud_sync,
+        "created_at": time.time(),
+        "logs": [{"time": time.strftime("%H:%M:%S"), "text": f"[*] Solicitud encolada para descarga en segundo plano ({quality})."}],
+        "attempts": [],
+    }
 
-    return jsonify({"job_id": job_id})
+    enqueue_job(job_id, job_spec)
+
+    return jsonify({"job_id": job_id, "status": "queued"})
+
+
+# ==================== QUEUE CONTROL API ====================
+
+@app.route("/api/queue")
+def get_queue():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    with QUEUE_LOCK:
+        q_ids = list(QUEUE_LIST)
+
+    active_job = None
+    queued_jobs = []
+    completed_jobs = []
+
+    with JOBS_LOCK:
+        if ACTIVE_WORKER_JOB and ACTIVE_WORKER_JOB in JOBS:
+            j = JOBS[ACTIVE_WORKER_JOB]
+            if is_admin or j.get("owner") == username:
+                active_job = dict(j)
+                active_job["job_id"] = ACTIVE_WORKER_JOB
+
+        for jid in q_ids:
+            if jid == ACTIVE_WORKER_JOB:
+                continue
+            j = JOBS.get(jid)
+            if j and (is_admin or j.get("owner") == username):
+                item = dict(j)
+                item["job_id"] = jid
+                queued_jobs.append(item)
+
+        for jid, j in list(JOBS.items())[-30:]:
+            if j.get("status") in ("finished", "error", "cancelled"):
+                if is_admin or j.get("owner") == username:
+                    item = dict(j)
+                    item["job_id"] = jid
+                    completed_jobs.append(item)
+
+    return jsonify({
+        "active": active_job,
+        "queue": queued_jobs,
+        "completed": completed_jobs,
+        "total_queued": len(queued_jobs) + (1 if active_job else 0),
+    })
+
+
+@app.route("/api/queue/move", methods=["POST"])
+def move_queue_item():
+    data = request.get_json(force=True) or {}
+    job_id = data.get("job_id")
+    direction = data.get("direction", "up")
+
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or (not is_admin and job.get("owner") != username):
+            return jsonify({"error": "No tenés permiso sobre este elemento"}), 403
+
+    with QUEUE_LOCK:
+        if job_id not in QUEUE_LIST:
+            return jsonify({"error": "El trabajo no está en la cola pendiente"}), 400
+        
+        idx = QUEUE_LIST.index(job_id)
+        start_idx = 1 if (ACTIVE_WORKER_JOB and QUEUE_LIST and QUEUE_LIST[0] == ACTIVE_WORKER_JOB) else 0
+
+        if direction == "up" and idx > start_idx:
+            QUEUE_LIST[idx], QUEUE_LIST[idx - 1] = QUEUE_LIST[idx - 1], QUEUE_LIST[idx]
+        elif direction == "down" and idx < len(QUEUE_LIST) - 1:
+            QUEUE_LIST[idx], QUEUE_LIST[idx + 1] = QUEUE_LIST[idx + 1], QUEUE_LIST[idx]
+
+    save_queue_state()
+    return jsonify({"success": True, "queue": QUEUE_LIST})
+
+
+@app.route("/api/queue/<job_id>", methods=["DELETE"])
+def cancel_queue_item(job_id):
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job:
+            return jsonify({"error": "Trabajo no encontrado"}), 404
+        if not is_admin and job.get("owner") != username:
+            return jsonify({"error": "No tenés permiso sobre este trabajo"}), 403
+
+        job["status"] = "cancelled"
+        job["finished_at"] = time.time()
+        append_job_log(job_id, "[!] Descarga cancelada por el usuario.")
+
+    with QUEUE_LOCK:
+        if job_id in QUEUE_LIST:
+            QUEUE_LIST.remove(job_id)
+
+    save_queue_state()
+    return jsonify({"success": True, "message": "Elemento quitado/cancelado de la cola"})
+
+
+@app.route("/api/queue/cancel-all", methods=["POST"])
+def cancel_all_queue():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    cancelled_count = 0
+    with QUEUE_LOCK:
+        for jid in list(QUEUE_LIST):
+            if jid == ACTIVE_WORKER_JOB:
+                continue
+            with JOBS_LOCK:
+                job = JOBS.get(jid)
+                if job and (is_admin or job.get("owner") == username):
+                    job["status"] = "cancelled"
+                    job["finished_at"] = time.time()
+                    append_job_log(jid, "[!] Descarga cancelada por vaciado de cola.")
+                    QUEUE_LIST.remove(jid)
+                    cancelled_count += 1
+
+    save_queue_state()
+    return jsonify({"success": True, "cancelled_count": cancelled_count})
 
 
 @app.route("/api/status/<job_id>")
-
 def status(job_id):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -2285,7 +2644,7 @@ def batch_download():
     quality = data.get("quality", "best")
     video_format = data.get("video_format", "mp4")
     subtitles = data.get("subtitles", "none")
-    engine = data.get("engine", "ytdlp")
+    engine = data.get("engine", "auto")
     deezer_arl = data.get("deezer_arl", "").strip()
     user_cloud_sync = data.get("user_cloud_sync")
 
@@ -2293,49 +2652,38 @@ def batch_download():
     owner = user.get("username", "admin")
 
     batch_id = uuid.uuid4().hex
+    batch_folder_name = f"Lote ({time.strftime('%Y-%m-%d %H:%M')})"
     job_ids = []
 
     for raw_url in urls:
         job_id = uuid.uuid4().hex
         job_ids.append(job_id)
-        with JOBS_LOCK:
-            JOBS[job_id] = {
-                "status": "queued",
-                "percent": 0,
-                "completed_count": 0,
-                "total_count": 1,
-                "current_index": 1,
-                "current_title": None,
-                "file_percent": 0,
-                "speed": None,
-                "eta_seconds": None,
-                "url": raw_url,
-                "batch_id": batch_id,
-                "owner": owner,
-            }
-
-        platform = detect_platform(raw_url)
-        norm_url = normalize_url(raw_url)
-        if platform in ("Deezer", "Spotify"):
-            t = threading.Thread(
-                target=run_download_music,
-                args=(job_id, raw_url, quality, deezer_arl, None, owner, user_cloud_sync),
-                daemon=True,
-            )
-
-        elif engine == "cobalt":
-            t = threading.Thread(
-                target=run_download_cobalt,
-                args=(job_id, norm_url, quality, "", owner, user_cloud_sync),
-                daemon=True,
-            )
-        else:
-            t = threading.Thread(
-                target=run_download,
-                args=(job_id, norm_url, quality, False, 1, None, None, video_format, subtitles, owner, user_cloud_sync),
-                daemon=True,
-            )
-        t.start()
+        job_spec = {
+            "status": "queued",
+            "percent": 0,
+            "completed_count": 0,
+            "total_count": 1,
+            "current_index": 1,
+            "current_title": raw_url,
+            "file_percent": 0,
+            "speed": None,
+            "eta_seconds": None,
+            "url": raw_url,
+            "quality": quality,
+            "video_format": video_format,
+            "subtitles": subtitles,
+            "playlist": False,
+            "engine": engine,
+            "deezer_arl": deezer_arl,
+            "batch_id": batch_id,
+            "folder_name": batch_folder_name,
+            "group_id": batch_id,
+            "owner": owner,
+            "user_cloud_sync": user_cloud_sync,
+            "created_at": time.time(),
+            "logs": [{"time": time.strftime("%H:%M:%S"), "text": "[*] Encolado en lote para procesamiento en segundo plano."}],
+        }
+        enqueue_job(job_id, job_spec)
 
     with BATCH_LOCK:
         BATCH_JOBS[batch_id] = {

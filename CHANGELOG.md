@@ -4,7 +4,27 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.0] - 2026-09-01
+
+### ✨ Novedades y Gestión de Descargas
+- **⏳ Sistema de Cola en Segundo Plano y Persistencia Server-Side:**
+  - Todas las descargas generadas en cualquier modo (Fácil, Avanzado, Lote) se procesan de manera secuencial y ordenada mediante un worker daemon en segundo plano (`background_queue_worker`).
+  - Las descargas persisten en el servidor incluso si el usuario cierra la ventana del navegador o apaga su dispositivo.
+  - Persistencia del estado de la cola en disco (`/app/queue_state.json`) para reanudar trabajos ante reinicios del contenedor.
+- **🎛️ Panel de Gestión de Cola Interactivo:**
+  - Nueva pestaña dedicada y contador dinámico en la barra lateral con la cantidad de descargas pendientes.
+  - Reordenamiento de prioridad de descargas (`⬆️ Subir`, `⬇️ Bajar`), eliminación de descargas individuales (`🗑️ Quitar`) y vaciado total de la cola (`🛑 Vaciar Cola`).
+  - Monitoreo en vivo de la descarga activa y resumen de historial reciente.
+- **📁 Agrupación por Carpetas en "Mis Descargas":**
+  - Las descargas provenientes de playlists, álbumes (Spotify / Deezer) o lotes múltiples se agrupan automáticamente dentro de tarjetas desplegables de tipo Carpeta/Colección.
+  - Descarga masiva de la carpeta completa en un archivo `.ZIP` bajo demanda en un solo clic (`/api/my-downloads/folder-zip/<group_id>`).
+  - Eliminación integral de la carpeta completa con liberación automática de espacio en disco (`DELETE /api/my-downloads/folder/<group_id>`).
+  - Listado desplegable interno con acciones individuales por archivo (descargar / borrar).
+
+---
+
 ## [2.6.0] - 2026-09-01
+
 
 ### ✨ Novedades y Resiliencia
 - **🔄 Descargas en Cascada Automática y Diagnóstico Detallado (Modo Fácil):**

@@ -580,6 +580,90 @@
   .toast-success { border-color: var(--success); }
   .toast-error { border-color: var(--danger); }
 
+  /* FOLDER ACCORDION CARDS */
+  .folder-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .folder-box:hover {
+    border-color: var(--border-highlight);
+  }
+  .folder-header {
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.08), rgba(236, 72, 153, 0.05));
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .folder-header.open {
+    border-color: var(--border);
+  }
+  .folder-header-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .folder-body {
+    padding: 12px 16px;
+    display: none;
+    background: var(--bg-input);
+  }
+  .folder-body.open {
+    display: block;
+  }
+  .folder-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .folder-file-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* QUEUE ITEM CARD */
+  .queue-item-row {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.2s;
+  }
+  .queue-item-row:hover {
+    border-color: var(--border-highlight);
+  }
+  .queue-badge-pos {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    min-width: 28px;
+    text-align: center;
+  }
+
   /* RESPONSIVE */
   @media (max-width: 860px) {
     .app-layout {
@@ -642,13 +726,19 @@
           <span>Descargas en Lote</span>
         </button>
         
-        <div class="nav-title" style="margin-top:10px;">Gestión Personal</div>
+        <div class="nav-title" style="margin-top:10px;">Gestión & Servidor</div>
+        <button class="nav-item" id="tabNavQueue" data-tab="tab-queue">
+          <span>⏳</span>
+          <span>Cola en 2º Plano</span>
+          <span id="sidebarQueueBadge" style="display:none; margin-left:auto; background:var(--accent); color:#fff; padding:2px 7px; border-radius:10px; font-size:0.68rem; font-weight:700;">0</span>
+        </button>
         <button class="nav-item" id="tabNavHistory" data-tab="tab-history">
           <span>📂</span>
           <span>Mis Descargas</span>
         </button>
       </nav>
     </div>
+
 
     <!-- SIDEBAR FOOTER -->
     <div class="sidebar-footer">
@@ -1023,16 +1113,72 @@
           </div>
         </div>
 
-        <div style="display:flex; gap:8px; margin-bottom:12px;">
-          <input type="text" id="filterDownloadsInput" placeholder="🔍 Buscar por nombre de archivo...">
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <input type="text" id="filterDownloadsInput" placeholder="🔍 Buscar por nombre de carpeta o archivo...">
         </div>
 
-        <!-- RECENT DOWNLOADS GRID -->
-        <div class="recent-grid" id="recentDownloadsGrid"></div>
+        <!-- FOLDERS / PLAYLISTS / BATCHES SECTION -->
+        <div id="foldersContainer" style="margin-bottom:16px;"></div>
+
+        <!-- STANDALONE FILES SECTION -->
+        <div id="standaloneFilesWrap">
+          <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em;" id="standaloneTitle">📄 Archivos Individuales</div>
+          <div class="recent-grid" id="recentDownloadsGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 5: COLA EN SEGUNDO PLANO ==================== -->
+    <div id="tab-queue" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <span>⏳ Cola de Descargas en Segundo Plano</span>
+            <div style="font-size:0.78rem; font-weight:normal; color:var(--muted); margin-top:2px;">
+              Las descargas persisten en el servidor aunque cierres la ventana o te desconectes.
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button id="btnRefreshQueue" class="btn btn-secondary btn-sm">🔄 Actualizar</button>
+            <button id="btnCancelAllQueue" class="btn btn-danger btn-sm">🛑 Vaciar Cola</button>
+          </div>
+        </div>
+
+        <!-- ACTIVE RUNNING JOB CARD -->
+        <div id="queueActiveCard" style="display:none; margin-bottom:16px; background:rgba(14, 165, 233, 0.08); border:1px solid var(--accent-blue); border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--accent-blue); display:flex; align-items:center; gap:6px;">
+              <span class="badge-dot" style="background:var(--accent-blue);"></span> PROCESANDO AHORA
+            </span>
+            <span id="queueActiveSpeed" style="font-size:0.8rem; font-family:monospace; color:#38bdf8; font-weight:600;"></span>
+          </div>
+          <div id="queueActiveTitle" style="font-weight:700; font-size:0.95rem; margin-bottom:8px; word-break:break-word;">...</div>
+          <div class="bar-bg" style="margin-bottom:8px;"><div class="bar-fill" id="queueActiveBar"></div></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--muted);">
+            <span id="queueActiveStatus">Descargando...</span>
+            <button id="btnCancelActiveJob" class="btn btn-secondary btn-sm" style="color:var(--danger); padding:2px 8px; font-size:0.72rem;">✕ Detener</button>
+          </div>
+        </div>
+
+        <!-- PENDING QUEUE LIST -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong style="font-size:0.85rem;">📋 Elementos en Espera (<span id="queuePendingCount">0</span>)</strong>
+          <span style="font-size:0.72rem; color:var(--muted);">Usa ⬆️/⬇️ para cambiar la prioridad</span>
+        </div>
+        <div id="queuePendingList" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- COMPLETED HISTORY IN QUEUE -->
+        <div style="margin-top:22px;">
+          <strong style="font-size:0.85rem; color:var(--muted); display:block; margin-bottom:8px;">🕒 Historial Reciente de la Cola</strong>
+          <div id="queueCompletedList" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
       </div>
     </div>
   </main>
 </div>
+
 
 <script>
 // ==================== GLOBAL INITIALIZATION & PWA ====================
@@ -1089,9 +1235,14 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     const target = btn.dataset.tab;
-    if (target) document.getElementById(target)?.classList.add('active');
+    if (target) {
+      document.getElementById(target)?.classList.add('active');
+      if (target === 'tab-history') loadRecentDownloads();
+      if (target === 'tab-queue') fetchQueueState();
+    }
   });
 });
+
 
 // ==================== CLOUD SYNC & PERSISTENT PREFS ====================
 const userWebdavEnabled = document.getElementById('userWebdavEnabled');
@@ -1387,6 +1538,7 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   }
   const userCloudCfg = saveUserCloudSettings();
   const isPlaylist = document.getElementById('quickPlaylistExplorer').style.display !== 'none';
+  const playlistTitle = document.getElementById('quickPlaylistTitle')?.textContent || '';
   
   let selected_indexes = [];
   if (isPlaylist) {
@@ -1402,8 +1554,8 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   const btn = document.getElementById('btnQuickDownload');
   btn.disabled = true;
   lastRenderedLogCount = 0;
-  appendUserConsole(`[*] [Modo Fácil] Solicitando descarga para '${url}' (${quickPreset})...`);
-  startProgressBanner('Encolando descarga rápida con motores en cascada...');
+  appendUserConsole(`[*] [Modo Fácil] Encolando descarga para '${url}' (${quickPreset})...`);
+  startProgressBanner('Encolando descarga en segundo plano...');
 
   try {
     const res = await fetch('/api/download', {
@@ -1418,11 +1570,15 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
         selected_indexes,
         playlist_delivery: quickDelivery,
         engine: 'auto',
+        folder_name: isPlaylist ? playlistTitle : null,
+        group_id: isPlaylist ? 'pl_' + Date.now() : null,
         user_cloud_sync: userCloudCfg
       })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
+    fetchQueueState();
     pollSingleJob(data.job_id, () => { btn.disabled = false; });
   } catch (e) {
     showToast(e.message, 'error');
@@ -1461,6 +1617,7 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
 
   const advExp = document.getElementById('advPlaylistExplorer');
   const isPlaylist = advExp && advExp.style.display !== 'none';
+  const playlistTitle = document.getElementById('advPlaylistTitle')?.textContent || '';
   
   let selected_indexes = [];
   if (isPlaylist) {
@@ -1476,8 +1633,8 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
   const btn = document.getElementById('btnAdvDownload');
   btn.disabled = true;
   lastRenderedLogCount = 0;
-  appendUserConsole(`[*] [Modo Avanzado] Solicitando extracción (${quality}, motor: ${advEngine})...`);
-  startProgressBanner('Iniciando descarga avanzada...');
+  appendUserConsole(`[*] [Modo Avanzado] Encolando extracción (${quality}, motor: ${advEngine})...`);
+  startProgressBanner('Encolando descarga avanzada...');
 
   try {
     const res = await fetch('/api/download', {
@@ -1495,11 +1652,15 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
         playlist_delivery: advDelivery,
         engine: advEngine,
         deezer_arl: deezerArl,
+        folder_name: isPlaylist ? playlistTitle : null,
+        group_id: isPlaylist ? 'pl_' + Date.now() : null,
         user_cloud_sync: userCloudCfg
       })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
+    fetchQueueState();
     pollSingleJob(data.job_id, () => { btn.disabled = false; });
   } catch (e) {
     showToast(e.message, 'error');
@@ -1521,7 +1682,7 @@ document.getElementById('btnBatchDownload')?.addEventListener('click', async () 
   const userCloudCfg = saveUserCloudSettings();
   const quality = document.getElementById('batchQualitySelect').value;
   const engine = document.getElementById('batchEngineSelect').value;
-  appendUserConsole(`[*] [Lote] Procesando cola de descargas múltiples (${quality})...`);
+  appendUserConsole(`[*] [Lote] Encolando lote de descargas múltiples (${quality})...`);
 
   try {
     const res = await fetch('/api/batch-download', {
@@ -1537,6 +1698,8 @@ document.getElementById('btnBatchDownload')?.addEventListener('click', async () 
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    showToast(`¡Se agregaron ${data.total || 0} descargas a la cola en segundo plano!`, 'success');
+    fetchQueueState();
     pollBatchJob(data.batch_id, () => { btn.disabled = false; });
   } catch (e) {
     showToast(e.message, 'error');
@@ -1595,10 +1758,12 @@ function pollSingleJob(jobId, onFinish) {
           showToast('¡Descarga completada con éxito!', 'success');
         }
         loadRecentDownloads();
+        fetchQueueState();
       } else if (data.status === 'error') {
         clearInterval(interval);
         if (onFinish) onFinish();
         showToast('Error en la descarga: ' + (data.error || 'Desconocido'), 'error');
+        fetchQueueState();
         
         // Render cascade breakdown if multiple engines were tried
         if (data.attempts && data.attempts.length > 0) {
@@ -1623,7 +1788,6 @@ function pollSingleJob(jobId, onFinish) {
 }
 
 function pollBatchJob(batchId, onFinish) {
-
   const card = document.getElementById('batchProgressCard');
   const list = document.getElementById('batchQueueList');
   const stats = document.getElementById('batchQueueStats');
@@ -1649,6 +1813,7 @@ function pollBatchJob(batchId, onFinish) {
         btnZip.href = `/api/batch-download-zip/${batchId}`;
         btnZip.style.display = 'inline-flex';
         loadRecentDownloads();
+        fetchQueueState();
       }
     } catch (e) {
       clearInterval(interval);
@@ -1657,52 +1822,283 @@ function pollBatchJob(batchId, onFinish) {
   }, 1500);
 }
 
-// ==================== USER RECENT DOWNLOADS ====================
-let userDownloadsList = [];
+// ==================== BACKGROUND QUEUE MANAGER ====================
+async function fetchQueueState() {
+  try {
+    const res = await fetch('/api/queue');
+    const data = await res.json();
+    renderQueueState(data);
+  } catch (e) {}
+}
+
+function renderQueueState(data) {
+  const badge = document.getElementById('sidebarQueueBadge');
+  const totalQueued = data.total_queued || 0;
+  if (badge) {
+    if (totalQueued > 0) {
+      badge.textContent = totalQueued;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Active Job
+  const actCard = document.getElementById('queueActiveCard');
+  if (data.active) {
+    actCard.style.display = 'block';
+    document.getElementById('queueActiveTitle').textContent = data.active.current_title || data.active.url || 'Descarga activa';
+    document.getElementById('queueActiveSpeed').textContent = data.active.speed || '';
+    const pct = data.active.percent || 0;
+    document.getElementById('queueActiveBar').style.width = pct + '%';
+    document.getElementById('queueActiveStatus').textContent = `Estado: ${data.active.status} (${pct}%) - ${data.active.quality || ''}`;
+    const btnCancel = document.getElementById('btnCancelActiveJob');
+    btnCancel.onclick = () => cancelQueueItem(data.active.job_id);
+  } else {
+    actCard.style.display = 'none';
+  }
+
+  // Pending Queue
+  const pendingCount = document.getElementById('queuePendingCount');
+  const pendingList = document.getElementById('queuePendingList');
+  const queue = data.queue || [];
+  if (pendingCount) pendingCount.textContent = queue.length;
+
+  if (pendingList) {
+    if (queue.length === 0) {
+      pendingList.innerHTML = '<div style="font-size:0.82rem; color:var(--muted); text-align:center; padding:18px; border:1px dashed var(--border); border-radius:8px;">No hay descargas en espera en la cola.</div>';
+    } else {
+      pendingList.innerHTML = queue.map((item, idx) => `
+        <div class="queue-item-row">
+          <div style="display:flex; align-items:center; gap:10px; overflow:hidden; flex:1;">
+            <span class="queue-badge-pos">#${idx + 1}</span>
+            <div style="overflow:hidden;">
+              <div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.video_title || item.url}">
+                ${item.video_title || item.url}
+              </div>
+              <div style="font-size:0.75rem; color:var(--muted); display:flex; gap:8px; margin-top:2px;">
+                <span class="brand-badge" style="font-size:0.65rem;">${item.quality || 'Auto'}</span>
+                <span class="brand-badge" style="font-size:0.65rem; background:rgba(255,255,255,0.05);">${item.engine || 'auto'}</span>
+                <span>👤 ${item.owner || 'admin'}</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'up')" title="Subir prioridad" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
+            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'down')" title="Bajar prioridad" ${idx === queue.length - 1 ? 'disabled' : ''}>⬇️</button>
+            <button class="btn btn-danger btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="cancelQueueItem('${item.job_id}')" title="Quitar de la cola">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Completed History
+  const compList = document.getElementById('queueCompletedList');
+  const completed = data.completed || [];
+  if (compList) {
+    if (completed.length === 0) {
+      compList.innerHTML = '<div style="font-size:0.78rem; color:var(--muted);">Sin historial reciente.</div>';
+    } else {
+      compList.innerHTML = completed.slice(-8).reverse().map(item => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:0.78rem;">
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;">${item.filename || item.video_title || item.url}</span>
+          <span class="status-badge ${item.status === 'finished' ? 'status-online' : 'status-offline'}" style="font-size:0.68rem; padding:2px 6px;">
+            ${item.status === 'finished' ? 'Listo' : (item.status === 'cancelled' ? 'Cancelado' : 'Error')}
+          </span>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+window.moveQueueItem = async function(jobId, direction) {
+  try {
+    const res = await fetch('/api/queue/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: jobId, direction })
+    });
+    const data = await res.json();
+    if (data.error) showToast(data.error, 'error');
+    else fetchQueueState();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+};
+
+window.cancelQueueItem = async function(jobId) {
+  if (!confirm('¿Deseas cancelar/quitar esta descarga de la cola?')) return;
+  try {
+    const res = await fetch(`/api/queue/${jobId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Elemento quitado de la cola', 'success');
+      fetchQueueState();
+    } else {
+      showToast(data.error || 'Error al cancelar', 'error');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+};
+
+window.cancelAllQueue = async function() {
+  if (!confirm('¿Deseas CANCELAR y vaciar todos los elementos pendientes en la cola?')) return;
+  try {
+    const res = await fetch('/api/queue/cancel-all', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Se cancelaron ${data.cancelled_count} descargas en cola.`, 'success');
+      fetchQueueState();
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+};
+
+document.getElementById('btnCancelAllQueue')?.addEventListener('click', cancelAllQueue);
+document.getElementById('btnRefreshQueue')?.addEventListener('click', () => {
+  fetchQueueState();
+  showToast('Cola actualizada', 'info', 1500);
+});
+
+// ==================== USER RECENT DOWNLOADS & FOLDERS ====================
+let userDownloadsRaw = { items: [], folders: [] };
+
 async function loadRecentDownloads() {
-  const grid = document.getElementById('recentDownloadsGrid');
   const chkAll = document.getElementById('chkShowAllUsers');
   const showAll = chkAll && chkAll.checked;
 
   try {
     const res = await fetch(`/api/recent-downloads${showAll ? '?all=1' : ''}`);
     const data = await res.json();
-    userDownloadsList = data.downloads || [];
-    renderRecentDownloads(userDownloadsList);
+    userDownloadsRaw = {
+      items: data.items || data.downloads || [],
+      folders: data.folders || []
+    };
+    renderRecentDownloads(userDownloadsRaw);
   } catch (e) {}
 }
 
-function renderRecentDownloads(items) {
+function renderRecentDownloads(data) {
+  const foldersContainer = document.getElementById('foldersContainer');
   const grid = document.getElementById('recentDownloadsGrid');
-  if (!items || !items.length) {
-    grid.innerHTML = '<div style="font-size:0.85rem; color:var(--muted); text-align:center; padding:24px; grid-column:1/-1;">No tenés archivos descargados recientemente.</div>';
-    return;
+  const standaloneWrap = document.getElementById('standaloneFilesWrap');
+  const folders = data.folders || [];
+  const items = data.items || [];
+
+  // 1. Render Folders (Playlists, Albums, Batches)
+  if (foldersContainer) {
+    if (!folders.length) {
+      foldersContainer.innerHTML = '';
+    } else {
+      foldersContainer.innerHTML = `
+        <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em;">📁 Carpetas & Colecciones</div>
+        ${folders.map(f => `
+          <div class="folder-box" id="folder_${f.group_id}">
+            <div class="folder-header" onclick="toggleFolder('${f.group_id}')">
+              <div class="folder-header-title">
+                <span>📁</span>
+                <span>${f.folder_name}</span>
+                <span class="brand-badge" style="font-size:0.7rem; background:var(--accent);">${f.count} archivos</span>
+                <span class="brand-badge" style="font-size:0.7rem; background:rgba(255,255,255,0.08);">${f.total_formatted}</span>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;" onclick="event.stopPropagation();">
+                <a href="/api/my-downloads/folder-zip/${f.group_id}" class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:3px 8px;" title="Descargar todo en ZIP">📦 Bajar ZIP</a>
+                <button class="btn btn-danger btn-sm" style="font-size:0.75rem; padding:3px 8px;" onclick="deleteFolderDownloads('${f.group_id}')" title="Eliminar toda la carpeta">🗑️</button>
+                <span id="folderIcon_${f.group_id}" style="font-size:0.8rem; color:var(--muted); margin-left:6px; cursor:pointer;" onclick="toggleFolder('${f.group_id}')">▼</span>
+              </div>
+            </div>
+            <div class="folder-body" id="folderBody_${f.group_id}">
+              <div class="folder-items-grid">
+                ${f.items.map(sub => `
+                  <div class="folder-file-card">
+                    <div style="font-size:0.82rem; font-weight:600; word-break:break-all;" title="${sub.filename}">📄 ${sub.filename}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.75rem; color:var(--muted);">
+                      <span>${sub.size_formatted}</span>
+                      <div style="display:flex; gap:4px;">
+                        <a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>
+                        <button class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="deleteUserDownload('${sub.job_id}')">🗑️</button>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }
   }
 
-  grid.innerHTML = items.map(item => `
-    <div class="recent-card">
-      <div>
-        <div class="recent-card-title" title="${item.filename}">📄 ${item.filename}</div>
-        <div class="recent-card-meta">
-          <span>${item.size_formatted}</span>
-          <span>👤 ${item.owner || 'mío'}</span>
+  // 2. Render Standalone Files
+  if (grid) {
+    if (!items.length) {
+      if (!folders.length) {
+        grid.innerHTML = '<div style="font-size:0.85rem; color:var(--muted); text-align:center; padding:24px; grid-column:1/-1;">No tenés archivos descargados recientemente.</div>';
+        if (standaloneWrap) standaloneWrap.style.display = 'block';
+      } else {
+        grid.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); padding:10px; grid-column:1/-1;">No hay archivos sueltos adicionales fuera de las carpetas.</div>';
+      }
+    } else {
+      if (standaloneWrap) standaloneWrap.style.display = 'block';
+      grid.innerHTML = items.map(item => `
+        <div class="recent-card">
+          <div>
+            <div class="recent-card-title" title="${item.filename}">📄 ${item.filename}</div>
+            <div class="recent-card-meta">
+              <span>${item.size_formatted}</span>
+              <span>👤 ${item.owner || 'mío'}</span>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px;">
+            <a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>
+            <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
+          </div>
         </div>
-      </div>
-      <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px;">
-        <a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>
-        <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+      `).join('');
+    }
+  }
 }
+
+window.toggleFolder = function(groupId) {
+  const body = document.getElementById(`folderBody_${groupId}`);
+  const icon = document.getElementById(`folderIcon_${groupId}`);
+  if (body) {
+    const isOpened = body.style.display === 'block';
+    body.style.display = isOpened ? 'none' : 'block';
+    if (icon) icon.textContent = isOpened ? '▼' : '▲';
+  }
+};
+
+window.deleteFolderDownloads = async function(groupId) {
+  if (!confirm('¿Deseas eliminar todos los archivos de esta carpeta/colección?')) return;
+  try {
+    const res = await fetch(`/api/my-downloads/folder/${groupId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Se eliminaron ${data.deleted_count || 0} archivos de la carpeta.`, 'success');
+      loadRecentDownloads();
+    } else {
+      showToast(data.error || 'Error al eliminar carpeta', 'error');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+};
 
 document.getElementById('filterDownloadsInput')?.addEventListener('input', (e) => {
   const query = e.target.value.toLowerCase().trim();
   if (!query) {
-    renderRecentDownloads(userDownloadsList);
+    renderRecentDownloads(userDownloadsRaw);
   } else {
-    const filtered = userDownloadsList.filter(item => (item.filename || '').toLowerCase().includes(query));
-    renderRecentDownloads(filtered);
+    const filteredItems = (userDownloadsRaw.items || []).filter(item => (item.filename || '').toLowerCase().includes(query));
+    const filteredFolders = (userDownloadsRaw.folders || []).filter(f => 
+      (f.folder_name || '').toLowerCase().includes(query) ||
+      (f.items || []).some(sub => (sub.filename || '').toLowerCase().includes(query))
+    );
+    renderRecentDownloads({ items: filteredItems, folders: filteredFolders });
   }
 });
 
@@ -1742,9 +2138,14 @@ document.getElementById('logoutBtn')?.addEventListener('click', () => {
   }
 });
 
+// Periodic Queue polling every 2 seconds
+setInterval(fetchQueueState, 2000);
+
 // Load on start
+fetchQueueState();
 loadRecentDownloads();
 </script>
 
 </body>
 </html>
+
