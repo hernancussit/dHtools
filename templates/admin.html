@@ -5,16 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <title>Panel de Administración - {{ (config and config.site_title) or 'ytsite' }}</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#ef4444">
 <style>
   :root {
-    --bg-dark: #090d16;
+    --bg-dark: #080c14;
+    --bg-sidebar: #0e1524;
     --bg-card: #131d31;
     --bg-input: #0b1220;
     --accent: #ef4444;
     --accent-blue: #38bdf8;
     --text: #f1f5f9;
     --muted: #94a3b8;
-    --border: #22324e;
+    --border: #1e293b;
+    --border-light: #2d3d5a;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -25,30 +29,145 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-dark);
     color: var(--text);
-    min-height: 100vh;
-    padding: 24px 16px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
   }
-  .container {
-    max-width: 960px;
-    margin: 0 auto;
+
+  /* SIDEBAR NAVIGATION */
+  .admin-layout {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
   }
-  .header {
+  .sidebar {
+    width: 250px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .sidebar-header {
+    padding: 20px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sidebar-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidebar-subtitle {
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .version-tag {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent-blue);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  .sidebar-nav {
+    flex: 1;
+    padding: 14px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .nav-btn.active {
+    color: white;
+    background: var(--accent);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  }
+  .sidebar-footer {
+    padding: 14px 10px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sidebar-link-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .sidebar-link-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  /* MAIN CONTENT AREA */
+  .main-content {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 30px;
+    background: var(--bg-dark);
+  }
+  .content-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
+    margin-bottom: 22px;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
     gap: 12px;
   }
-  h1 {
-    font-size: 1.5rem;
+  .content-title {
+    font-size: 1.4rem;
+    font-weight: 700;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
+
+  /* BUTTONS & UI */
   .btn {
     padding: 8px 14px;
     border-radius: 8px;
@@ -60,147 +179,165 @@
     text-decoration: none;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    white-space: nowrap;
   }
   .btn-primary { background: var(--accent); color: white; }
   .btn-primary:hover { background: #dc2626; }
-  .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { background: var(--border); }
+  .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border-light); }
+  .btn-secondary:hover { background: var(--border-light); }
   .btn-success { background: var(--success); color: white; }
-  .btn-danger { background: var(--danger); color: white; }
-  .btn-sm { padding: 5px 10px; font-size: 0.75rem; border-radius: 6px; }
+  .btn-danger { background: #991b1b; color: white; border: 1px solid #dc2626; }
+  .btn-danger:hover { background: var(--danger); }
+  .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
 
-  /* Tabs */
-  .tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 8px;
-    overflow-x: auto;
-  }
-  .tab-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    padding: 10px 16px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .tab-btn:hover { color: var(--text); background: var(--bg-card); }
-  .tab-btn.active { color: var(--accent-blue); background: var(--bg-card); border: 1px solid var(--border); }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* Cards */
+  /* CARDS */
   .card {
     background: var(--bg-card);
-    border-radius: 12px;
     border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 20px;
     margin-bottom: 20px;
   }
   .card-title {
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     margin-bottom: 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  /* Diagnostics Grid */
-  .services-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 14px;
-  }
-  .service-card {
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 8px;
   }
-  .service-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .service-name { font-weight: 600; font-size: 0.9rem; }
-  .status-badge {
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-weight: 600;
-  }
-  .status-online { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
-  .status-offline { background: #450a0a; color: #fca5a5; border: 1px solid #dc2626; }
-  .status-warning { background: #451a03; color: #fde047; border: 1px solid #d97706; }
 
-  /* Tables */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-    margin-top: 10px;
-  }
-  th, td {
-    padding: 12px 14px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
-  tr:hover { background: rgba(255,255,255,0.02); }
-
-  /* Forms */
+  /* FORMS & INPUTS */
   .form-group {
     margin-bottom: 14px;
   }
   label {
     display: block;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--muted);
-    margin-bottom: 6px;
-    font-weight: 500;
+    margin-bottom: 5px;
   }
-  input[type=text], input[type=password], input[type=number], select, textarea {
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
     width: 100%;
-    padding: 10px 12px;
+    padding: 9px 12px;
     background: var(--bg-input);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-light);
     border-radius: 8px;
     color: var(--text);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     outline: none;
     transition: border-color 0.2s;
   }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
-  textarea { min-height: 120px; font-family: monospace; font-size: 0.82rem; resize: vertical; }
-
-  /* Toast Notification */
-  .toast {
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 0.88rem;
-    display: none;
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
   }
-  .toast-success { background: #14532d; color: #86efac; border: 1px solid #16a34a; }
-  .toast-error { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+  textarea {
+    min-height: 120px;
+    font-family: Consolas, monospace;
+    font-size: 0.8rem;
+  }
 
-  /* Progress Bar */
+  /* SERVICES GRID */
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+  }
+  .service-card {
+    background: #0d1527;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+  .service-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* BADGES & TABLES */
+  .status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    padding: 4px 10px !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    flex-shrink: 0;
+  }
+  .badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .status-online {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .status-offline {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+    text-align: left;
+  }
+  th {
+    padding: 12px 14px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    background: #0a1120;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 12px 14px;
+    font-size: 0.86rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* PROGRESS BARS */
   .progress-bar-wrap {
     width: 100%;
     height: 8px;
-    background: #0f172a;
+    background: #0b1220;
     border-radius: 4px;
     overflow: hidden;
     margin-top: 6px;
@@ -211,37 +348,105 @@
     width: 0%;
     transition: width 0.3s;
   }
+
+  /* TOAST NOTIFICATION */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    display: none;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .toast-success { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+  .toast-error { background: #450a0a; color: #fca5a5; border: 1px solid #dc2626; }
+
+  /* TAB CONTENT VISIBILITY */
+  .tab-pane {
+    display: none;
+  }
+  .tab-pane.active {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 768px) {
+    body { flex-direction: column; height: auto; overflow: auto; }
+    .admin-layout { flex-direction: column; height: auto; overflow: auto; }
+    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar-nav { flex-direction: row; overflow-x: auto; padding: 8px; }
+    .main-content { height: auto; overflow: visible; padding: 16px; }
+  }
 </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div>
-        <h1>⚙️ Panel de Control y Administración</h1>
-        <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">
-          Gestión de microservicios, motores, almacenamiento, nube y usuarios.
-        </div>
+<div class="admin-layout">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        <span>⚙️ Panel Admin</span>
       </div>
-      <div style="display:flex; gap:8px;">
-        <a href="/" class="btn btn-secondary">⬅ Ir al Descargador</a>
-        <a href="/wiki" class="btn btn-secondary">📚 Wiki Técnica</a>
-        <button id="refreshAllBtn" class="btn btn-secondary">⟳ Refrescar</button>
-        <button id="logoutBtn" class="btn btn-danger btn-sm" style="background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5;">🚪 Salir</button>
+      <div class="sidebar-subtitle">
+        <span>{{ (config and config.site_title) or 'ytsite' }}</span>
+        <span class="version-tag">v{{ version }}</span>
       </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-tab="tab-services">
+        <span>📊</span> Diagnóstico & RAM
+      </button>
+      <button class="nav-btn" data-tab="tab-engines">
+        <span>🚀</span> Motores & Updates
+      </button>
+      <button class="nav-btn" data-tab="tab-settings">
+        <span>⚙️</span> Parámetros & Cookies
+      </button>
+      <button class="nav-btn" data-tab="tab-cloud">
+        <span>☁️</span> Cloud Sync
+      </button>
+      <button class="nav-btn" data-tab="tab-users">
+        <span>👥</span> Gestión de Usuarios
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/" class="sidebar-link-btn">
+        <span>⬅</span> Ir al Descargador
+      </a>
+      <a href="/wiki" class="sidebar-link-btn">
+        <span>📚</span> Wiki Técnica
+      </a>
+      <button id="logoutBtn" class="btn btn-danger btn-sm" style="width:100%; margin-top:4px;">
+        🚪 Cerrar Sesión
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <div class="content-header">
+      <h2 class="content-title" id="currentSectionTitle">📊 Microservicios & Diagnóstico</h2>
+      <button id="refreshAllBtn" class="btn btn-secondary btn-sm">
+        ⟳ Refrescar Datos
+      </button>
     </div>
 
     <div id="toast" class="toast"></div>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="tab-services">📊 Microservicios & Diagnóstico</button>
-      <button class="tab-btn" data-tab="tab-engines">🚀 Actualizador de Motores</button>
-      <button class="tab-btn" data-tab="tab-settings">⚙️ Configuración & Cookies</button>
-      <button class="tab-btn" data-tab="tab-cloud">☁️ Sincronización en la Nube</button>
-      <button class="tab-btn" data-tab="tab-users">👥 Gestión de Usuarios</button>
-    </div>
-
     <!-- TAB 1: SERVICES & DIAGNOSTICS -->
-    <div id="tab-services" class="tab-content active">
+    <div id="tab-services" class="tab-pane active">
       <div class="card">
         <div class="card-title">
           <span>Estado de Microservicios</span>
@@ -251,7 +456,7 @@
           <div class="service-card">
             <div class="service-header">
               <span class="service-name">🌐 yt-downloader (Flask)</span>
-              <span class="status-badge status-online">🟢 Online</span>
+              <span class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> Online</span>
             </div>
             <div style="font-size:0.8rem; color:var(--muted);" id="statAppVersion">Versión: v{{ version }}</div>
           </div>
@@ -285,7 +490,7 @@
         <div class="progress-bar-wrap">
           <div class="progress-bar-fill" id="diskUsageBar"></div>
         </div>
-        <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.8rem; color:var(--muted);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.8rem; color:var(--muted); flex-wrap:wrap; gap:8px;">
           <span id="diskDetailsLabel">Total: - | Usado: - | Libre: -</span>
           <button id="btnPurgeNow" class="btn btn-secondary btn-sm">🧹 Forzar Purga de Descargas</button>
         </div>
@@ -297,15 +502,15 @@
         <div class="progress-bar-wrap">
           <div class="progress-bar-fill" id="ramUsageBar" style="background:var(--accent-blue);"></div>
         </div>
-        <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.8rem; color:var(--muted);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.8rem; color:var(--muted);">
           <span id="ramDetailsLabel">Total: - | Usada: - | Libre: -</span>
-          <span id="ramPercentBadge" class="status-badge status-online">RAM OK</span>
+          <span id="ramPercentBadge" class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> RAM OK</span>
         </div>
       </div>
     </div>
 
     <!-- TAB 2: ENGINES UPDATE & DIAGNOSTIC -->
-    <div id="tab-engines" class="tab-content">
+    <div id="tab-engines" class="tab-pane">
       <div class="card">
         <div class="card-title">Gestión y Actualización de Extractores</div>
         <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
@@ -314,10 +519,10 @@
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-top:16px;">
           <!-- yt-dlp Card -->
-          <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <strong>🎯 Motor yt-dlp (Python)</strong>
-              <span id="ytdlpBadgeStatus" class="status-badge status-online">PyPI</span>
+              <span id="ytdlpBadgeStatus" class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> PyPI</span>
             </div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="ytdlpVersionLabel">Versión actual: Consultando...</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -328,7 +533,7 @@
           </div>
 
           <!-- Cobalt Card -->
-          <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <strong>⚡ Motor Cobalt (Oficial v11)</strong>
               <span id="cobaltBadgeStatus" class="status-badge">Consultando...</span>
@@ -342,20 +547,19 @@
           </div>
 
           <!-- Diagnostics Test Card -->
-          <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
             <div style="font-weight:600; margin-bottom:4px;">Prueba Rápida de Extracción</div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad con YouTube, Deezer y microservicios.</div>
             <button id="btnTestEngines" class="btn btn-secondary" style="width:100%;">🧪 Ejecutar Test de Diagnóstico</button>
           </div>
         </div>
 
-        <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
+        <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0b1220; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
       </div>
     </div>
 
-
     <!-- TAB 3: SETTINGS & COOKIES -->
-    <div id="tab-settings" class="tab-content">
+    <div id="tab-settings" class="tab-pane">
       <div class="card">
         <div class="card-title">Parámetros Dinámicos del Sistema</div>
         <form id="formSettings">
@@ -413,7 +617,7 @@
           Podés ver o pegar el contenido de tu archivo <code>cookies.txt</code> (formato Netscape) para actualizar la sesión de YouTube sin usar SSH/SCP.
         </p>
         <textarea id="cookiesTextarea" placeholder="# Netscape HTTP Cookie File..."></textarea>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
           <span style="font-size:0.78rem; color:var(--muted);" id="cookiesMeta"></span>
           <button id="btnSaveCookies" class="btn btn-primary">💾 Guardar Cookies</button>
         </div>
@@ -421,7 +625,7 @@
     </div>
 
     <!-- TAB 4: CLOUD SYNC -->
-    <div id="tab-cloud" class="tab-content">
+    <div id="tab-cloud" class="tab-pane">
       <div class="card">
         <div class="card-title">
           <span>☁️ Sincronización Automática en la Nube (Cloud Sync)</span>
@@ -432,7 +636,7 @@
         </p>
 
         <!-- Webhook -->
-        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <strong>🔗 Webhook HTTP (Notificaciones y Automatización)</strong>
             <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
@@ -447,7 +651,7 @@
         </div>
 
         <!-- Nextcloud / WebDAV -->
-        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <strong>☁️ Nextcloud / ownCloud / WebDAV</strong>
             <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
@@ -468,34 +672,34 @@
               <input type="password" id="cloudWebdavPass" placeholder="••••••••">
             </div>
           </div>
-          <button id="btnTestWebdav" class="btn btn-secondary btn-sm">🧪 Probar Conexión WebDAV</button>
+          <button id="btnTestWebdav" class="btn btn-secondary btn-sm">🧪 Probar WebDAV</button>
         </div>
 
-        <!-- Telegram Bot -->
-        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+        <!-- Telegram -->
+        <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <strong>📱 Telegram Bot Uploader (Archivos hasta 50MB)</strong>
+            <strong>✈️ Telegram Bot Uploader</strong>
             <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
               <input type="checkbox" id="cloudTelegramEnabled"> Habilitar
             </label>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
             <div class="form-group">
               <label>Bot Token</label>
-              <input type="text" id="cloudTelegramToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+              <input type="text" id="cloudTelegramToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
             </div>
             <div class="form-group">
-              <label>Chat ID / Canal ID</label>
+              <label>Chat ID</label>
               <input type="text" id="cloudTelegramChatId" placeholder="-1001234567890 o @micanal">
             </div>
           </div>
-          <button id="btnTestTelegram" class="btn btn-secondary btn-sm">🧪 Enviar Mensaje de Prueba</button>
+          <button id="btnTestTelegram" class="btn btn-secondary btn-sm">🧪 Probar Telegram</button>
         </div>
 
         <!-- FTP -->
-        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <strong>📂 Servidor FTP</strong>
+            <strong>📁 Servidor FTP</strong>
             <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
               <input type="checkbox" id="cloudFtpEnabled"> Habilitar
             </label>
@@ -526,14 +730,14 @@
     </div>
 
     <!-- TAB 5: USER MANAGEMENT -->
-    <div id="tab-users" class="tab-content">
+    <div id="tab-users" class="tab-pane">
       <div class="card">
         <div class="card-title">
           <span>Usuarios Autorizados</span>
           <button id="btnShowAddUser" class="btn btn-primary btn-sm">+ Agregar Usuario</button>
         </div>
 
-        <div id="addUserBox" style="display:none; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+        <div id="addUserBox" style="display:none; background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
           <div style="font-weight:600; margin-bottom:10px;">Crear / Registrar Nuevo Usuario</div>
           <form id="formAddUser">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px;">
@@ -567,16 +771,16 @@
           </form>
         </div>
 
-        <div style="overflow-x:auto;">
+        <div class="table-responsive">
           <table>
             <thead>
               <tr>
-                <th>Usuario</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th>Descargas en Servidor</th>
-                <th>Fecha Alta</th>
-                <th style="text-align:right;">Acciones</th>
+                <th style="min-width:120px;">Usuario</th>
+                <th style="min-width:120px;">Rol</th>
+                <th style="min-width:110px;">Estado</th>
+                <th style="min-width:150px;">Descargas en Servidor</th>
+                <th style="min-width:140px;">Fecha Alta</th>
+                <th style="text-align:right; min-width:240px;">Acciones</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
@@ -586,17 +790,29 @@
         </div>
       </div>
     </div>
-  </div>
-
+  </main>
+</div>
 
 <script>
-// Tab Switching
-document.querySelectorAll('.tab-btn').forEach(btn => {
+// Sidebar Tab Navigation
+const sectionTitles = {
+  'tab-services': '📊 Microservicios & Diagnóstico',
+  'tab-engines': '🚀 Actualizador de Motores',
+  'tab-settings': '⚙️ Configuración & Cookies',
+  'tab-cloud': '☁️ Sincronización en la Nube',
+  'tab-users': '👥 Gestión de Usuarios'
+};
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.add('active');
+    const tabId = btn.dataset.tab;
+    const targetPane = document.getElementById(tabId);
+    if (targetPane) targetPane.classList.add('active');
+    const titleEl = document.getElementById('currentSectionTitle');
+    if (titleEl && sectionTitles[tabId]) titleEl.textContent = sectionTitles[tabId];
   });
 });
 
@@ -610,73 +826,57 @@ function showToast(msg, type = 'success', timeout = 4000) {
   }
 }
 
-// 1. Services & Diagnostics
+// 1. Services Status & RAM
 async function loadServicesStatus() {
   try {
     const res = await fetch('/api/admin/services-status');
     const data = await res.json();
 
-    // App Version
-    if (data.app) {
-      document.getElementById('statAppVersion').textContent = `Versión: v${data.app.version} · Uptime: ${Math.round(data.app.uptime_seconds/60)} min`;
-    }
-
-    // POT Provider
     const badgePot = document.getElementById('badgePot');
     if (data.potprovider && data.potprovider.online) {
       badgePot.className = 'status-badge status-online';
-      badgePot.textContent = `🟢 Online (${data.potprovider.latency_ms}ms)`;
+      badgePot.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
     } else {
       badgePot.className = 'status-badge status-offline';
-      badgePot.textContent = '🔴 Desconectado';
+      badgePot.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
     }
 
-    // Cobalt
     const badgeCobalt = document.getElementById('badgeCobalt');
     if (data.cobalt && data.cobalt.online) {
       badgeCobalt.className = 'status-badge status-online';
-      badgeCobalt.textContent = `🟢 Online (${data.cobalt.latency_ms}ms)`;
+      badgeCobalt.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
     } else {
       badgeCobalt.className = 'status-badge status-offline';
-      badgeCobalt.textContent = '🔴 Desconectado';
+      badgeCobalt.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
     }
 
-    // Deno
     const badgeDeno = document.getElementById('badgeDeno');
-    if (data.deno && data.deno.installed) {
+    if (data.deno && data.deno.available) {
       badgeDeno.className = 'status-badge status-online';
-      badgeDeno.textContent = '🟢 Instalado';
-      document.getElementById('statDenoInfo').textContent = data.deno.version.split(' ')[0] + ' ' + data.deno.version.split(' ')[1];
+      badgeDeno.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Disponible';
     } else {
-      badgeDeno.className = 'status-badge status-warning';
-      badgeDeno.textContent = '🟡 No detectado';
+      badgeDeno.className = 'status-badge status-offline';
+      badgeDeno.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> No instalado';
     }
 
-    // Disk
     if (data.disk) {
-      const pct = data.disk.percent_used || 0;
-      document.getElementById('diskUsageLabel').textContent = `Uso de almacenamiento: ${pct}% ocupado (${data.disk.free_formatted} libres)`;
+      document.getElementById('diskUsageLabel').textContent = `Uso de disco: ${data.disk.percent_used}% (${data.disk.used_formatted} de ${data.disk.total_formatted})`;
       const bar = document.getElementById('diskUsageBar');
-      bar.style.width = pct + '%';
-      bar.style.background = pct >= 85 ? 'var(--danger)' : (pct >= 70 ? 'var(--warning)' : 'var(--accent-blue)');
+      bar.style.width = `${data.disk.percent_used}%`;
+      bar.style.background = data.disk.percent_used >= 85 ? 'var(--danger)' : 'var(--success)';
       document.getElementById('diskDetailsLabel').textContent = `Total: ${data.disk.total_formatted} | Usado: ${data.disk.used_formatted} | Libre: ${data.disk.free_formatted}`;
     }
 
-    // RAM
     if (data.ram) {
-      const rpct = data.ram.percent_used || 0;
-      document.getElementById('ramUsageLabel').textContent = `Memoria RAM: ${rpct}% ocupada (${data.ram.used_formatted} / ${data.ram.total_formatted})`;
-      const rbar = document.getElementById('ramUsageBar');
-      rbar.style.width = rpct + '%';
-      rbar.style.background = rpct >= 85 ? 'var(--danger)' : (rpct >= 70 ? 'var(--warning)' : 'var(--accent-blue)');
+      document.getElementById('ramUsageLabel').textContent = `Uso de memoria RAM: ${data.ram.percent_used}% (${data.ram.used_formatted} de ${data.ram.total_formatted})`;
+      const ramBar = document.getElementById('ramUsageBar');
+      ramBar.style.width = `${data.ram.percent_used}%`;
+      ramBar.style.background = data.ram.percent_used >= 85 ? 'var(--danger)' : 'var(--accent-blue)';
       document.getElementById('ramDetailsLabel').textContent = `Total: ${data.ram.total_formatted} | Usada: ${data.ram.used_formatted} | Libre: ${data.ram.free_formatted}`;
-      const rBadge = document.getElementById('ramPercentBadge');
-      if (rpct >= 85) {
-        rBadge.className = 'status-badge status-warning';
-        rBadge.textContent = `⚠️ Uso Alto (${rpct}%)`;
-      } else {
-        rBadge.className = 'status-badge status-online';
-        rBadge.textContent = `🟢 RAM OK (${rpct}%)`;
+      const ramBadge = document.getElementById('ramPercentBadge');
+      if (ramBadge) {
+        ramBadge.className = `status-badge ${data.ram.percent_used >= 85 ? 'status-offline' : 'status-online'}`;
+        ramBadge.innerHTML = `<span class="badge-dot" style="background:${data.ram.percent_used >= 85 ? '#ef4444' : '#10b981'};"></span> ${data.ram.percent_used}% Usado`;
       }
     }
   } catch (e) {
@@ -714,16 +914,64 @@ async function loadEnginesInfo() {
     if (data.online) {
       lbl.textContent = `Versión activa: v${data.current_version}`;
       badge.className = 'status-badge status-online';
-      badge.textContent = '🟢 Online';
+      badge.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
     } else {
       lbl.textContent = 'Estado: Desconectado / Sin respuesta';
       badge.className = 'status-badge status-offline';
-      badge.textContent = '🔴 Offline';
+      badge.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
     }
   } catch (e) {
     console.error(e);
   }
 }
+
+document.getElementById('btnCheckUpdates').addEventListener('click', async () => {
+  const notice = document.getElementById('updateStatusNotice');
+  notice.style.display = 'block';
+  notice.style.background = 'var(--bg-input)';
+  notice.style.border = '1px solid var(--border)';
+  notice.style.color = 'var(--text)';
+  notice.textContent = '⏳ Consultando repositorio oficial de yt-dlp...';
+
+  try {
+    const res = await fetch('/api/admin/check-updates');
+    const data = await res.json();
+    if (data.update_available) {
+      notice.style.background = 'rgba(245, 158, 11, 0.15)';
+      notice.style.border = '1px solid var(--warning)';
+      notice.style.color = 'var(--warning)';
+      notice.innerHTML = `⚠️ <strong>Nueva versión disponible:</strong> v${data.latest_version} (Instalada: v${data.current_version}). Hacé clic en "Actualizar".`;
+    } else {
+      notice.style.background = 'rgba(16, 185, 129, 0.15)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--success)';
+      notice.innerHTML = `✅ <strong>El motor está al día:</strong> Tenés instalada la versión más reciente (v${data.current_version}).`;
+    }
+  } catch (e) {
+    notice.style.background = 'rgba(239, 68, 68, 0.15)';
+    notice.style.border = '1px solid var(--danger)';
+    notice.style.color = 'var(--danger)';
+    notice.textContent = 'Error al comprobar actualizaciones: ' + e.message;
+  }
+});
+
+document.getElementById('btnUpdateYtdlp').addEventListener('click', async () => {
+  const box = document.getElementById('engineLogsBox');
+  box.style.display = 'block';
+  box.textContent = '[*] Solicitando actualización de yt-dlp a la última versión disponible...\n';
+  showToast('Actualizando motor yt-dlp...', 'success');
+  try {
+    const res = await fetch('/api/update-ytdlp', { method: 'POST' });
+    const data = await res.json();
+    box.textContent += `[+] ${data.message}\n`;
+    if (data.output) box.textContent += `--- Salida del sistema ---\n${data.output}\n`;
+    loadEnginesInfo();
+    showToast(data.message, data.error ? 'error' : 'success');
+  } catch (e) {
+    box.textContent += `[!] Error: ${e.message}\n`;
+    showToast('Error al actualizar yt-dlp: ' + e.message, 'error');
+  }
+});
 
 document.getElementById('btnCheckCobalt').addEventListener('click', async () => {
   const notice = document.getElementById('cobaltStatusNotice');
@@ -777,74 +1025,21 @@ document.getElementById('btnUpdateCobalt').addEventListener('click', async () =>
   }
 });
 
-
-document.getElementById('btnCheckUpdates').addEventListener('click', async () => {
-  const notice = document.getElementById('updateStatusNotice');
-  notice.style.display = 'block';
-  notice.style.background = 'var(--bg-input)';
-  notice.style.border = '1px solid var(--border)';
-  notice.style.color = 'var(--text)';
-  notice.textContent = '⏳ Consultando repositorio oficial de yt-dlp...';
-
-  try {
-    const res = await fetch('/api/admin/check-updates');
-    const data = await res.json();
-    if (data.update_available) {
-      notice.style.background = 'rgba(245, 158, 11, 0.15)';
-      notice.style.border = '1px solid var(--warning)';
-      notice.style.color = 'var(--warning)';
-      notice.innerHTML = `⚠️ <strong>Nueva versión disponible:</strong> v${data.latest_version} (Instalada: v${data.current_version}). Hacé clic en "Actualizar".`;
-    } else {
-      notice.style.background = 'rgba(16, 185, 129, 0.15)';
-      notice.style.border = '1px solid var(--success)';
-      notice.style.color = 'var(--success)';
-      notice.innerHTML = `✅ <strong>El motor está al día:</strong> Tenés instalada la versión más reciente (v${data.current_version}).`;
-    }
-  } catch (e) {
-    notice.style.background = 'rgba(239, 68, 68, 0.15)';
-    notice.style.border = '1px solid var(--danger)';
-    notice.style.color = 'var(--danger)';
-    notice.textContent = 'Error al comprobar actualizaciones: ' + e.message;
-  }
-});
-
-document.getElementById('btnUpdateYtdlp').addEventListener('click', async () => {
-  const box = document.getElementById('engineLogsBox');
-  box.style.display = 'block';
-  box.textContent = '[*] Solicitando actualización de yt-dlp a la última versión disponible...\n';
-  showToast('Actualizando motor yt-dlp...', 'success');
-  try {
-    const res = await fetch('/api/update-ytdlp', { method: 'POST' });
-    const data = await res.json();
-    box.textContent += `[+] ${data.message}\n`;
-    if (data.output) box.textContent += `--- Salida del sistema ---\n${data.output}\n`;
-    loadEnginesInfo();
-
-    showToast(data.message, data.error ? 'error' : 'success');
-  } catch (e) {
-    box.textContent += `[!] Error: ${e.message}\n`;
-    showToast('Error al actualizar yt-dlp: ' + e.message, 'error');
-  }
-});
-
 document.getElementById('btnTestEngines').addEventListener('click', async () => {
   const box = document.getElementById('engineLogsBox');
   box.style.display = 'block';
-  box.textContent = '[*] Ejecutando prueba de extracción con YouTube (ID: dQw4w9WgXcQ)...\n';
+  box.textContent = '[*] Iniciando prueba de diagnóstico de plataformas...\n';
+  showToast('Ejecutando diagnóstico...', 'success');
   try {
-    const res = await fetch('/api/info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })
-    });
+    const res = await fetch('/api/admin/test-all-engines', { method: 'POST' });
     const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    box.textContent += `[✓] YouTube Extractor: OK (Título: "${data.title}")\n`;
-    box.textContent += `[✓] PO Token & JavaScript Solver: 100% OPERATIVO\n`;
-    showToast('¡Diagnóstico de extracción exitoso!', 'success');
+    (data.results || []).forEach(r => {
+      box.textContent += `[${r.platform}] ${r.status.toUpperCase()}: ${r.title || r.error || 'OK'} (${r.time_seconds}s)\n`;
+    });
+    showToast('Diagnóstico completado.', 'success');
   } catch (e) {
-    box.textContent += `[!] Fallo en extracción: ${e.message}\n`;
-    showToast('Fallo en prueba de extracción: ' + e.message, 'error');
+    box.textContent += `[!] Error en diagnóstico: ${e.message}\n`;
+    showToast('Error en prueba: ' + e.message, 'error');
   }
 });
 
@@ -854,20 +1049,31 @@ async function loadConfigAndCookies() {
     const res = await fetch('/api/admin/config');
     const data = await res.json();
     if (data.config) {
-      if (data.config.site_title) document.getElementById('cfgSiteTitle').value = data.config.site_title;
-      if (data.config.site_subtitle) document.getElementById('cfgSiteSubtitle').value = data.config.site_subtitle;
-      if (data.config.default_theme) document.getElementById('cfgDefaultTheme').value = data.config.default_theme;
+      document.getElementById('cfgSiteTitle').value = data.config.site_title || '';
+      document.getElementById('cfgSiteSubtitle').value = data.config.site_subtitle || '';
+      document.getElementById('cfgDefaultTheme').value = data.config.default_theme || 'cyberpunk';
       document.getElementById('cfgCleanupHours').value = data.config.cleanup_after_hours || 24;
       document.getElementById('cfgDiskThreshold').value = data.config.disk_emergency_threshold || 85;
       document.getElementById('cfgDefaultEngine').value = data.config.default_engine || 'ytdlp';
     }
+  } catch (e) {
+    console.error(e);
+  }
 
-    const cRes = await fetch('/api/admin/cookies');
-    const cData = await cRes.json();
-    document.getElementById('cookiesTextarea').value = cData.content || '';
-    document.getElementById('cookiesMeta').textContent = cData.has_cookies
-      ? `Archivo activo (${cData.size_formatted}, ${cData.lines} líneas)`
-      : 'No hay archivo cookies.txt cargado';
+  try {
+    const res = await fetch('/api/admin/cookies');
+    const data = await res.json();
+    const badge = document.getElementById('cookiesStatusBadge');
+    if (data.has_cookies) {
+      badge.textContent = `✅ Archivo cargado (${data.lines} líneas, ${data.size_formatted})`;
+      badge.style.color = 'var(--success)';
+      document.getElementById('cookiesTextarea').value = data.content;
+      document.getElementById('cookiesMeta').textContent = `Tamaño: ${data.size_formatted} | Líneas: ${data.lines}`;
+    } else {
+      badge.textContent = '⚠️ Sin cookies.txt configurado';
+      badge.style.color = 'var(--warning)';
+      document.getElementById('cookiesMeta').textContent = 'No hay cookies cargadas actualmente.';
+    }
   } catch (e) {
     console.error(e);
   }
@@ -875,21 +1081,23 @@ async function loadConfigAndCookies() {
 
 document.getElementById('formSettings').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const payload = {
+    site_title: document.getElementById('cfgSiteTitle').value.trim(),
+    site_subtitle: document.getElementById('cfgSiteSubtitle').value.trim(),
+    default_theme: document.getElementById('cfgDefaultTheme').value,
+    cleanup_after_hours: parseFloat(document.getElementById('cfgCleanupHours').value),
+    disk_emergency_threshold: parseFloat(document.getElementById('cfgDiskThreshold').value),
+    default_engine: document.getElementById('cfgDefaultEngine').value
+  };
+
   try {
     const res = await fetch('/api/admin/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        site_title: document.getElementById('cfgSiteTitle').value.trim(),
-        site_subtitle: document.getElementById('cfgSiteSubtitle').value.trim(),
-        default_theme: document.getElementById('cfgDefaultTheme').value,
-        cleanup_after_hours: document.getElementById('cfgCleanupHours').value,
-        disk_emergency_threshold: document.getElementById('cfgDiskThreshold').value,
-        default_engine: document.getElementById('cfgDefaultEngine').value,
-      })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
-    showToast(data.message || 'Configuración guardada correctamente.', 'success');
+    showToast(data.message || 'Configuración guardada exitosamente.', 'success');
   } catch (e) {
     showToast('Error al guardar configuración: ' + e.message, 'error');
   }
@@ -904,7 +1112,7 @@ document.getElementById('btnSaveCookies').addEventListener('click', async () => 
       body: JSON.stringify({ content })
     });
     const data = await res.json();
-    showToast(data.message || 'Cookies guardadas correctamente.', 'success');
+    showToast(data.message || 'Cookies guardadas exitosamente.', 'success');
     loadConfigAndCookies();
   } catch (e) {
     showToast('Error al guardar cookies: ' + e.message, 'error');
@@ -1037,39 +1245,39 @@ async function loadUsers() {
     tbody.innerHTML = '';
     const users = data.users || [];
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted);">No hay usuarios registrados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:20px;">No hay usuarios registrados.</td></tr>';
       return;
     }
     users.forEach(u => {
       const tr = document.createElement('tr');
       const isSuspended = (u.status === 'suspended');
       const statusBadge = isSuspended
-        ? '<span class="status-badge status-offline">⏸️ Suspendido</span>'
-        : '<span class="status-badge status-online">🟢 Activo</span>';
+        ? '<span class="status-badge status-offline"><span class="badge-dot" style="background:#ef4444;"></span> Suspendido</span>'
+        : '<span class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> Activo</span>';
       
       const roleBadge = (u.role === 'admin')
-        ? '<span class="status-badge status-online">👑 Admin</span>'
-        : '<span class="status-badge" style="background:#1e293b; color:#94a3b8;">👤 Descargador</span>';
+        ? '<span class="status-badge" style="background:#064e3b; color:#6ee7b7; border:1px solid #059669;"><span class="badge-dot" style="background:#10b981;"></span> 👑 Admin</span>'
+        : '<span class="status-badge" style="background:#1e293b; color:#94a3b8; border:1px solid #334155;"><span class="badge-dot" style="background:#64748b;"></span> 👤 Descargador</span>';
 
       const dlInfo = `${u.downloads_count || 0} archivos (${u.downloads_formatted || '0 B'})`;
 
       tr.innerHTML = `
-        <td><strong>${u.username}</strong></td>
+        <td><strong style="color:var(--text); font-size:0.92rem;">${u.username}</strong></td>
         <td>${roleBadge}</td>
         <td>${statusBadge}</td>
-        <td style="font-size:0.82rem; color:var(--muted);">${dlInfo}</td>
-        <td style="font-size:0.82rem; color:var(--muted);">${u.created_at || 'Inicial'}</td>
-        <td style="text-align:right; white-space:nowrap;">
+        <td style="font-size:0.84rem; color:var(--muted);">${dlInfo}</td>
+        <td style="font-size:0.84rem; color:var(--muted);">${u.created_at || 'Inicial'}</td>
+        <td style="text-align:right;">
           <button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.username}', '${u.status}')" title="Suspender o reactivar cuenta">
             ${isSuspended ? '▶️ Activar' : '⏸️ Suspender'}
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="cleanUserDownloads('${u.username}')" title="Eliminar solo las descargas de este usuario" style="margin-left:3px;">
+          <button class="btn btn-secondary btn-sm" onclick="cleanUserDownloads('${u.username}')" title="Eliminar solo las descargas de este usuario" style="margin-left:4px;">
             🧹 Limpiar
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')" title="Cambiar clave o rol" style="margin-left:3px;">
+          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')" title="Cambiar clave o rol" style="margin-left:4px;">
             🔑 Clave
           </button>
-          <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')" title="Eliminar usuario definitivamente" style="margin-left:3px;">
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')" title="Eliminar usuario definitivamente" style="margin-left:4px;">
             🗑️
           </button>
         </td>
@@ -1077,7 +1285,7 @@ async function loadUsers() {
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger);">Error al cargar usuarios.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar usuarios.</td></tr>';
   }
 }
 
@@ -1173,9 +1381,7 @@ async function deleteUser(username) {
 // Logout handler
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
   if (confirm('¿Cerrar sesión de Administrador?')) {
-    fetch('/logout', { headers: { 'Authorization': 'Basic logout:logout' } }).finally(() => {
-      window.location.href = '/logout';
-    });
+    window.location.href = '/logout';
   }
 });
 
@@ -1190,7 +1396,6 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
 
 // Initial loads
 loadServicesStatus();
-
 loadEnginesInfo();
 loadConfigAndCookies();
 loadCloudSyncConfig();

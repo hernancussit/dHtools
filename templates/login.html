@@ -50,7 +50,7 @@
   }
   .branding {
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
   .branding h1 {
     font-size: 1.5rem;
@@ -65,6 +65,26 @@
     margin: 0;
     font-size: 0.85rem;
     color: var(--muted);
+  }
+  .btn-install {
+    display: none;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 18px;
+    transition: all 0.2s;
+  }
+  .btn-install:hover {
+    background: rgba(56, 189, 248, 0.25);
   }
   .alert {
     padding: 12px 14px;
@@ -151,6 +171,10 @@
     <p>{{ (config and config.site_subtitle) or 'Ingresá tus credenciales para acceder a la plataforma' }}</p>
   </div>
 
+  <button id="pwaInstallBtn" class="btn-install" type="button" title="Instalar como App nativa">
+    📲 Instalar App en este dispositivo
+  </button>
+
   {% if error %}
   <div class="alert alert-danger">
     ⚠️ {{ error }}
@@ -189,5 +213,35 @@
     🔒 Acceso privado restringido a usuarios autorizados.
   </div>
 </div>
+
+<script>
+// PWA Service Worker Registration & Installation Prompt
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration error:', err));
+  });
+}
+
+let deferredPrompt;
+const installBtn = document.getElementById('pwaInstallBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.style.display = 'inline-flex';
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      installBtn.style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+}
+</script>
 </body>
 </html>

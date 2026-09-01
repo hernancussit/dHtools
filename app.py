@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.2.1"
+APP_VERSION = "2.3.0"
+
 
 
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")

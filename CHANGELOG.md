@@ -4,7 +4,22 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.3.0] - 2026-09-01
+
+### ✨ Novedades y Mejoras de Interfaz
+- **Barra Lateral Fija en Panel de Administración (Sidebar Layout):**
+  - Rediseño completo de `/admin` con barra lateral de navegación izquierda fija y panel de contenido fluido a la derecha.
+  - Eliminación de la necesidad de scroll vertical en pantallas estándar con visualización compacta y organizada de microservicios, motores, configuración, cloud sync y usuarios.
+- **Corrección de Columnas y Badges de Estado en Tablas:**
+  - Solución definitiva al quiebre de texto en las columnas `ESTADO`, `ROL` y `FECHA ALTA` de la tabla de usuarios.
+  - Badges con `white-space: nowrap`, puntos indicadores (`badge-dot`) alineados y diseño estructurado.
+- **Instalación PWA desde Pantalla de Entrada (`/login`):**
+  - Incorporación del botón **"📲 Instalar App en este dispositivo"** directamente en la pantalla de inicio de sesión.
+
+---
+
 ## [2.2.1] - 2026-09-01
+
 
 ### 🐛 Correcciones y Mejoras
 - **Formulario Web de Inicio de Sesión (`/login`):**

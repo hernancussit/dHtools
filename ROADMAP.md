@@ -110,5 +110,16 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Comprobador de versiones contra GitHub Releases (`imputnet/cobalt`).
   - [x] Verificación de salud y actualización (`POST /api/admin/update-cobalt`).
 
+---
+
+## 🎯 Versión `v2.3.0` (Completado)
+- [x] **Rediseño con Barra Lateral (Sidebar Dashboard):**
+  - [x] Panel `/admin` rediseñado con navegación lateral fija y área de contenido fluida sin necesidad de scroll.
+- [x] **Corrección de Columnas en Tablas:**
+  - [x] Badges y estados con `white-space: nowrap` y puntos alineados sin quiebre de línea.
+- [x] **Instalación PWA desde Pantalla de Acceso (`/login`):**
+  - [x] Botón interactivo "📲 Instalar App" presente en el formulario de login.
+
+
 
 
