@@ -189,6 +189,22 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Desacoplamiento total de bloqueos de hilos en `background_queue_worker`.
   - [x] Manejador `safeApiPost` en frontend para procesar respuestas de error HTTP de forma transparente sin errores de parseo JSON.
 
+---
+
+## 🎯 Versión `v2.7.3` (Completado)
+- [x] **Eliminación de Sobrecarga de Tokens POT en Inspección de Metadatos:**
+  - [x] Optimización de `player_client_opts(for_download=False)` para evitar llamadas innecesarias a `potprovider` en consultas planas.
+  - [x] Reducción del tiempo de inspección de playlists de >60s a ~2s.
+
+---
+
+## 🎯 Versión `v2.7.4` (Completado)
+- [x] **Cerrojos Reentrantes con `threading.RLock`:**
+  - [x] Corrección de auto-bloqueo recursivo (*self-deadlock*) en hooks de progreso `append_job_log`.
+  - [x] Eliminación de cuelgues durante descargas activas y consultas de estado en vivo.
+
+
+
 
 
 

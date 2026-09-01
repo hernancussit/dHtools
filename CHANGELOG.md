@@ -4,7 +4,27 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.4] - 2026-09-01
+
+### 🐛 Corrección de Cerrojos Reentrantes
+- **🔒 Migración a `threading.RLock` en todos los cerrojos del servidor:**
+  - Corrección de bloqueo recursivo (*self-deadlock*) que ocurría cuando los hooks de progreso de descarga (`progress_hooks`) adquirían `JOBS_LOCK` y llamaban a `append_job_log`, paralizando la atención de consultas `/api/status` y solicitudes web.
+  - Implementación de cerrojos reentrantes `threading.RLock()` para `JOBS_LOCK`, `QUEUE_LOCK` y `BATCH_LOCK`.
+
+---
+
+## [2.7.3] - 2026-09-01
+
+
+### ⚡ Rendimiento y Prevención de Sobrecarga
+- **🚀 Eliminación de Sobrecarga de Tokens POT en Inspección de Metadatos:**
+  - Desactivación del plugin `youtubepot-bgutilhttp` durante la inspección de metadatos (`download=False`).
+  - La inspección de listas de reproducción extensas ahora se ejecuta en **1 a 2 segundos** sin saturar el generador de tokens de sesión ni bloquear los hilos del servidor.
+
+---
+
 ## [2.7.2] - 2026-09-01
+
 
 ### 🐛 Correcciones Críticas de Concurrencia
 - **🔒 Corrección de Bloqueo Mutuo (Deadlock) y Definición Global de `JOBS_LOCK`:**

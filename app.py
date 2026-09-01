@@ -20,7 +20,9 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.2"
+APP_VERSION = "2.7.4"
+
+
 
 
 
@@ -40,12 +42,13 @@ COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
 
 JOBS = {}
-JOBS_LOCK = threading.Lock()
+JOBS_LOCK = threading.RLock()
 BATCH_JOBS = {}
-BATCH_LOCK = threading.Lock()
+BATCH_LOCK = threading.RLock()
 QUEUE_LIST = []
-QUEUE_LOCK = threading.Lock()
+QUEUE_LOCK = threading.RLock()
 ACTIVE_WORKER_JOB = None
+
 
 
 
@@ -60,12 +63,11 @@ def cookies_opts():
 PLAYER_CLIENTS_ENV = os.environ.get("PLAYER_CLIENTS", "default").strip()
 
 
-def player_client_opts(clients=None):
-    opts = {
-        "extractor_args": {
-            "youtubepot-bgutilhttp": {"base_url": [POT_PROVIDER_URL]},
-        }
-    }
+def player_client_opts(clients=None, for_download: bool = True):
+    opts = {"extractor_args": {}}
+    if for_download:
+        opts["extractor_args"]["youtubepot-bgutilhttp"] = {"base_url": [POT_PROVIDER_URL]}
+
     target = clients
     if target is None and PLAYER_CLIENTS_ENV and PLAYER_CLIENTS_ENV != "default":
         target = PLAYER_CLIENTS_ENV.split(",")
@@ -74,6 +76,7 @@ def player_client_opts(clients=None):
             target = [target]
         opts["extractor_args"]["youtube"] = {"player_client": target}
     return opts
+
 
 
 
@@ -866,10 +869,11 @@ def extract_with_fallback(url, ydl_opts_base, download):
     last_exc = None
     for clients in candidates:
         opts = dict(ydl_opts_base)
-        opts["extractor_args"] = player_client_opts(clients)["extractor_args"]
+        opts["extractor_args"] = player_client_opts(clients, for_download=download)["extractor_args"]
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 return ydl.extract_info(url, download=download)
+
         except yt_dlp.utils.DownloadError as e:
             last_exc = e
             if is_permanent_error(str(e)):
@@ -2112,7 +2116,12 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             milestone = job["percent"] // 20
             if milestone > last_log_milestone[0] and job["percent"] > 0:
                 last_log_milestone[0] = milestone
-                append_job_log(job_id, f"[+] Progreso: {job['percent']}% - Velocidad: {job.get('speed') or 'estable'}")
+                if "logs" not in job:
+                    job["logs"] = []
+                job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": f"[+] Progreso: {job['percent']}% - Velocidad: {job.get('speed') or 'estable'}"})
+                if len(job["logs"]) > 150:
+                    job["logs"] = job["logs"][-150:]
+
 
     try:
         outtmpl = os.path.join(job_dir, "%(playlist_index&{:02d} - |)s%(title).100B.%(ext)s")
@@ -2516,6 +2525,8 @@ def download():
     return jsonify({"job_id": job_id, "status": "queued"})
 
 
+
+
 # ==================== QUEUE CONTROL API ====================
 
 @app.route("/api/queue")
@@ -2608,7 +2619,9 @@ def cancel_queue_item(job_id):
 
         job["status"] = "cancelled"
         job["finished_at"] = time.time()
-        append_job_log(job_id, "[!] Descarga cancelada por el usuario.")
+        if "logs" not in job:
+            job["logs"] = []
+        job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": "[!] Descarga cancelada por el usuario."})
 
     with QUEUE_LOCK:
         if job_id in QUEUE_LIST:
@@ -2626,19 +2639,26 @@ def cancel_all_queue():
 
     cancelled_count = 0
     with QUEUE_LOCK:
-        for jid in list(QUEUE_LIST):
-            if jid == ACTIVE_WORKER_JOB:
-                continue
-            with JOBS_LOCK:
-                job = JOBS.get(jid)
-                if job and (is_admin or job.get("owner") == username):
-                    job["status"] = "cancelled"
-                    job["finished_at"] = time.time()
-                    append_job_log(jid, "[!] Descarga cancelada por vaciado de cola.")
-                    QUEUE_LIST.remove(jid)
-                    cancelled_count += 1
+        q_ids = list(QUEUE_LIST)
+
+    for jid in q_ids:
+        if jid == ACTIVE_WORKER_JOB:
+            continue
+        with JOBS_LOCK:
+            job = JOBS.get(jid)
+            if job and (is_admin or job.get("owner") == username):
+                job["status"] = "cancelled"
+                job["finished_at"] = time.time()
+                if "logs" not in job:
+                    job["logs"] = []
+                job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": "[!] Descarga cancelada por vaciado de cola."})
+        with QUEUE_LOCK:
+            if jid in QUEUE_LIST:
+                QUEUE_LIST.remove(jid)
+                cancelled_count += 1
 
     save_queue_state()
+
     return jsonify({"success": True, "cancelled_count": cancelled_count})
 
 
