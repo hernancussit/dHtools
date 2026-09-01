@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.7"
+APP_VERSION = "2.7.8"
+
 
 
 
@@ -348,8 +349,8 @@ DISK_EMERGENCY_MIN_FREE_GB = float(os.environ.get("DISK_EMERGENCY_MIN_FREE_GB", 
 
 def load_config() -> dict:
     default_cfg = {
-        "site_title": "🎬 Descargador Multimedia",
-        "site_subtitle": "Descargá videos, playlists o música pegando el enlace.",
+        "site_title": "⚡ dHtools",
+        "site_subtitle": "Suite multimedia avanzada para descargas y extracción.",
         "default_theme": "cyberpunk",
         "cleanup_after_hours": CLEANUP_AFTER_HOURS,
         "disk_emergency_threshold": DISK_EMERGENCY_THRESHOLD_PERCENT,
@@ -372,7 +373,8 @@ def save_config(cfg: dict):
 
 def load_cloud_config() -> dict:
     default_cfg = {
-        "webdav": {"enabled": False, "url": "", "username": "", "password": "", "remote_path": "/ytsite"},
+        "webdav": {"enabled": False, "url": "", "username": "", "password": "", "remote_path": "/dhtools"},
+
         "ftp": {"enabled": False, "host": "", "port": 21, "username": "", "password": "", "remote_dir": "/"},
         "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
         "webhook": {"enabled": False, "url": ""},
@@ -1864,7 +1866,8 @@ def admin_cobalt_status():
     try:
         gh_r = requests.get(
             "https://api.github.com/repos/imputnet/cobalt/releases/latest",
-            headers={"User-Agent": "ytsite"},
+            headers={"User-Agent": "dHtools"},
+
             timeout=4,
         )
         if gh_r.status_code == 200:
@@ -3205,7 +3208,7 @@ def admin_cloud_sync_test():
         if not url:
             return jsonify({"error": "Falta la URL del webhook"}), 400
         try:
-            r = requests.post(url, json={"test": True, "message": "ytsite cloud sync test"}, timeout=5)
+            r = requests.post(url, json={"test": True, "message": "dHtools cloud sync test"}, timeout=5)
             return jsonify({"success": True, "message": f"Webhook respondió HTTP {r.status_code}"})
         except Exception as e:
             return jsonify({"error": f"Error conectando al webhook: {e}"}), 400
@@ -3218,7 +3221,8 @@ def admin_cloud_sync_test():
         try:
             r = requests.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": "✅ Prueba de conexión de ytsite exitosa!"},
+                json={"chat_id": chat_id, "text": "✅ Prueba de conexión de dHtools exitosa!"},
+
                 timeout=6,
             )
             res = r.json()

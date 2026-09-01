@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<title>Wiki Técnica - {{ (config and config.site_title) or 'ytsite' }}</title>
+<title>Wiki Técnica - {{ (config and config.site_title) or 'dHtools' }}</title>
+
 <style>
   :root, [data-theme="cyberpunk"] {
     --bg-gradient: linear-gradient(160deg, #0f172a, #1e1b4b);
@@ -247,8 +248,9 @@
       <div>
         <h1>📚 Wiki Técnica & Arquitectura</h1>
         <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">
-          Documentación interna del funcionamiento y componentes de <strong>{{ (config and config.site_title) or 'ytsite' }}</strong>.
+          Documentación interna del funcionamiento y componentes de <strong>{{ (config and config.site_title) or 'dHtools' }}</strong>.
         </div>
+
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <select id="themeSelector" style="padding:6px 10px; font-size:0.8rem; border-radius:8px; background:var(--bg-card); color:var(--text); border:1px solid var(--border);" title="Cambiar tema">
@@ -328,7 +330,7 @@
         <h2 id="section-youtube">▶️ 2. YouTube & Proof-of-Origin (PO Tokens)</h2>
         <p>YouTube implementa protecciones contra bots y divide sus transmisiones de alta definición en pistas de video y audio separadas (DASH/HLS).</p>
         <div class="callout callout-success">
-          <strong>¿Cómo lo resuelve ytsite?</strong><br>
+          <strong>¿Cómo lo resuelve dHtools?</strong><br>
           Antes de cada extracción, <code>yt-dlp</code> consulta en <code>http://potprovider:4416/get_pot</code> y obtiene un token criptográfico generado por <code>bgutil</code>. Simultáneamente, el motor <code>Deno</code> ejecuta el código JavaScript del reproductor para descifrar las firmas de los flujos de video 4K/1080p sin disparar pantallas de verificación.
         </div>
 
@@ -345,12 +347,13 @@
         <p><strong>¿Por qué ningún descargador público baja directo del CDN de Spotify?</strong></p>
         <p>Los servidores de Spotify protegen todos sus archivos con <strong>DRM Widevine (cifrado AES-128)</strong>. Descargar directamente requeriría cuentas de pago con claves privadas de hardware, las cuales Spotify banea al detectar tráfico anómalo.</p>
         <div class="callout">
-          <strong>El Flujo de Trabajo en ytsite:</strong><br>
+          <strong>El Flujo de Trabajo en dHtools:</strong><br>
           1. Consulta la API/oEmbed de Spotify y extrae los metadatos oficiales (Título exacto, Artistas, Álbum y Carátula HD).<br>
           2. Busca y empareja la pista de estudio oficial de mayor fidelidad.<br>
           3. FFmpeg procesa el audio a 320 kbps e inyecta la portada y etiquetas ID3v2.<br>
           4. El usuario recibe un archivo <code>.mp3</code> impecable con la carátula y datos exactos.
         </div>
+
 
         <!-- 5. SOCIAL MEDIA -->
         <h2 id="section-social">📱 5. Redes Sociales</h2>
