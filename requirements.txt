@@ -1,0 +1,5 @@
+flask==3.0.3
+yt-dlp[default]>=2024.8.6
+bgutil-ytdlp-pot-provider
+requests==2.32.3
+gunicorn==22.0.0

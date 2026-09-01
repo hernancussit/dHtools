@@ -1,0 +1,34 @@
+services:
+  ytsite:
+    build: .
+    container_name: yt-downloader
+    depends_on:
+      - potprovider
+    ports:
+      - "127.0.0.1:5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+      - ./cookies.txt:/app/cookies.txt
+    restart: unless-stopped
+
+  potprovider:
+    image: brainicism/bgutil-ytdlp-pot-provider
+    container_name: pot-provider
+    ports:
+      - "127.0.0.1:4416:4416"
+    restart: unless-stopped
+
+  cobalt:
+    image: ghcr.io/imputnet/cobalt:latest
+    container_name: cobalt-api
+    environment:
+      API_URL: "http://cobalt:9000/"
+      YOUTUBE_SESSION_SERVER: "http://potprovider:4416/"
+    depends_on:
+      - potprovider
+    ports:
+      - "127.0.0.1:9000:9000"
+    restart: unless-stopped
+

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<title>Descargador de YouTube</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #ef4444;
+    --accent-2: #f87171;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(160deg, #0f172a, #1e1b4b);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  p.subtitle { color: var(--muted); margin: 0 0 24px; font-size: 0.9rem; }
+  input[type=text] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  select {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: var(--text);
+  }
+  label.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  button {
+    margin-top: 18px;
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover { background: var(--accent-2); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #preview { margin-top: 20px; display: none; }
+  #preview img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
+  #preview .title { font-weight: 600; }
+  #preview .meta { color: var(--muted); font-size: 0.85rem; }
+  #progressWrap { margin-top: 18px; display: none; }
+  .bar-bg {
+    width: 100%;
+    height: 10px;
+    background: #0f172a;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.3s;
+  }
+  #statusText { margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
+  #downloadLink {
+    display: none;
+    margin-top: 14px;
+    text-align: center;
+    background: #16a34a;
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .error { color: #f87171; font-size: 0.85rem; margin-top: 8px; }
+  footer {
+    margin-top: 20px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+      <div>
+        <h1>🎬 Descargador de YouTube</h1>
+        <p class="subtitle">Pegá el link de un video o playlist para descargarlo.</p>
+      </div>
+      <button id="updateBtn" style="width:auto; margin-top:0; padding:8px 12px; font-size:0.75rem; background:#334155;">
+        ⟳ Actualizar yt-dlp
+      </button>
+    </div>
+    <div id="updateStatus" style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:none;"></div>
+
+    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...">
+
+    <div class="row">
+      <select id="engine">
+        <option value="ytdlp">Motor: yt-dlp</option>
+        <option value="cobalt">Motor: Cobalt (beta)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <select id="quality">
+        <optgroup label="Video">
+          <option value="best">Mejor calidad</option>
+          <option value="2160p">4K (2160p)</option>
+          <option value="1440p">1440p (2K)</option>
+          <option value="1080p">1080p</option>
+          <option value="720p">720p</option>
+          <option value="480p">480p</option>
+        </optgroup>
+        <optgroup label="Solo audio (MP3)">
+          <option value="audio_320">320 kbps</option>
+          <option value="audio_256">256 kbps</option>
+          <option value="audio_192">192 kbps</option>
+          <option value="audio_128">128 kbps</option>
+        </optgroup>
+      </select>
+    </div>
+    <label class="checkbox" style="margin-top:10px;" id="playlistLabel">
+      <input type="checkbox" id="playlistCheck"> Descargar toda la playlist (si el link es una playlist)
+    </label>
+    <div class="meta" id="engineNote" style="display:none; margin-top:6px;"></div>
+
+    <div id="trimSection" style="display:none; margin-top:14px;">
+      <label class="checkbox">
+        <input type="checkbox" id="trimCheck"> Recortar (solo video individual)
+      </label>
+      <div class="row" id="trimInputs" style="display:none;">
+        <input type="text" id="trimStart" placeholder="Desde (00:00:00)" style="flex:1;">
+        <input type="text" id="trimEnd" placeholder="Hasta (00:05:30)" style="flex:1;">
+      </div>
+    </div>
+
+    <button id="infoBtn">Buscar</button>
+
+    <div id="preview">
+      <img id="previewImg" src="" alt="">
+      <div class="title" id="previewTitle"></div>
+      <div class="meta" id="previewMeta"></div>
+      <button id="downloadBtn">Descargar</button>
+    </div>
+
+    <div id="progressWrap">
+      <div id="playlistInfo" style="display:none; font-size:0.85rem; color:var(--muted); margin-bottom:6px;">
+        Video <span id="plIndex">0</span> de <span id="plTotal">0</span> · <span id="plCompleted">0</span> completados
+      </div>
+      <div id="currentTitle" style="font-size:0.85rem; margin-bottom:6px; display:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+      <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
+      <div id="statusText">Iniciando...</div>
+      <div id="speedText" style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:none;"></div>
+    </div>
+
+    <a id="downloadLink" href="#">Guardar archivo</a>
+    <div class="error" id="errorText"></div>
+
+    <footer>Usá esta herramienta solo con contenido que tengas derecho a descargar.</footer>
+  </div>
+
+<script>
+const urlInput = document.getElementById('urlInput');
+const infoBtn = document.getElementById('infoBtn');
+const preview = document.getElementById('preview');
+const previewImg = document.getElementById('previewImg');
+const previewTitle = document.getElementById('previewTitle');
+const previewMeta = document.getElementById('previewMeta');
+const downloadBtn = document.getElementById('downloadBtn');
+const quality = document.getElementById('quality');
+const playlistCheck = document.getElementById('playlistCheck');
+const progressWrap = document.getElementById('progressWrap');
+const barFill = document.getElementById('barFill');
+const statusText = document.getElementById('statusText');
+const downloadLink = document.getElementById('downloadLink');
+const errorText = document.getElementById('errorText');
+const updateBtn = document.getElementById('updateBtn');
+const updateStatus = document.getElementById('updateStatus');
+const playlistInfo = document.getElementById('playlistInfo');
+const plIndex = document.getElementById('plIndex');
+const plTotal = document.getElementById('plTotal');
+const plCompleted = document.getElementById('plCompleted');
+const currentTitleEl = document.getElementById('currentTitle');
+const speedText = document.getElementById('speedText');
+const trimSection = document.getElementById('trimSection');
+const trimCheck = document.getElementById('trimCheck');
+const trimInputs = document.getElementById('trimInputs');
+const trimStart = document.getElementById('trimStart');
+const trimEnd = document.getElementById('trimEnd');
+const engineSelect = document.getElementById('engine');
+const engineNote = document.getElementById('engineNote');
+const playlistLabel = document.getElementById('playlistLabel');
+
+function applyEngineConstraints() {
+  const isCobalt = engineSelect.value === 'cobalt';
+  playlistLabel.style.display = isCobalt ? 'none' : 'flex';
+  if (isCobalt) {
+    playlistCheck.checked = false;
+    trimCheck.checked = false;
+    trimInputs.style.display = 'none';
+    trimSection.style.display = 'none';
+    engineNote.style.display = 'block';
+    engineNote.textContent = 'Cobalt: solo videos individuales, sin recorte. Para playlists o recorte, usá yt-dlp.';
+  } else {
+    engineNote.style.display = 'none';
+    if (currentInfo && currentInfo.type === 'video') {
+      trimSection.style.display = 'block';
+    }
+  }
+}
+engineSelect.addEventListener('change', applyEngineConstraints);
+
+trimCheck.addEventListener('change', () => {
+  trimInputs.style.display = trimCheck.checked ? 'flex' : 'none';
+});
+
+updateBtn.addEventListener('click', async () => {
+  updateStatus.style.display = 'block';
+  updateStatus.textContent = 'Buscando actualizaciones de yt-dlp...';
+  updateBtn.disabled = true;
+  try {
+    const res = await fetch('/api/update-ytdlp', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    updateStatus.textContent = data.message;
+    if (data.updated) {
+      setTimeout(() => window.location.reload(), 5000);
+    } else {
+      updateBtn.disabled = false;
+    }
+  } catch (e) {
+    updateStatus.textContent = 'Error: ' + e.message;
+    updateBtn.disabled = false;
+  }
+});
+
+let currentInfo = null;
+
+function resetError() { errorText.textContent = ''; }
+
+infoBtn.addEventListener('click', async () => {
+  resetError();
+  downloadLink.style.display = 'none';
+  progressWrap.style.display = 'none';
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  infoBtn.disabled = true;
+  infoBtn.textContent = 'Buscando...';
+  try {
+    const res = await fetch('/api/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    currentInfo = data;
+    preview.style.display = 'block';
+    previewImg.src = data.thumbnail || '';
+    previewImg.style.display = data.thumbnail ? 'block' : 'none';
+    previewTitle.textContent = data.title;
+    previewMeta.textContent = data.type === 'playlist'
+      ? `Playlist · ${data.count} videos`
+      : (data.duration ? `Video · ${Math.round(data.duration/60)} min` : 'Video');
+
+    playlistCheck.disabled = data.type !== 'playlist';
+    if (data.type === 'playlist') playlistCheck.checked = true;
+
+    if (engineSelect.value !== 'cobalt') {
+      trimSection.style.display = data.type === 'video' ? 'block' : 'none';
+      if (data.type !== 'video') {
+        trimCheck.checked = false;
+        trimInputs.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    errorText.textContent = e.message;
+  } finally {
+    infoBtn.disabled = false;
+    infoBtn.textContent = 'Buscar';
+  }
+});
+
+downloadBtn.addEventListener('click', async () => {
+  resetError();
+  downloadLink.style.display = 'none';
+  progressWrap.style.display = 'block';
+  barFill.style.width = '0%';
+  statusText.textContent = 'Iniciando descarga...';
+  downloadBtn.disabled = true;
+
+  const isPlaylist = currentInfo && currentInfo.type === 'playlist' && playlistCheck.checked;
+  playlistInfo.style.display = isPlaylist ? 'block' : 'none';
+  currentTitleEl.style.display = isPlaylist ? 'block' : 'none';
+  speedText.style.display = 'none';
+  if (isPlaylist) {
+    plTotal.textContent = currentInfo.count || '?';
+    plIndex.textContent = '0';
+    plCompleted.textContent = '0';
+  }
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: urlInput.value.trim(),
+        quality: quality.value,
+        engine: engineSelect.value,
+        video_title: currentInfo ? currentInfo.title : '',
+        playlist: playlistCheck.checked,
+        total_count: currentInfo && currentInfo.type === 'playlist' ? currentInfo.count : 0,
+        start_time: (trimCheck.checked && !playlistCheck.checked) ? trimStart.value.trim() : null,
+        end_time: (trimCheck.checked && !playlistCheck.checked) ? trimEnd.value.trim() : null
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    poll(data.job_id);
+  } catch (e) {
+    errorText.textContent = e.message;
+    downloadBtn.disabled = false;
+  }
+});
+
+function formatEta(seconds) {
+  if (!seconds && seconds !== 0) return '';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')} restante`;
+}
+
+function poll(jobId) {
+  const interval = setInterval(async () => {
+    const res = await fetch(`/api/status/${jobId}`);
+    const job = await res.json();
+
+    if (job.total_count) {
+      plTotal.textContent = job.total_count;
+      plIndex.textContent = job.current_index || job.completed_count || 0;
+      plCompleted.textContent = job.completed_count || 0;
+    }
+    if (job.current_title) {
+      currentTitleEl.textContent = job.current_title;
+    }
+
+    if (job.status === 'downloading') {
+      barFill.style.width = (job.percent || 0) + '%';
+      const filePct = job.file_percent || 0;
+      statusText.textContent = job.total_count
+        ? `Descargando video ${job.current_index || job.completed_count} de ${job.total_count}... ${filePct}%`
+        : `Descargando... ${filePct}%`;
+      if (job.speed) {
+        speedText.style.display = 'block';
+        speedText.textContent = job.speed + (job.eta_seconds ? ' · ' + formatEta(job.eta_seconds) : '');
+      }
+    } else if (job.status === 'processing') {
+      statusText.textContent = 'Procesando archivo...';
+      speedText.style.display = 'none';
+    } else if (job.status === 'finished') {
+      clearInterval(interval);
+      barFill.style.width = '100%';
+      statusText.textContent = '¡Listo!';
+      speedText.style.display = 'none';
+      downloadLink.href = `/api/files/${jobId}`;
+      downloadLink.style.display = 'block';
+      downloadBtn.disabled = false;
+    } else if (job.status === 'error') {
+      clearInterval(interval);
+      errorText.textContent = job.error || 'Ocurrió un error';
+      downloadBtn.disabled = false;
+    }
+  }, 1200);
+}
+</script>
+</body>
+</html>

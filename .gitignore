@@ -1,0 +1,21 @@
+# Entorno y credenciales sensibles (¡Nunca subir!)
+.env
+cookies.txt
+
+# Archivos de descargas temporales
+downloads/*
+!downloads/.gitkeep
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Archivos de sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
