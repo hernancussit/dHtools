@@ -1,0 +1,18 @@
+# ==============================================================================
+# dHtools - Caddy Server Reverse Proxy Configuration (SSL Automático)
+# ==============================================================================
+
+tu-dominio.com {
+    # Proxy inverso automático con WebSockets, HTTP/2 y SSL Let's Encrypt automático
+    reverse_proxy 127.0.0.1:5000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Cabeceras de seguridad recomendadas
+    header {
+        X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+    }
+}
