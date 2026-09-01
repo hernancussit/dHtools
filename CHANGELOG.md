@@ -4,7 +4,23 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.5.0] - 2026-09-01
+
+### ✨ Novedades y Mejoras de Interfaz
+- **Barra Lateral Fija en Portal de Descargas (Sidebar Layout):**
+  - Rediseño integral de la página principal (`templates/index.html`) con barra lateral de navegación izquierda fija y panel de contenido fluido, homologando la experiencia visual del panel de administración.
+  - Se eliminó el botón de actualización `⟳ yt-dlp` de la vista de descargas (exclusivo de administradores en `/admin`).
+- **⚡ Modo Fácil / Rápido (Descarga en 1 Clic):**
+  - Nueva interfaz simplificada: pegado directo de enlace, píldoras de presets rápidos (720p HD, 1080p FHD, Mejor Calidad, MP3 320k, MP3 192k, FLAC) y botón directo de descarga inmediata.
+- **📦 Playlists Mejoradas: Selección de Elementos y Descarga Individual vs ZIP:**
+  - Explorador interactivo de listas de reproducción y álbumes (YouTube, Spotify, Deezer).
+  - Selector de elementos individual por casillas con botones de selección masiva (`Todos`, `Ninguno`) y contador dinámico.
+  - Modo de entrega configurable: empaquetado en archivo `.ZIP` o **Descargas Individuales Progresivas** que se registran y procesan como archivos independientes listos para guardar o escuchar en tiempo real.
+
+---
+
 ## [2.4.1] - 2026-09-01
+
 
 ### 📊 Métricas y Diagnóstico
 - **Monitoreo Detallado de Memoria RAM (Proyecto vs VPS Total):**

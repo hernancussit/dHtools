@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.4.1"
+APP_VERSION = "2.5.0"
+
 
 
 
@@ -877,6 +878,18 @@ def get_deezer_info(url: str):
                 artist = data.get("artist", {}).get("name", "Artista")
                 title = data.get("title", "Álbum")
                 cover = data.get("cover_xl") or data.get("cover_big")
+                items = [
+                    {
+                        "index": i + 1,
+                        "id": str(t.get("id")),
+                        "title": f"{t.get('artist', {}).get('name', artist)} - {t.get('title', '')}",
+                        "url": t.get("link") or f"https://www.deezer.com/track/{t.get('id')}",
+                        "duration": t.get("duration"),
+                        "duration_formatted": f"{int(t.get('duration', 0))//60}:{int(t.get('duration', 0))%60:02d}" if t.get("duration") else None,
+                        "thumbnail": cover,
+                    }
+                    for i, t in enumerate(tracks[:300])
+                ]
                 return {
                     "type": "playlist",
                     "platform": "Deezer",
@@ -884,6 +897,7 @@ def get_deezer_info(url: str):
                     "count": len(tracks),
                     "thumbnail": cover,
                     "entries": tracks,
+                    "items": items,
                     "url": url,
                 }
 
@@ -894,13 +908,27 @@ def get_deezer_info(url: str):
             data = r.json()
             if "error" not in data:
                 tracks = data.get("tracks", {}).get("data", [])
+                cover = data.get("picture_xl") or data.get("picture_big")
+                items = [
+                    {
+                        "index": i + 1,
+                        "id": str(t.get("id")),
+                        "title": f"{t.get('artist', {}).get('name', 'Artista')} - {t.get('title', '')}",
+                        "url": t.get("link") or f"https://www.deezer.com/track/{t.get('id')}",
+                        "duration": t.get("duration"),
+                        "duration_formatted": f"{int(t.get('duration', 0))//60}:{int(t.get('duration', 0))%60:02d}" if t.get("duration") else None,
+                        "thumbnail": (t.get("album", {}).get("cover_medium") or cover),
+                    }
+                    for i, t in enumerate(tracks[:300])
+                ]
                 return {
                     "type": "playlist",
                     "platform": "Deezer",
                     "title": f"Playlist: {data.get('title', 'Deezer')}",
                     "count": len(tracks),
-                    "thumbnail": data.get("picture_xl") or data.get("picture_big"),
+                    "thumbnail": cover,
                     "entries": tracks,
+                    "items": items,
                     "url": url,
                 }
     except Exception:
@@ -1656,13 +1684,30 @@ def info():
 
     if "entries" in result:
         entries = [e for e in result["entries"] if e]
+        items = []
+        for idx, e in enumerate(entries[:300]):
+            vid_id = e.get("id") or ""
+            vid_url = e.get("url") or (f"https://www.youtube.com/watch?v={vid_id}" if vid_id else "")
+            thumbs = e.get("thumbnails") or []
+            thumb = thumbs[-1]["url"] if thumbs else None
+            dur = e.get("duration")
+            items.append({
+                "index": idx + 1,
+                "id": vid_id,
+                "title": e.get("title") or f"Elemento {idx + 1}",
+                "url": vid_url,
+                "duration": dur,
+                "duration_formatted": f"{int(dur)//60}:{int(dur)%60:02d}" if dur else None,
+                "thumbnail": thumb,
+            })
         return jsonify({
             "type": "playlist",
             "title": result.get("title", "Playlist"),
             "count": len(entries),
             "platform": platform,
             "thumbnail": (entries[0].get("thumbnails", [{}])[-1].get("url")
-                          if entries and entries[0].get("thumbnails") else None),
+                          if entries and entries[0].get("thumbnails") else (items[0].get("thumbnail") if items else None)),
+            "items": items,
         })
     else:
         thumbs = result.get("thumbnails") or []
@@ -1823,7 +1868,8 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
 
 def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
                   start_time=None, end_time=None, video_format="mp4", subtitles="none",
-                  owner: str = "admin", user_cloud_sync: dict = None):
+                  owner: str = "admin", user_cloud_sync: dict = None,
+                  selected_indexes: list = None, playlist_delivery: str = "zip"):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
 
@@ -1879,6 +1925,9 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             **cookies_opts(),
         }
 
+        if selected_indexes and len(selected_indexes) > 0:
+            ydl_opts["playlist_items"] = ",".join(str(i) for i in selected_indexes)
+
         if is_audio_quality(quality):
             bitrate_map = {
                 "audio_128": "128", "audio_192": "192",
@@ -1929,10 +1978,35 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
         if not files:
             raise RuntimeError("No se generó ningún archivo")
 
-        if playlist_mode:
+        if playlist_mode and playlist_delivery == "individual":
+            individual_files = []
+            for f in files:
+                fname = f"{job_id}_{f}"
+                fpath = os.path.join(DOWNLOAD_DIR, fname)
+                shutil.move(os.path.join(job_dir, f), fpath)
+                fsize = os.path.getsize(fpath) if os.path.exists(fpath) else 0
+                item_jid = f"{job_id}_{len(individual_files)+1}"
+                record_download_meta(item_jid, f, owner, fsize)
+                individual_files.append({"name": f, "path": fpath, "size": fsize, "job_id": item_jid})
+            
+            final_path = individual_files[0]["path"] if individual_files else None
+            final_name = f"{len(files)} archivos descargados individualmente"
+            with JOBS_LOCK:
+                JOBS[job_id].update({
+                    "status": "finished",
+                    "percent": 100,
+                    "filepath": final_path,
+                    "filename": final_name,
+                    "files_count": len(files),
+                    "finished_at": time.time(),
+                    "speed": None,
+                    "owner": owner,
+                    "delivery": "individual",
+                })
+        elif playlist_mode:
             with JOBS_LOCK:
                 JOBS[job_id]["status"] = "zipping"
-                JOBS[job_id]["current_title"] = "Comprimiendo playlist..."
+                JOBS[job_id]["current_title"] = "Comprimiendo playlist en ZIP..."
             zip_filename = f"playlist_{job_id[:8]}.zip"
             zip_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{zip_filename}")
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -1940,27 +2014,40 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     zf.write(os.path.join(job_dir, f), f)
             final_path = zip_path
             final_name = zip_filename
+            with JOBS_LOCK:
+                JOBS[job_id].update({
+                    "status": "finished",
+                    "percent": 100,
+                    "filepath": final_path,
+                    "filename": final_name,
+                    "finished_at": time.time(),
+                    "speed": None,
+                    "owner": owner,
+                    "delivery": "zip",
+                })
+            if os.path.exists(final_path):
+                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
         else:
             final_filename = f"{job_id}_{files[0]}"
             final_path = os.path.join(DOWNLOAD_DIR, final_filename)
             shutil.move(os.path.join(job_dir, files[0]), final_path)
             final_name = files[0]
+            with JOBS_LOCK:
+                JOBS[job_id].update({
+                    "status": "finished",
+                    "percent": 100,
+                    "filepath": final_path,
+                    "filename": final_name,
+                    "finished_at": time.time(),
+                    "speed": None,
+                    "owner": owner,
+                })
+            if os.path.exists(final_path):
+                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
 
-        with JOBS_LOCK:
-            JOBS[job_id].update({
-                "status": "finished",
-                "percent": 100,
-                "filepath": final_path,
-                "filename": final_name,
-                "finished_at": time.time(),
-                "speed": None,
-                "owner": owner,
-            })
-            job_snap = dict(JOBS[job_id])
-
-        if os.path.exists(final_path):
-            record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
-        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
+        job_snap = dict(JOBS[job_id])
+        if final_path and os.path.exists(final_path):
+            threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
@@ -1982,6 +2069,8 @@ def download():
     engine = (data or {}).get("engine", "ytdlp")
     video_title = (data or {}).get("video_title", "")
     user_cloud_sync = (data or {}).get("user_cloud_sync")
+    selected_indexes = (data or {}).get("selected_indexes") or []
+    playlist_delivery = (data or {}).get("playlist_delivery", "zip")
 
     user = getattr(request, "current_user", {}) or {}
     owner = user.get("username", "admin")
@@ -2012,7 +2101,7 @@ def download():
             "status": "queued",
             "percent": 0,
             "completed_count": 0,
-            "total_count": total_count,
+            "total_count": total_count if not selected_indexes else len(selected_indexes),
             "current_index": None,
             "current_title": None,
             "file_percent": 0,
@@ -2041,12 +2130,13 @@ def download():
     else:
         thread = threading.Thread(
             target=run_download,
-            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time, video_format, subtitles, owner, user_cloud_sync),
+            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time, video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery),
             daemon=True,
         )
     thread.start()
 
     return jsonify({"job_id": job_id})
+
 
 
 

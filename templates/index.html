@@ -12,22 +12,25 @@
 <title>{{ (config and config.site_title) or 'ytsite - Descargador Multimedia' }}</title>
 <style>
   :root, [data-theme="cyberpunk"] {
-    --bg-gradient: linear-gradient(160deg, #0f172a, #1e1b4b);
-    --bg-card: #1e293b;
-    --bg-input: #0f172a;
+    --bg-main: #070b14;
+    --bg-sidebar: #0b1120;
+    --bg-card: #0f172a;
+    --bg-input: #0b1222;
     --accent: #ef4444;
     --accent-2: #f87171;
     --accent-blue: #38bdf8;
-    --text: #f1f5f9;
+    --text: #f8fafc;
     --muted: #94a3b8;
-    --border: #334155;
+    --border: #1e293b;
+    --border-highlight: #334155;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
-    --card-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.4);
   }
   [data-theme="oled"] {
-    --bg-gradient: #000000;
+    --bg-main: #000000;
+    --bg-sidebar: #050505;
     --bg-card: #0a0a0a;
     --bg-input: #121212;
     --accent: #e11d48;
@@ -35,177 +38,207 @@
     --accent-blue: #0ea5e9;
     --text: #ffffff;
     --muted: #a1a1aa;
-    --border: #27272a;
+    --border: #222225;
+    --border-highlight: #333338;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
-    --card-shadow: 0 16px 40px rgba(0,0,0,0.8);
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.8);
   }
   [data-theme="emerald"] {
-    --bg-gradient: linear-gradient(160deg, #022c22, #064e3b);
-    --bg-card: #065f46;
-    --bg-input: #022c22;
+    --bg-main: #021a14;
+    --bg-sidebar: #03251d;
+    --bg-card: #064e3b;
+    --bg-input: #022018;
     --accent: #10b981;
     --accent-2: #34d399;
     --accent-blue: #6ee7b7;
     --text: #ecfdf5;
     --muted: #a7f3d0;
-    --border: #047857;
+    --border: #065f46;
+    --border-highlight: #047857;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #f87171;
-    --card-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.4);
   }
   [data-theme="light"] {
-    --bg-gradient: linear-gradient(160deg, #f8fafc, #e2e8f0);
+    --bg-main: #f1f5f9;
+    --bg-sidebar: #ffffff;
     --bg-card: #ffffff;
-    --bg-input: #f1f5f9;
+    --bg-input: #f8fafc;
     --accent: #ef4444;
     --accent-2: #f87171;
     --accent-blue: #0284c7;
     --text: #0f172a;
     --muted: #64748b;
-    --border: #cbd5e1;
+    --border: #e2e8f0;
+    --border-highlight: #cbd5e1;
     --success: #16a34a;
     --warning: #d97706;
     --danger: #dc2626;
-    --card-shadow: 0 16px 40px rgba(0,0,0,0.08);
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.06);
   }
 
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg-gradient);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-main);
     color: var(--text);
     min-height: 100vh;
-    padding: 16px;
-    transition: background 0.3s, color 0.3s;
-  }
-  .app-container {
-    max-width: 1200px;
-    margin: 0 auto;
+    overflow: hidden;
   }
 
-  /* TOP BAR */
-  .top-bar {
+  /* SIDEBAR DASHBOARD LAYOUT */
+  .app-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
   }
-  .branding {
+
+  .sidebar {
+    width: 270px;
+    min-width: 270px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 18px 14px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .sidebar-header {
+    margin-bottom: 20px;
+  }
+  .brand-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.5px;
+    margin: 0 0 6px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .brand-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent-blue);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  .user-badge-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    margin-top: 10px;
+  }
+
+  /* SIDEBAR NAVIGATION */
+  .nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .nav-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    margin-top: 6px;
+  }
+  .nav-item {
     display: flex;
     align-items: center;
     gap: 10px;
-  }
-  .branding h1 {
-    font-size: 1.35rem;
-    margin: 0;
-    font-weight: 700;
-  }
-  .branding .user-tag {
-    font-size: 0.75rem;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 10px 12px;
+    border-radius: 9px;
     color: var(--muted);
-  }
-  .top-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .btn-sm {
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    color: var(--text);
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: left;
   }
-  .btn-sm:hover { background: var(--border); }
-  .btn-install {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: white;
-    border: none;
+  .nav-item:hover {
+    background: var(--bg-input);
+    color: var(--text);
+    border-color: var(--border);
   }
-  .btn-install:hover { opacity: 0.9; }
-
-  /* 2-COLUMN DASHBOARD GRID */
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    gap: 20px;
-    align-items: start;
-  }
-  @media (max-width: 920px) {
-    .dashboard-grid {
-      grid-template-columns: 1fr;
-    }
+  .nav-item.active {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--accent-2);
+    border-color: rgba(239, 68, 68, 0.35);
   }
 
-  /* CARD STYLES */
-  .panel-card {
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* MAIN CONTENT AREA */
+  .main-content {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 30px;
+    background: var(--bg-main);
+  }
+
+  /* CARDS */
+  .card {
     background: var(--bg-card);
-    border-radius: 14px;
-    padding: 22px;
     border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
     box-shadow: var(--card-shadow);
     margin-bottom: 20px;
   }
-  .panel-title {
+  .card-title {
     font-size: 1.05rem;
     font-weight: 700;
     margin: 0 0 14px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    color: var(--text);
+    justify-content: space-between;
   }
 
-  /* MODE SWITCHER */
-  .mode-switch {
-    display: flex;
-    background: var(--bg-input);
-    padding: 4px;
-    border-radius: 10px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
+  /* TABS */
+  .tab-pane {
+    display: none;
+    animation: fadeIn 0.2s ease-in-out;
   }
-  .mode-btn {
-    flex: 1;
-    padding: 8px 12px;
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-size: 0.84rem;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
+  .tab-pane.active {
+    display: block;
   }
-  .mode-btn.active {
-    background: var(--bg-card);
-    color: var(--text);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  /* FORMS & INPUTS */
+  /* INPUTS & BUTTONS */
   label {
     display: block;
     font-size: 0.82rem;
@@ -215,7 +248,7 @@
   }
   input[type="text"], input[type="password"], textarea, select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 10px 14px;
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -223,97 +256,196 @@
     font-size: 0.9rem;
     outline: none;
     transition: border-color 0.2s;
-    font-family: inherit;
   }
-  input:focus, textarea:focus, select:focus {
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
     border-color: var(--accent-blue);
   }
-  textarea { resize: vertical; min-height: 90px; }
-
-  .input-row {
-    display: flex;
-    gap: 8px;
+  textarea {
+    resize: vertical;
+    min-height: 90px;
+    font-family: monospace;
+    font-size: 0.85rem;
   }
 
-  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
   .btn-primary {
-    width: 100%;
-    padding: 12px;
     background: linear-gradient(135deg, var(--accent), var(--accent-2));
     color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    margin-top: 14px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
   }
-  .btn-primary:hover { opacity: 0.92; }
-  .btn-primary:active { transform: scale(0.99); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--bg-input);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-danger {
+    background: #7f1d1d;
+    color: #fca5a5;
+    border-color: #991b1b;
+  }
+  .btn-danger:hover { background: #991b1b; color: white; }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .btn-block {
+    width: 100%;
+  }
+
+  /* QUICK PRESET PILLS */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin: 12px 0 16px;
+  }
+  .preset-pill {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .preset-pill:hover {
+    border-color: var(--border-highlight);
+    background: rgba(56, 189, 248, 0.08);
+  }
+  .preset-pill.active {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .preset-pill-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+  .preset-pill-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
 
   /* ENGINE SELECTOR */
   .engine-selector {
     display: flex;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
   .engine-btn {
     flex: 1;
-    padding: 8px 10px;
+    padding: 9px 12px;
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--muted);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .engine-btn.active {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: var(--accent-blue);
+    color: var(--text);
+  }
+
+  /* PLAYLIST EXPLORER & ITEM SELECTOR */
+  .playlist-explorer {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 14px;
+  }
+  .playlist-header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .playlist-delivery-toggle {
+    display: flex;
+    gap: 8px;
+    background: var(--bg-main);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .delivery-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
   }
-  .engine-btn.active {
+  .delivery-btn.active {
     background: var(--bg-card);
-    border-color: var(--accent-blue);
-    color: var(--accent-blue);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-
-  /* COLLAPSIBLE ACCORDIONS */
-  .accordion-box {
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-top: 10px;
-  }
-  .accordion-header {
+  .playlist-items-list {
+    max-height: 240px;
+    overflow-y: auto;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--muted);
+    flex-direction: column;
+    gap: 4px;
   }
-  .accordion-header:hover { color: var(--text); }
-  .accordion-body {
-    display: none;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
+  .playlist-item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .playlist-item-row:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .playlist-item-thumb {
+    width: 44px;
+    height: 28px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: #000;
   }
 
   /* PREVIEW CARD */
   .preview-card {
     display: none;
     background: var(--bg-input);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 12px;
-    border: 1px solid var(--border);
-    margin-bottom: 14px;
+    margin-top: 14px;
   }
   .preview-inner {
     display: flex;
@@ -321,239 +453,367 @@
     align-items: center;
   }
   .preview-img {
-    width: 90px;
-    height: 60px;
-    object-fit: cover;
+    width: 80px;
+    height: 52px;
     border-radius: 6px;
-    background: #000;
+    object-fit: cover;
   }
   .preview-info {
-    overflow: hidden;
     flex: 1;
+    overflow: hidden;
   }
   .preview-title {
-    font-weight: 600;
-    font-size: 0.85rem;
-    margin-bottom: 4px;
+    font-size: 0.88rem;
+    font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .preview-badge {
+    display: inline-block;
     font-size: 0.72rem;
-    background: #1e3a8a;
-    color: #93c5fd;
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-2);
     padding: 2px 6px;
     border-radius: 4px;
-    display: inline-block;
+    margin-top: 4px;
   }
 
-  /* PROGRESS BAR */
+  /* PROGRESS MONITOR */
   .progress-wrap {
     display: none;
-    background: var(--bg-input);
-    padding: 14px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    margin-bottom: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--accent-blue);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
   }
   .bar-bg {
-    background: var(--bg-card);
+    background: var(--bg-input);
     height: 8px;
     border-radius: 4px;
     overflow: hidden;
     margin: 8px 0;
   }
   .bar-fill {
-    background: linear-gradient(90deg, var(--accent), var(--accent-blue));
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent));
     height: 100%;
     width: 0%;
-    transition: width 0.2s;
-  }
-  .download-btn-finish {
-    display: none;
-    width: 100%;
-    padding: 10px;
-    background: var(--success);
-    color: white;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: 700;
-    font-size: 0.9rem;
-    text-decoration: none;
-    margin-top: 10px;
-    box-sizing: border-box;
+    transition: width 0.3s ease;
   }
 
-  /* BATCH QUEUE CARDS */
-  .batch-item {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 8px;
-    font-size: 0.82rem;
+  /* RECENT DOWNLOADS TABLE & CARDS */
+  .recent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
   }
-  .batch-item-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-  .batch-item-title {
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 280px;
-  }
-
-  /* RECENT DOWNLOADS (USER-SCOPED) */
-  .recent-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  .recent-card {
     background: var(--bg-input);
-    padding: 8px 10px;
-    border-radius: 8px;
     border: 1px solid var(--border);
-    margin-bottom: 6px;
-    font-size: 0.8rem;
-  }
-  .recent-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 240px;
-    color: var(--text);
-  }
-  .recent-actions {
+    border-radius: 10px;
+    padding: 12px;
     display: flex;
-    gap: 6px;
-    align-items: center;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.2s;
   }
-  .btn-icon {
-    padding: 3px 6px;
-    border-radius: 6px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    cursor: pointer;
+  .recent-card:hover {
+    border-color: var(--border-highlight);
+  }
+  .recent-card-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    word-break: break-all;
+    margin-bottom: 6px;
+  }
+  .recent-card-meta {
     font-size: 0.75rem;
-    text-decoration: none;
-  }
-  .btn-icon:hover { color: var(--text); background: var(--border); }
-  .btn-icon-danger:hover { color: var(--danger); border-color: var(--danger); }
-
-  /* FOOTER */
-  footer {
+    color: var(--muted);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 16px;
-    margin-top: 20px;
-    border-top: 1px solid var(--border);
-    font-size: 0.78rem;
-    color: var(--muted);
-    flex-wrap: wrap;
-    gap: 8px;
   }
-  .toast {
-    display: none;
-    padding: 8px 14px;
+
+  /* ACCORDION */
+  .accordion-box {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    font-size: 0.82rem;
-    margin-bottom: 12px;
+    margin-top: 10px;
+    overflow: hidden;
   }
-  .toast-info { background: #1e3a8a; color: #93c5fd; }
-  .toast-success { background: #064e3b; color: #6ee7b7; }
-  .toast-error { background: #450a0a; color: #fca5a5; }
+  .accordion-header {
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+  }
+  .accordion-body {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    display: none;
+    z-index: 9999;
+  }
+  .toast-success { border-color: var(--success); }
+  .toast-error { border-color: var(--danger); }
+
+  /* RESPONSIVE */
+  @media (max-width: 860px) {
+    .app-layout {
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar {
+      width: 100%;
+      min-width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .main-content {
+      padding: 16px;
+      height: auto;
+      overflow-y: visible;
+    }
+  }
 </style>
 </head>
 <body>
-<div class="app-container">
-  <!-- TOP BAR -->
-  <div class="top-bar">
-    <div class="branding">
-      <h1>{{ (config and config.site_title) or '🎬 Descargador Multimedia' }}</h1>
-      <span class="user-tag">👤 {{ username }}</span>
+
+<div class="app-layout">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-header">
+        <a href="/" class="brand-title">
+          <span>🎬</span>
+          <span>{{ (config and config.site_title) or 'ytsite' }}</span>
+        </a>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.75rem; color:var(--muted);">Multimedia Downloader</span>
+          <span class="brand-badge">v{{ version }}</span>
+        </div>
+        <div class="user-badge-box">
+          <span style="font-weight:600;">👤 {{ username }}</span>
+          {% if is_admin %}
+          <span style="color:var(--accent-2); font-weight:700; font-size:0.72rem;">👑 Admin</span>
+          {% else %}
+          <span style="color:var(--muted); font-size:0.72rem;">Usuario</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- NAVIGATION TABS -->
+      <nav class="nav-group">
+        <div class="nav-title">Modos de Descarga</div>
+        <button class="nav-item active" id="tabNavQuick" data-tab="tab-quick">
+          <span>⚡</span>
+          <span>Modo Fácil (Rápido)</span>
+        </button>
+        <button class="nav-item" id="tabNavAdv" data-tab="tab-adv">
+          <span>🎛️</span>
+          <span>Modo Avanzado</span>
+        </button>
+        <button class="nav-item" id="tabNavBatch" data-tab="tab-batch">
+          <span>📋</span>
+          <span>Descargas en Lote</span>
+        </button>
+        
+        <div class="nav-title" style="margin-top:10px;">Gestión Personal</div>
+        <button class="nav-item" id="tabNavHistory" data-tab="tab-history">
+          <span>📂</span>
+          <span>Mis Descargas</span>
+        </button>
+      </nav>
     </div>
-    <div class="top-actions">
-      <button id="pwaInstallBtn" class="btn-sm btn-install" style="display:none;" title="Instalar como App nativa">
+
+    <!-- SIDEBAR FOOTER -->
+    <div class="sidebar-footer">
+      <div>
+        <label style="font-size:0.72rem; margin-bottom:4px;">Tema Visual</label>
+        <select id="themeSelector" style="padding:6px 10px; font-size:0.8rem;">
+          <option value="cyberpunk">🌌 Cyberpunk / Midnight</option>
+          <option value="oled">🌑 OLED Black</option>
+          <option value="emerald">🌲 Emerald Green</option>
+          <option value="light">☀️ Light Clean</option>
+        </select>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:6px;">
+        {% if is_admin %}
+        <a href="/admin" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">⚙️ Admin</a>
+        {% endif %}
+        <a href="/wiki" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">📚 Wiki</a>
+      </div>
+
+      <button id="pwaInstallBtn" class="btn btn-primary btn-sm" style="display:none; width:100%; font-size:0.8rem;">
         📲 Instalar App
       </button>
-      <select id="themeSelector" style="width:auto; padding:4px 8px; font-size:0.75rem; height:28px;" title="Cambiar tema visual">
-        <option value="cyberpunk">🌌 Cyberpunk</option>
-        <option value="oled">🖤 OLED Black</option>
-        <option value="emerald">🌲 Emerald</option>
-        <option value="light">☀️ Light</option>
-      </select>
-      {% if is_admin %}
-      <button id="diskWidget" class="btn-sm" style="font-size:0.75rem;" title="Espacio en Disco VPS">
-        <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--success);" id="diskDot"></span>
-        <span id="diskText">Disco: ...</span>
-      </button>
-      <button id="cleanBtn" title="Limpieza total del servidor" class="btn-sm">
-        🧹 Servidor
-      </button>
-      <button id="updateBtn" title="Actualizar motor yt-dlp" class="btn-sm">
-        ⟳ yt-dlp
-      </button>
-      <a href="/admin" title="Panel de Administración" class="btn-sm">
-        ⚙️ Admin
-      </a>
-      {% endif %}
-      <a href="/wiki" title="Documentación y Wiki Técnica" class="btn-sm">
-        📚 Wiki
-      </a>
-      <button id="logoutBtn" title="Cerrar Sesión" class="btn-sm" style="background:#450a0a; border-color:#7f1d1d; color:#fca5a5;">
-        🚪 Salir
+
+      <button id="logoutBtn" class="btn btn-danger btn-sm" style="width:100%; font-size:0.8rem;">
+        🚪 Cerrar Sesión
       </button>
     </div>
-  </div>
+  </aside>
 
+  <!-- MAIN VIEWPORT -->
+  <main class="main-content">
+    <div id="toast" class="toast"></div>
 
-  <div id="toast" class="toast"></div>
+    <!-- PROGRESS DRAWER (ACTIVE JOB) -->
+    <div class="progress-wrap" id="singleProgressWrap">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-weight:700; font-size:0.92rem;" id="currentTitleLabel">Procesando...</div>
+        <span id="singleSpeedText" style="font-size:0.8rem; color:var(--accent-blue); font-weight:600;"></span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" id="singleBarFill"></div></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--muted);">
+        <span id="singleStatusText">Iniciando...</span>
+        <a id="singleDownloadFinishBtn" href="#" class="btn btn-primary btn-sm" style="display:none; padding:4px 10px; font-size:0.75rem;">💾 Guardar Archivo</a>
+      </div>
+    </div>
 
-  <!-- DASHBOARD MAIN GRID -->
-  <div class="dashboard-grid">
-    <!-- LEFT PANEL: DOWNLOAD CONTROLS -->
-    <div>
-      <div class="panel-card">
-        <div class="mode-switch">
-          <button class="mode-btn active" id="btnModeSingle">🔗 Enlace Individual / Álbum</button>
-          <button class="mode-btn" id="btnModeBatch">📋 Modo Múltiples Enlaces</button>
+    <!-- ==================== TAB 1: MODO FÁCIL (RÁPIDO) ==================== -->
+    <div id="tab-quick" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">
+          <span>⚡ Descarga Rápida (1 Solo Clic)</span>
+          <span style="font-size:0.78rem; font-weight:normal; color:var(--muted);">Pegá el link, elegí el formato y descargá</span>
         </div>
 
-        <!-- SINGLE LINK FORM -->
-        <div id="singleModeForm">
-          <label>Enlace del Video, Canción o Playlist</label>
-          <div class="input-row">
-            <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=... o spotify.com/track/..." autocomplete="off">
-            <button id="infoBtn" class="btn-sm" style="background:var(--bg-input); white-space:nowrap;">🔍 Inspeccionar</button>
+        <div>
+          <label>Enlace del Contenido (YouTube, Spotify, Deezer, TikTok, Instagram...)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="quickUrlInput" placeholder="https://youtube.com/watch?v=... o spotify/deezer..." autocomplete="off">
+            <button id="btnPasteQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">📋 Pegar</button>
+            <button id="btnInspectQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
           </div>
         </div>
 
-        <!-- BATCH LINK FORM -->
-        <div id="batchModeForm" style="display:none;">
-          <label>Pegar Lista de URLs (una por línea)</label>
-          <textarea id="batchUrlsInput" placeholder="https://youtube.com/watch?v=...&#10;https://open.spotify.com/track/...&#10;https://www.deezer.com/track/..."></textarea>
+        <!-- QUICK PRESET PILLS -->
+        <label style="margin-top:14px;">Formato de Salida Rápido</label>
+        <div class="preset-grid">
+          <div class="preset-pill active" data-preset="720p" data-type="video">
+            <div class="preset-pill-title">🎬 720p HD</div>
+            <div class="preset-pill-sub">Video MP4</div>
+          </div>
+          <div class="preset-pill" data-preset="1080p" data-type="video">
+            <div class="preset-pill-title">🎬 1080p FHD</div>
+            <div class="preset-pill-sub">Video MP4</div>
+          </div>
+          <div class="preset-pill" data-preset="best" data-type="video">
+            <div class="preset-pill-title">🎬 Mejor Calidad</div>
+            <div class="preset-pill-sub">Automático</div>
+          </div>
+          <div class="preset-pill" data-preset="audio_320" data-type="audio">
+            <div class="preset-pill-title">🎵 MP3 (320k)</div>
+            <div class="preset-pill-sub">Máxima Fidelidad</div>
+          </div>
+          <div class="preset-pill" data-preset="audio_192" data-type="audio">
+            <div class="preset-pill-title">🎵 MP3 (192k)</div>
+            <div class="preset-pill-sub">Estándar</div>
+          </div>
+          <div class="preset-pill" data-preset="flac" data-type="audio">
+            <div class="preset-pill-title">🎵 FLAC</div>
+            <div class="preset-pill-sub">Sin Pérdida</div>
+          </div>
         </div>
 
-        <!-- ENGINE & BASIC FORMAT -->
+        <!-- PREVIEW CARD (VIDEO OR TRACK) -->
+        <div class="preview-card" id="quickPreviewCard">
+          <div class="preview-inner">
+            <img id="quickPreviewImg" class="preview-img" alt="Portada">
+            <div class="preview-info">
+              <div class="preview-title" id="quickPreviewTitle">Título detectado</div>
+              <span class="preview-badge" id="quickPreviewPlatform">Web</span>
+              <span style="font-size:0.75rem; color:var(--muted); margin-left:6px;" id="quickPreviewDuration"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLAYLIST EXPLORER & ITEM SELECTOR -->
+        <div class="playlist-explorer" id="quickPlaylistExplorer" style="display:none;">
+          <div class="playlist-header-actions">
+            <div>
+              <strong id="quickPlaylistTitle">Playlist / Álbum detectado</strong>
+              <div style="font-size:0.75rem; color:var(--muted);" id="quickPlaylistCountLabel">0 elementos</div>
+            </div>
+            
+            <div class="playlist-delivery-toggle">
+              <button class="delivery-btn active" id="btnDeliveryZip" data-delivery="zip">📦 Empaquetar en ZIP</button>
+              <button class="delivery-btn" id="btnDeliveryIndividual" data-delivery="individual">🚀 Descargas Individuales</button>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:0.75rem;">
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary btn-sm" id="btnSelectAllItems" style="font-size:0.72rem; padding:3px 8px;">☑️ Todos</button>
+              <button class="btn btn-secondary btn-sm" id="btnDeselectAllItems" style="font-size:0.72rem; padding:3px 8px;">⬜ Ninguno</button>
+            </div>
+            <span id="quickSelectedCountText" style="color:var(--accent-blue); font-weight:600;">(Todos seleccionados)</span>
+          </div>
+
+          <div class="playlist-items-list" id="quickPlaylistItemsList"></div>
+        </div>
+
+        <button id="btnQuickDownload" class="btn btn-primary btn-block" style="margin-top:16px; padding:12px; font-size:1rem;">
+          <span>⬇️ Descargar Ahora</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: MODO AVANZADO ==================== -->
+    <div id="tab-adv" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>🎛️ Configuración Avanzada de Extracción</span>
+          <span style="font-size:0.78rem; font-weight:normal; color:var(--muted);">Personalización de motor, recortes y subtítulos</span>
+        </div>
+
+        <div>
+          <label>Enlace del Contenido</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="advUrlInput" placeholder="https://youtube.com/watch?v=... o playlist/álbum..." autocomplete="off">
+            <button id="btnInspectAdv" class="btn btn-secondary btn-sm">🔍 Inspeccionar</button>
+          </div>
+        </div>
+
         <div style="margin-top:14px;">
           <label>Motor de Extracción</label>
           <div class="engine-selector">
-            <button class="engine-btn active" data-engine="ytdlp">🚀 yt-dlp (Completo + Playlists)</button>
-            <button class="engine-btn" data-engine="cobalt">⚡ Cobalt v11 (Ultra Rápido)</button>
+            <button class="engine-btn active" data-engine="ytdlp" id="btnEngineYtdlp">🚀 yt-dlp (Completo + Playlists)</button>
+            <button class="engine-btn" data-engine="cobalt" id="btnEngineCobalt">⚡ Cobalt v11 (Ultra Rápido)</button>
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:10px;">
           <div>
             <label>Calidad / Formato</label>
-            <select id="qualitySelect">
-              <optgroup label="🎬 Video (Mejor disponible)">
+            <select id="advQualitySelect">
+              <optgroup label="🎬 Video">
                 <option value="best" selected>Mejor Calidad (Automático)</option>
                 <option value="2160p">4K UHD (2160p)</option>
                 <option value="1440p">2K QHD (1440p)</option>
@@ -561,21 +821,22 @@
                 <option value="720p">HD (720p)</option>
                 <option value="480p">SD (480p)</option>
               </optgroup>
-              <optgroup label="🎵 Audio (Extracción / Música)">
+              <optgroup label="🎵 Audio">
                 <option value="audio_320">MP3 — 320 kbps (Máxima Fidelidad)</option>
                 <option value="audio_256">MP3 — 256 kbps (Muy Alta)</option>
                 <option value="audio_192">MP3 — 192 kbps (Estándar)</option>
-                <option value="audio_128">MP3 — 128 kbps (Ahorro de espacio)</option>
-                <option value="flac">FLAC (Lossless / Sin Pérdida)</option>
+                <option value="audio_128">MP3 — 128 kbps (Ahorro)</option>
+                <option value="flac">FLAC (Lossless)</option>
                 <option value="m4a">M4A (AAC)</option>
                 <option value="opus">Opus</option>
-                <option value="wav">WAV (Audio sin comprimir)</option>
+                <option value="wav">WAV</option>
               </optgroup>
             </select>
           </div>
+
           <div>
-            <label>Contenedor de Salida</label>
-            <select id="videoFormatSelect">
+            <label>Contenedor de Video</label>
+            <select id="advVideoFormatSelect">
               <option value="mp4" selected>MP4 (Universal)</option>
               <option value="mkv">MKV (Matroska)</option>
               <option value="webm">WebM</option>
@@ -583,167 +844,145 @@
           </div>
         </div>
 
-        <div style="margin-top:10px;" id="playlistWrap">
-          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" id="playlistCheckbox"> Descargar Playlist / Álbum completo (.ZIP)
-          </label>
-        </div>
-
-        <!-- ACCORDION: ADVANCED FORMATS & SUBTITLES -->
-        <div class="accordion-box" id="advAccordion">
-          <div class="accordion-header" id="advAccordionHeader">
-            <span>⚙️ Opciones Avanzadas (Recorte & Subtítulos)</span>
-            <span id="advToggleIcon">▼</span>
+        <!-- RECORTE & SUBTÍTULOS -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:12px;">
+          <div>
+            <label>Recortar desde (ej. 01:15)</label>
+            <input type="text" id="advStartTime" placeholder="00:00">
           </div>
-          <div class="accordion-body" id="advAccordionBody">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-              <div>
-                <label>Recortar desde (ej. 01:15)</label>
-                <input type="text" id="startTimeInput" placeholder="00:00">
-              </div>
-              <div>
-                <label>Recortar hasta (ej. 03:40)</label>
-                <input type="text" id="endTimeInput" placeholder="00:00">
-              </div>
-            </div>
-            <div style="margin-top:10px;">
-              <label>Subtítulos</label>
-              <select id="subtitlesSelect">
-                <option value="none" selected>Sin subtítulos</option>
-                <option value="embed">Incrustar subtítulos en el video</option>
-                <option value="download">Descargar archivo .srt/.vtt independiente</option>
-              </select>
-            </div>
+          <div>
+            <label>Recortar hasta (ej. 03:40)</label>
+            <input type="text" id="advEndTime" placeholder="00:00">
+          </div>
+          <div>
+            <label>Subtítulos</label>
+            <select id="advSubtitles">
+              <option value="none" selected>Sin subtítulos</option>
+              <option value="embed">Incrustar en video</option>
+              <option value="download">Descargar .srt/.vtt independiente</option>
+            </select>
           </div>
         </div>
 
-        <!-- ACCORDION: DEEZER ARL -->
-        <div class="accordion-box" id="deezerSection" style="display:none;">
-          <div class="accordion-header" id="deezerHeader">
+        <!-- ACCORDIONS (DEEZER ARL & CLOUD SYNC) -->
+        <div class="accordion-box" id="advDeezerBox" style="display:none;">
+          <div class="accordion-header" id="advDeezerHeader">
             <span>🎵 Token Deezer ARL (FLAC / 320k Directo)</span>
-            <span id="deezerToggleIcon">▼</span>
+            <span id="advDeezerIcon">▼</span>
           </div>
-          <div class="accordion-body" id="deezerBody" style="display:block;">
-            <label>Token ARL de tu cuenta</label>
-            <input type="password" id="deezerArlInput" placeholder="Pegá tu ARL para descargas en FLAC directo...">
-            <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
-              💡 Si no tenés ARL o expira, se descargará automáticamente mediante <em>Audio Matching</em>.
-            </div>
+          <div class="accordion-body" id="advDeezerBody" style="display:block;">
+            <input type="password" id="advDeezerArl" placeholder="Pegá tu ARL para descargas en FLAC directo...">
           </div>
         </div>
 
-        <!-- ACCORDION: USER CLOUD SYNC -->
         <div class="accordion-box">
-          <div class="accordion-header" id="userCloudHeader">
-            <span>☁️ Enviar a mi Nube Personal (Nextcloud / FTP / Webhook)</span>
-            <span id="userCloudToggleIcon">▼</span>
+          <div class="accordion-header" id="advCloudHeader">
+            <span>☁️ Enviar a mi Nube Personal (Nextcloud WebDAV / FTP)</span>
+            <span id="advCloudIcon">▼</span>
           </div>
-          <div class="accordion-body" id="userCloudBody">
-            <div style="font-size:0.78rem; color:var(--muted); margin-bottom:8px;">
-              Tus credenciales se guardan de forma privada en tu navegador.
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+          <div class="accordion-body" id="advCloudBody">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
               <div>
-                <label style="margin:0 0 4px; display:flex; align-items:center; gap:6px;">
+                <label style="display:flex; align-items:center; gap:6px;">
                   <input type="checkbox" id="userWebdavEnabled"> Nextcloud / WebDAV
                 </label>
-                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="font-size:0.8rem; margin-bottom:4px;">
-                <input type="text" id="userWebdavUser" placeholder="Usuario" style="font-size:0.8rem; margin-bottom:4px;">
+                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="margin-bottom:4px; font-size:0.8rem;">
+                <input type="text" id="userWebdavUser" placeholder="Usuario" style="margin-bottom:4px; font-size:0.8rem;">
                 <input type="password" id="userWebdavPass" placeholder="App Token" style="font-size:0.8rem;">
               </div>
               <div>
-                <label style="margin:0 0 4px; display:flex; align-items:center; gap:6px;">
+                <label style="display:flex; align-items:center; gap:6px;">
                   <input type="checkbox" id="userFtpEnabled"> Servidor FTP
                 </label>
-                <input type="text" id="userFtpHost" placeholder="ftp.dominio.com" style="font-size:0.8rem; margin-bottom:4px;">
-                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="font-size:0.8rem; margin-bottom:4px;">
+                <input type="text" id="userFtpHost" placeholder="ftp.servidor.com" style="margin-bottom:4px; font-size:0.8rem;">
+                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="margin-bottom:4px; font-size:0.8rem;">
                 <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.8rem;">
               </div>
             </div>
           </div>
         </div>
 
-        <!-- SUBMIT BUTTON -->
-        <button id="downloadBtn" class="btn-primary">
-          <span>⬇️ Iniciar Descarga</span>
+        <button id="btnAdvDownload" class="btn btn-primary btn-block" style="margin-top:16px; padding:12px;">
+          <span>⬇️ Iniciar Descarga Avanzada</span>
         </button>
       </div>
     </div>
 
-    <!-- RIGHT PANEL: MONITOR, QUEUE & USER RECENT DOWNLOADS -->
-    <div>
-      <!-- LIVE PREVIEW CARD -->
-      <div class="preview-card" id="previewCard">
-        <div class="preview-inner">
-          <img id="previewImg" class="preview-img" alt="Portada">
-          <div class="preview-info">
-            <div class="preview-title" id="previewTitle">Título del contenido</div>
-            <span class="preview-badge" id="previewPlatform">YouTube</span>
-            <span style="font-size:0.75rem; color:var(--muted); margin-left:6px;" id="previewDuration"></span>
+    <!-- ==================== TAB 3: DESCARGAS EN LOTE (BATCH) ==================== -->
+    <div id="tab-batch" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>📋 Descarga de Múltiples Enlaces Simultáneos</span>
+          <span style="font-size:0.78rem; font-weight:normal; color:var(--muted);">Procesamiento en cola paralela</span>
+        </div>
+
+        <label>Pegar Lista de URLs (una por línea)</label>
+        <textarea id="batchUrlsInput" placeholder="https://youtube.com/watch?v=...&#10;https://open.spotify.com/track/...&#10;https://www.deezer.com/track/..."></textarea>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+          <div>
+            <label>Calidad Predeterminada</label>
+            <select id="batchQualitySelect">
+              <option value="best" selected>Mejor Calidad Video (MP4)</option>
+              <option value="720p">720p HD Video</option>
+              <option value="audio_320">Audio MP3 (320 kbps)</option>
+              <option value="audio_192">Audio MP3 (192 kbps)</option>
+              <option value="flac">Audio FLAC</option>
+            </select>
+          </div>
+          <div>
+            <label>Motor</label>
+            <select id="batchEngineSelect">
+              <option value="ytdlp" selected>🚀 yt-dlp (Recomendado)</option>
+              <option value="cobalt">⚡ Cobalt v11</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <!-- SINGLE PROGRESS MONITOR -->
-      <div class="progress-wrap" id="singleProgressWrap">
-        <div style="font-weight:600; font-size:0.88rem;" id="currentTitleLabel">Procesando...</div>
-        <div class="bar-bg"><div class="bar-fill" id="singleBarFill"></div></div>
-        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--muted);">
-          <span id="singleStatusText">Iniciando...</span>
-          <span id="singleSpeedText"></span>
+        <button id="btnBatchDownload" class="btn btn-primary btn-block" style="margin-top:14px; padding:11px;">
+          <span>🚀 Procesar Cola en Lote</span>
+        </button>
+
+        <!-- BATCH QUEUE MONITOR -->
+        <div id="batchProgressCard" style="display:none; margin-top:16px; background:var(--bg-input); border-radius:10px; padding:14px; border:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong>Progreso de la Cola</strong>
+            <span id="batchQueueStats" style="font-size:0.8rem; color:var(--accent-blue);">0 completadas</span>
+          </div>
+          <div id="batchQueueList" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
+          <a id="btnBatchZipDownload" href="#" class="btn btn-primary btn-sm" style="display:none; margin-top:10px; width:100%;">📦 Descargar Todo en ZIP</a>
         </div>
-        <a id="singleDownloadFinishBtn" href="#" class="download-btn-finish">💾 Guardar Archivo</a>
       </div>
+    </div>
 
-      <!-- BATCH QUEUE MONITOR -->
-      <div class="panel-card" id="batchProgressCard" style="display:none;">
-        <div class="panel-title">
-          <span>📋 Cola de Descargas en Progreso</span>
-          <a id="btnBatchZipDownload" href="#" class="btn-sm" style="display:none; background:var(--success); color:white; text-decoration:none;">
-            📦 Descargar Todo (.ZIP)
-          </a>
-        </div>
-        <div style="font-size:0.8rem; color:var(--muted); margin-bottom:10px;" id="batchQueueStats">0 de 0 completadas</div>
-        <div id="batchQueueList"></div>
-      </div>
-
-      <!-- USER-SCOPED RECENT DOWNLOADS -->
-      <div class="panel-card">
-        <div class="panel-title">
-          <span>📂 Mis Descargas Recientes</span>
-          <div style="display:flex; gap:6px; align-items:center;">
+    <!-- ==================== TAB 4: MIS DESCARGAS ==================== -->
+    <div id="tab-history" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>📂 Mis Archivos & Descargas Recientes</span>
+          <div style="display:flex; gap:8px; align-items:center;">
             {% if is_admin %}
-            <label style="font-size:0.72rem; margin:0; display:flex; align-items:center; gap:4px; cursor:pointer;" title="Ver descargas de todos los usuarios">
-              <input type="checkbox" id="chkShowAllUsers"> Ver Todas
+            <label style="font-size:0.75rem; margin:0; display:flex; align-items:center; gap:4px;">
+              <input type="checkbox" id="chkShowAllUsers"> Ver todo el servidor
             </label>
             {% endif %}
-            <button id="btnCleanMyDownloads" class="btn-sm" style="font-size:0.72rem; padding:3px 8px;" title="Borrar mis descargas del servidor">
-              🧹 Limpiar Mías
-            </button>
+            <button id="btnCleanMyDownloads" class="btn btn-secondary btn-sm" style="color:var(--danger);">🧹 Liberar Espacio</button>
           </div>
         </div>
-        <div id="recentDownloadsList" style="max-height:280px; overflow-y:auto;">
-          <div style="font-size:0.8rem; color:var(--muted); text-align:center; padding:16px;">Cargando tus descargas...</div>
+
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <input type="text" id="filterDownloadsInput" placeholder="🔍 Buscar por nombre de archivo...">
         </div>
+
+        <!-- RECENT DOWNLOADS GRID -->
+        <div class="recent-grid" id="recentDownloadsGrid"></div>
       </div>
     </div>
-  </div>
-
-  <!-- FOOTER -->
-  <footer>
-    <div>
-      Uso privado para contenido autorizado. · <a href="/wiki" style="color:var(--muted); text-decoration:none;">📚 Wiki Técnica</a>
-    </div>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <span style="background:var(--bg-input); padding:2px 8px; border-radius:12px; border:1px solid var(--border);">
-        Versión: <strong>v{{ version or '2.0.0' }}</strong>
-      </span>
-    </div>
-  </footer>
+  </main>
 </div>
 
 <script>
-// ==================== PWA SERVICE WORKER & INSTALL ====================
+// ==================== GLOBAL INITIALIZATION & PWA ====================
 let deferredPrompt;
 const pwaInstallBtn = document.getElementById('pwaInstallBtn');
 
@@ -756,7 +995,7 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  if (pwaInstallBtn) pwaInstallBtn.style.display = 'inline-flex';
+  if (pwaInstallBtn) pwaInstallBtn.style.display = 'block';
 });
 
 if (pwaInstallBtn) {
@@ -764,27 +1003,24 @@ if (pwaInstallBtn) {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        pwaInstallBtn.style.display = 'none';
-      }
+      if (outcome === 'accepted') pwaInstallBtn.style.display = 'none';
       deferredPrompt = null;
     }
   });
 }
 
-// ==================== THEME MANAGEMENT ====================
+// Theme management
 const themeSelector = document.getElementById('themeSelector');
 const currentTheme = localStorage.getItem('site_theme') || '{{ (config and config.default_theme) or "cyberpunk" }}';
 document.documentElement.setAttribute('data-theme', currentTheme);
 themeSelector.value = currentTheme;
-
 themeSelector.addEventListener('change', (e) => {
   const chosen = e.target.value;
   document.documentElement.setAttribute('data-theme', chosen);
   localStorage.setItem('site_theme', chosen);
 });
 
-// ==================== TOAST HELPER ====================
+// Toast
 function showToast(msg, type = 'info', timeout = 4000) {
   const t = document.getElementById('toast');
   t.className = `toast toast-${type}`;
@@ -793,66 +1029,18 @@ function showToast(msg, type = 'info', timeout = 4000) {
   if (timeout) setTimeout(() => { t.style.display = 'none'; }, timeout);
 }
 
-// ==================== MODE SWITCHER ====================
-const btnModeSingle = document.getElementById('btnModeSingle');
-const btnModeBatch = document.getElementById('btnModeBatch');
-const singleModeForm = document.getElementById('singleModeForm');
-const batchModeForm = document.getElementById('batchModeForm');
-let currentMode = 'single';
-
-btnModeSingle.addEventListener('click', () => {
-  currentMode = 'single';
-  btnModeSingle.classList.add('active');
-  btnModeBatch.classList.remove('active');
-  singleModeForm.style.display = 'block';
-  batchModeForm.style.display = 'none';
-});
-
-btnModeBatch.addEventListener('click', () => {
-  currentMode = 'batch';
-  btnModeBatch.classList.add('active');
-  btnModeSingle.classList.remove('active');
-  singleModeForm.style.display = 'none';
-  batchModeForm.style.display = 'block';
-});
-
-// ==================== ENGINE SELECTOR ====================
-let selectedEngine = 'ytdlp';
-document.querySelectorAll('.engine-btn').forEach(btn => {
+// Navigation Tabs
+document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.engine-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    selectedEngine = btn.dataset.engine;
+    const target = btn.dataset.tab;
+    if (target) document.getElementById(target)?.classList.add('active');
   });
 });
 
-// ==================== ACCORDIONS TOGGLE ====================
-function setupAccordion(headerId, bodyId, iconId) {
-  const h = document.getElementById(headerId);
-  const b = document.getElementById(bodyId);
-  const i = document.getElementById(iconId);
-  if (!h || !b) return;
-  h.addEventListener('click', () => {
-    const isHidden = b.style.display === 'none' || b.style.display === '';
-    b.style.display = isHidden ? 'block' : 'none';
-    if (i) i.textContent = isHidden ? '▲' : '▼';
-  });
-}
-setupAccordion('advAccordionHeader', 'advAccordionBody', 'advToggleIcon');
-setupAccordion('userCloudHeader', 'userCloudBody', 'userCloudToggleIcon');
-
-// ==================== PERSISTENT USER SETTINGS ====================
-const deezerArlInput = document.getElementById('deezerArlInput');
-const savedArl = localStorage.getItem('deezer_arl') || '';
-if (deezerArlInput && savedArl) deezerArlInput.value = savedArl;
-
-if (deezerArlInput) {
-  deezerArlInput.addEventListener('input', (e) => {
-    localStorage.setItem('deezer_arl', e.target.value.trim());
-  });
-}
-
-// User Cloud Settings
+// ==================== CLOUD SYNC & PERSISTENT PREFS ====================
 const userWebdavEnabled = document.getElementById('userWebdavEnabled');
 const userWebdavUrl = document.getElementById('userWebdavUrl');
 const userWebdavUser = document.getElementById('userWebdavUser');
@@ -861,6 +1049,7 @@ const userFtpEnabled = document.getElementById('userFtpEnabled');
 const userFtpHost = document.getElementById('userFtpHost');
 const userFtpUser = document.getElementById('userFtpUser');
 const userFtpPass = document.getElementById('userFtpPass');
+const advDeezerArl = document.getElementById('advDeezerArl');
 
 function loadUserCloudSettings() {
   try {
@@ -877,50 +1066,92 @@ function loadUserCloudSettings() {
       userFtpUser.value = s.ftp.username || '';
       userFtpPass.value = s.ftp.password || '';
     }
+    if (advDeezerArl) advDeezerArl.value = localStorage.getItem('deezer_arl') || '';
   } catch (e) {}
 }
 function saveUserCloudSettings() {
   const s = {
     webdav: {
-      enabled: userWebdavEnabled.checked,
-      url: userWebdavUrl.value.trim(),
-      username: userWebdavUser.value.trim(),
-      password: userWebdavPass.value.trim()
+      enabled: userWebdavEnabled ? userWebdavEnabled.checked : false,
+      url: userWebdavUrl ? userWebdavUrl.value.trim() : '',
+      username: userWebdavUser ? userWebdavUser.value.trim() : '',
+      password: userWebdavPass ? userWebdavPass.value.trim() : ''
     },
     ftp: {
-      enabled: userFtpEnabled.checked,
-      host: userFtpHost.value.trim(),
-      username: userFtpUser.value.trim(),
-      password: userFtpPass.value.trim()
+      enabled: userFtpEnabled ? userFtpEnabled.checked : false,
+      host: userFtpHost ? userFtpHost.value.trim() : '',
+      username: userFtpUser ? userFtpUser.value.trim() : '',
+      password: userFtpPass ? userFtpPass.value.trim() : ''
     }
   };
   localStorage.setItem('user_cloud_sync', JSON.stringify(s));
+  if (advDeezerArl) localStorage.setItem('deezer_arl', advDeezerArl.value.trim());
   return s;
 }
-[userWebdavEnabled, userWebdavUrl, userWebdavUser, userWebdavPass, userFtpEnabled, userFtpHost, userFtpUser, userFtpPass].forEach(el => {
+[userWebdavEnabled, userWebdavUrl, userWebdavUser, userWebdavPass, userFtpEnabled, userFtpHost, userFtpUser, userFtpPass, advDeezerArl].forEach(el => {
   if (el) el.addEventListener('input', saveUserCloudSettings);
 });
 loadUserCloudSettings();
 
-// ==================== URL INSPECTION & PREVIEW ====================
-const urlInput = document.getElementById('urlInput');
-const previewCard = document.getElementById('previewCard');
-const previewImg = document.getElementById('previewImg');
-const previewTitle = document.getElementById('previewTitle');
-const previewPlatform = document.getElementById('previewPlatform');
-const previewDuration = document.getElementById('previewDuration');
-const deezerSection = document.getElementById('deezerSection');
+// Accordion helper
+function setupAccordion(headerId, bodyId, iconId) {
+  const h = document.getElementById(headerId);
+  const b = document.getElementById(bodyId);
+  const i = document.getElementById(iconId);
+  if (!h || !b) return;
+  h.addEventListener('click', () => {
+    const isHidden = b.style.display === 'none' || b.style.display === '';
+    b.style.display = isHidden ? 'block' : 'none';
+    if (i) i.textContent = isHidden ? '▲' : '▼';
+  });
+}
+setupAccordion('advDeezerHeader', 'advDeezerBody', 'advDeezerIcon');
+setupAccordion('advCloudHeader', 'advCloudBody', 'advCloudIcon');
 
-let inspectedData = null;
+// ==================== MODO FÁCIL (PRESET PILLS & PASTE) ====================
+let quickPreset = '720p';
+let quickDelivery = 'zip';
+let inspectedPlaylistItems = [];
 
-async function inspectUrl() {
-  const url = urlInput.value.trim();
+document.querySelectorAll('.preset-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.preset-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    quickPreset = pill.dataset.preset;
+  });
+});
+
+document.getElementById('btnPasteQuick')?.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      document.getElementById('quickUrlInput').value = text.trim();
+      inspectUrl(text.trim(), 'quick');
+    }
+  } catch (e) {
+    showToast('Habilitá permisos del portapapeles o pegá manualmente con Ctrl+V', 'info');
+  }
+});
+
+document.getElementById('btnDeliveryZip')?.addEventListener('click', () => {
+  quickDelivery = 'zip';
+  document.getElementById('btnDeliveryZip').classList.add('active');
+  document.getElementById('btnDeliveryIndividual').classList.remove('active');
+});
+
+document.getElementById('btnDeliveryIndividual')?.addEventListener('click', () => {
+  quickDelivery = 'individual';
+  document.getElementById('btnDeliveryIndividual').classList.add('active');
+  document.getElementById('btnDeliveryZip').classList.remove('active');
+});
+
+// ==================== URL INSPECTION & PLAYLIST EXPLORER ====================
+async function inspectUrl(url, mode = 'quick') {
   if (!url) return;
+  const isQuick = (mode === 'quick');
   
-  if (url.includes('deezer.com')) {
-    deezerSection.style.display = 'block';
-  } else {
-    deezerSection.style.display = 'none';
+  if (url.includes('deezer.com') && document.getElementById('advDeezerBox')) {
+    document.getElementById('advDeezerBox').style.display = 'block';
   }
 
   try {
@@ -931,132 +1162,285 @@ async function inspectUrl() {
     });
     const data = await res.json();
     if (data.error) return;
-    inspectedData = data;
-    previewTitle.textContent = data.title || 'Contenido detectado';
-    previewPlatform.textContent = data.platform || 'Web';
-    previewDuration.textContent = data.duration ? `⏱️ ${Math.floor(data.duration/60)}:${(data.duration%60).toString().padStart(2,'0')}` : '';
-    if (data.thumbnail) {
-      previewImg.src = data.thumbnail;
-      previewImg.style.display = 'block';
+
+    if (data.type === 'playlist') {
+      // PLAYLIST / ALBUM DETECTED
+      document.getElementById('quickPlaylistExplorer').style.display = 'block';
+      document.getElementById('quickPlaylistTitle').textContent = data.title || 'Playlist / Álbum';
+      document.getElementById('quickPlaylistCountLabel').textContent = `${data.count || (data.items || []).length} elementos`;
+      document.getElementById('quickPreviewCard').style.display = 'none';
+
+      inspectedPlaylistItems = data.items || [];
+      renderPlaylistItems(inspectedPlaylistItems);
     } else {
-      previewImg.style.display = 'none';
+      // SINGLE VIDEO / TRACK
+      document.getElementById('quickPlaylistExplorer').style.display = 'none';
+      const previewCard = document.getElementById('quickPreviewCard');
+      document.getElementById('quickPreviewTitle').textContent = data.title || 'Contenido detectado';
+      document.getElementById('quickPreviewPlatform').textContent = data.platform || 'Web';
+      document.getElementById('quickPreviewDuration').textContent = data.duration ? `⏱️ ${Math.floor(data.duration/60)}:${(data.duration%60).toString().padStart(2,'0')}` : '';
+      const img = document.getElementById('quickPreviewImg');
+      if (data.thumbnail) {
+        img.src = data.thumbnail;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
+      previewCard.style.display = 'block';
     }
-    previewCard.style.display = 'block';
   } catch (e) {}
 }
 
-document.getElementById('infoBtn').addEventListener('click', inspectUrl);
-urlInput.addEventListener('paste', () => setTimeout(inspectUrl, 200));
+function renderPlaylistItems(items) {
+  const container = document.getElementById('quickPlaylistItemsList');
+  if (!items || !items.length) {
+    container.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); padding:8px;">Lista de elementos no disponible. Se descargará la lista completa.</div>';
+    return;
+  }
 
-// ==================== SINGLE & BATCH DOWNLOAD EXECUTION ====================
-const downloadBtn = document.getElementById('downloadBtn');
-const singleProgressWrap = document.getElementById('singleProgressWrap');
-const singleBarFill = document.getElementById('singleBarFill');
-const currentTitleLabel = document.getElementById('currentTitleLabel');
-const singleStatusText = document.getElementById('singleStatusText');
-const singleSpeedText = document.getElementById('singleSpeedText');
-const singleDownloadFinishBtn = document.getElementById('singleDownloadFinishBtn');
+  container.innerHTML = items.map(item => `
+    <label class="playlist-item-row">
+      <input type="checkbox" class="chk-playlist-item" value="${item.index}" checked>
+      ${item.thumbnail ? `<img src="${item.thumbnail}" class="playlist-item-thumb">` : ''}
+      <span style="color:var(--muted); font-weight:700; width:22px;">#${item.index}</span>
+      <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.title}">${item.title}</span>
+      <span style="color:var(--muted); font-size:0.75rem;">${item.duration_formatted || ''}</span>
+    </label>
+  `).join('');
 
-downloadBtn.addEventListener('click', async () => {
+  updateSelectedCount();
+
+  container.querySelectorAll('.chk-playlist-item').forEach(chk => {
+    chk.addEventListener('change', updateSelectedCount);
+  });
+}
+
+function updateSelectedCount() {
+  const checked = document.querySelectorAll('.chk-playlist-item:checked');
+  const total = document.querySelectorAll('.chk-playlist-item').length;
+  const lbl = document.getElementById('quickSelectedCountText');
+  if (lbl) {
+    lbl.textContent = `(${checked.length} de ${total} seleccionados)`;
+  }
+}
+
+document.getElementById('btnSelectAllItems')?.addEventListener('click', () => {
+  document.querySelectorAll('.chk-playlist-item').forEach(c => c.checked = true);
+  updateSelectedCount();
+});
+document.getElementById('btnDeselectAllItems')?.addEventListener('click', () => {
+  document.querySelectorAll('.chk-playlist-item').forEach(c => c.checked = false);
+  updateSelectedCount();
+});
+
+document.getElementById('btnInspectQuick')?.addEventListener('click', () => {
+  inspectUrl(document.getElementById('quickUrlInput').value.trim(), 'quick');
+});
+document.getElementById('quickUrlInput')?.addEventListener('paste', (e) => {
+  setTimeout(() => inspectUrl(document.getElementById('quickUrlInput').value.trim(), 'quick'), 200);
+});
+
+document.getElementById('btnInspectAdv')?.addEventListener('click', () => {
+  inspectUrl(document.getElementById('advUrlInput').value.trim(), 'adv');
+});
+
+// ==================== SUBMIT DOWNLOADS ====================
+// 1. Quick Mode Download
+document.getElementById('btnQuickDownload')?.addEventListener('click', async () => {
+  const url = document.getElementById('quickUrlInput').value.trim();
+  if (!url) {
+    showToast('Ingresá una URL de descarga', 'error');
+    return;
+  }
   const userCloudCfg = saveUserCloudSettings();
-  const quality = document.getElementById('qualitySelect').value;
-  const videoFormat = document.getElementById('videoFormatSelect').value;
-  const subtitles = document.getElementById('subtitlesSelect').value;
-  const deezerArl = (deezerArlInput ? deezerArlInput.value.trim() : '');
-
-  if (currentMode === 'single') {
-    const url = urlInput.value.trim();
-    if (!url) {
-      showToast('Ingresá una URL válida', 'error');
+  const isPlaylist = document.getElementById('quickPlaylistExplorer').style.display !== 'none';
+  
+  let selected_indexes = [];
+  if (isPlaylist) {
+    document.querySelectorAll('.chk-playlist-item:checked').forEach(c => {
+      selected_indexes.push(parseInt(c.value));
+    });
+    if (selected_indexes.length === 0) {
+      showToast('Seleccioná al menos un elemento de la lista', 'error');
       return;
     }
-    const isPlaylist = document.getElementById('playlistCheckbox').checked;
-    const startTime = document.getElementById('startTimeInput').value.trim();
-    const endTime = document.getElementById('endTimeInput').value.trim();
+  }
 
-    downloadBtn.disabled = true;
-    singleProgressWrap.style.display = 'block';
-    singleDownloadFinishBtn.style.display = 'none';
-    singleBarFill.style.width = '5%';
-    singleStatusText.textContent = 'Encolando descarga...';
+  const btn = document.getElementById('btnQuickDownload');
+  btn.disabled = true;
 
-    try {
-      const res = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url, quality, video_format: videoFormat, subtitles,
-          playlist: isPlaylist, start_time: startTime, end_time: endTime,
-          engine: selectedEngine, video_title: inspectedData ? inspectedData.title : '',
-          deezer_arl: deezerArl, user_cloud_sync: userCloudCfg
-        })
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      pollSingleJob(data.job_id);
-    } catch (e) {
-      showToast(e.message, 'error');
-      downloadBtn.disabled = false;
-      singleProgressWrap.style.display = 'none';
-    }
-  } else {
-    // BATCH MODE
-    const urlsRaw = document.getElementById('batchUrlsInput').value.trim();
-    if (!urlsRaw) {
-      showToast('Pegá al menos una URL', 'error');
-      return;
-    }
-    downloadBtn.disabled = true;
-    try {
-      const res = await fetch('/api/batch-download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          urls: urlsRaw, quality, video_format: videoFormat, subtitles,
-          engine: selectedEngine, deezer_arl: deezerArl, user_cloud_sync: userCloudCfg
-        })
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      pollBatchJob(data.batch_id);
-    } catch (e) {
-      showToast(e.message, 'error');
-      downloadBtn.disabled = false;
-    }
+  startProgressBanner('Encolando descarga rápida...');
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        quality: quickPreset,
+        video_format: 'mp4',
+        subtitles: 'none',
+        playlist: isPlaylist,
+        selected_indexes,
+        playlist_delivery: quickDelivery,
+        engine: 'ytdlp',
+        user_cloud_sync: userCloudCfg
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    pollSingleJob(data.job_id, () => { btn.disabled = false; });
+  } catch (e) {
+    showToast(e.message, 'error');
+    btn.disabled = false;
+    stopProgressBanner();
   }
 });
 
-function pollSingleJob(jobId) {
+// 2. Advanced Mode Download
+let advEngine = 'ytdlp';
+document.getElementById('btnEngineYtdlp')?.addEventListener('click', () => {
+  advEngine = 'ytdlp';
+  document.getElementById('btnEngineYtdlp').classList.add('active');
+  document.getElementById('btnEngineCobalt').classList.remove('active');
+});
+document.getElementById('btnEngineCobalt')?.addEventListener('click', () => {
+  advEngine = 'cobalt';
+  document.getElementById('btnEngineCobalt').classList.add('active');
+  document.getElementById('btnEngineYtdlp').classList.remove('active');
+});
+
+document.getElementById('btnAdvDownload')?.addEventListener('click', async () => {
+  const url = document.getElementById('advUrlInput').value.trim();
+  if (!url) {
+    showToast('Ingresá una URL válida', 'error');
+    return;
+  }
+  const userCloudCfg = saveUserCloudSettings();
+  const quality = document.getElementById('advQualitySelect').value;
+  const videoFormat = document.getElementById('advVideoFormatSelect').value;
+  const startTime = document.getElementById('advStartTime').value.trim();
+  const endTime = document.getElementById('advEndTime').value.trim();
+  const subtitles = document.getElementById('advSubtitles').value;
+  const deezerArl = advDeezerArl ? advDeezerArl.value.trim() : '';
+
+  const btn = document.getElementById('btnAdvDownload');
+  btn.disabled = true;
+
+  startProgressBanner('Iniciando descarga avanzada...');
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        quality,
+        video_format: videoFormat,
+        start_time: startTime,
+        end_time: endTime,
+        subtitles,
+        engine: advEngine,
+        deezer_arl: deezerArl,
+        user_cloud_sync: userCloudCfg
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    pollSingleJob(data.job_id, () => { btn.disabled = false; });
+  } catch (e) {
+    showToast(e.message, 'error');
+    btn.disabled = false;
+    stopProgressBanner();
+  }
+});
+
+// 3. Batch Mode Download
+document.getElementById('btnBatchDownload')?.addEventListener('click', async () => {
+  const urlsRaw = document.getElementById('batchUrlsInput').value.trim();
+  if (!urlsRaw) {
+    showToast('Pegá al menos una URL por línea', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnBatchDownload');
+  btn.disabled = true;
+  const userCloudCfg = saveUserCloudSettings();
+  const quality = document.getElementById('batchQualitySelect').value;
+  const engine = document.getElementById('batchEngineSelect').value;
+
+  try {
+    const res = await fetch('/api/batch-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        urls: urlsRaw,
+        quality,
+        video_format: 'mp4',
+        engine,
+        user_cloud_sync: userCloudCfg
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    pollBatchJob(data.batch_id, () => { btn.disabled = false; });
+  } catch (e) {
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
+});
+
+// Progress Monitor Helpers
+function startProgressBanner(text) {
+  const wrap = document.getElementById('singleProgressWrap');
+  wrap.style.display = 'block';
+  document.getElementById('singleBarFill').style.width = '5%';
+  document.getElementById('currentTitleLabel').textContent = text;
+  document.getElementById('singleStatusText').textContent = 'Descargando...';
+  document.getElementById('singleSpeedText').textContent = '';
+  document.getElementById('singleDownloadFinishBtn').style.display = 'none';
+}
+function stopProgressBanner() {
+  document.getElementById('singleProgressWrap').style.display = 'none';
+}
+
+function pollSingleJob(jobId, onFinish) {
   const interval = setInterval(async () => {
     try {
       const res = await fetch(`/api/status/${jobId}`);
       const data = await res.json();
       
       const pct = data.percent || 0;
-      singleBarFill.style.width = pct + '%';
-      currentTitleLabel.textContent = data.current_title || 'Descargando...';
-      singleStatusText.textContent = data.status === 'finished' ? '✅ Descarga completada' : `Estado: ${data.status} (${pct}%)`;
-      singleSpeedText.textContent = data.speed || '';
+      document.getElementById('singleBarFill').style.width = pct + '%';
+      document.getElementById('currentTitleLabel').textContent = data.current_title || 'Descargando...';
+      document.getElementById('singleStatusText').textContent = data.status === 'finished' ? '✅ Descarga completada' : `Estado: ${data.status} (${pct}%)`;
+      document.getElementById('singleSpeedText').textContent = data.speed || '';
 
       if (data.status === 'finished') {
         clearInterval(interval);
-        downloadBtn.disabled = false;
-        singleDownloadFinishBtn.href = `/api/files/${jobId}`;
-        singleDownloadFinishBtn.style.display = 'block';
+        if (onFinish) onFinish();
+        const finishBtn = document.getElementById('singleDownloadFinishBtn');
+        if (data.delivery === 'individual') {
+          finishBtn.style.display = 'none';
+          showToast(`¡Se completaron ${data.files_count || 'todos los'} archivos individualmente!`, 'success');
+        } else {
+          finishBtn.href = `/api/files/${jobId}`;
+          finishBtn.style.display = 'inline-flex';
+          showToast('¡Descarga completada con éxito!', 'success');
+        }
         loadRecentDownloads();
       } else if (data.status === 'error') {
         clearInterval(interval);
-        downloadBtn.disabled = false;
+        if (onFinish) onFinish();
         showToast('Error en la descarga: ' + (data.error || 'Desconocido'), 'error');
       }
     } catch (e) {
       clearInterval(interval);
-      downloadBtn.disabled = false;
+      if (onFinish) onFinish();
     }
   }, 1000);
 }
 
-function pollBatchJob(batchId) {
+function pollBatchJob(batchId, onFinish) {
   const card = document.getElementById('batchProgressCard');
   const list = document.getElementById('batchQueueList');
   const stats = document.getElementById('batchQueueStats');
@@ -1070,62 +1454,77 @@ function pollBatchJob(batchId) {
       stats.textContent = `${data.completed_count || 0} de ${data.total_count || 0} completadas`;
 
       list.innerHTML = (data.jobs || []).map(j => `
-        <div class="batch-item">
-          <div class="batch-item-top">
-            <span class="batch-item-title">${j.title || j.url}</span>
-            <span>${j.status === 'finished' ? '🟢 Listo' : (j.status === 'error' ? '🔴 Error' : '⏳ ' + (j.percent||0) + '%')}</span>
-          </div>
-          ${j.status === 'finished' ? `<a href="/api/files/${j.job_id}" class="btn-icon" style="color:var(--success); text-decoration:none; display:inline-block; margin-top:4px;">⬇️ Descargar Archivo</a>` : ''}
+        <div style="background:var(--bg-card); padding:8px 10px; border-radius:6px; font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;">${j.title || j.url}</span>
+          <span>${j.status === 'finished' ? '🟢 Listo' : (j.status === 'error' ? '🔴 Error' : '⏳ ' + (j.percent||0) + '%')}</span>
         </div>
       `).join('');
 
       if (data.all_finished) {
         clearInterval(interval);
-        downloadBtn.disabled = false;
+        if (onFinish) onFinish();
         btnZip.href = `/api/batch-download-zip/${batchId}`;
         btnZip.style.display = 'inline-flex';
         loadRecentDownloads();
       }
     } catch (e) {
       clearInterval(interval);
-      downloadBtn.disabled = false;
+      if (onFinish) onFinish();
     }
   }, 1500);
 }
 
-// ==================== USER-SCOPED RECENT DOWNLOADS ====================
+// ==================== USER RECENT DOWNLOADS ====================
+let userDownloadsList = [];
 async function loadRecentDownloads() {
-  const list = document.getElementById('recentDownloadsList');
+  const grid = document.getElementById('recentDownloadsGrid');
   const chkAll = document.getElementById('chkShowAllUsers');
   const showAll = chkAll && chkAll.checked;
 
   try {
     const res = await fetch(`/api/recent-downloads${showAll ? '?all=1' : ''}`);
     const data = await res.json();
-    const items = data.downloads || [];
-
-    if (!items.length) {
-      list.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); text-align:center; padding:16px;">No tenés descargas recientes en el servidor.</div>';
-      return;
-    }
-
-    list.innerHTML = items.map(item => `
-      <div class="recent-item">
-        <div style="overflow:hidden; flex:1;">
-          <div class="recent-title" title="${item.filename}">${item.filename}</div>
-          <div style="font-size:0.7rem; color:var(--muted);">${item.size_formatted} · Propietario: ${item.owner || 'mío'}</div>
-        </div>
-        <div class="recent-actions">
-          <a href="${item.download_url}" class="btn-icon" title="Descargar de nuevo">⬇️</a>
-          <button class="btn-icon btn-icon-danger" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar mi archivo y liberar espacio">🗑️</button>
-        </div>
-      </div>
-    `).join('');
+    userDownloadsList = data.downloads || [];
+    renderRecentDownloads(userDownloadsList);
   } catch (e) {}
 }
 
+function renderRecentDownloads(items) {
+  const grid = document.getElementById('recentDownloadsGrid');
+  if (!items || !items.length) {
+    grid.innerHTML = '<div style="font-size:0.85rem; color:var(--muted); text-align:center; padding:24px; grid-column:1/-1;">No tenés archivos descargados recientemente.</div>';
+    return;
+  }
+
+  grid.innerHTML = items.map(item => `
+    <div class="recent-card">
+      <div>
+        <div class="recent-card-title" title="${item.filename}">📄 ${item.filename}</div>
+        <div class="recent-card-meta">
+          <span>${item.size_formatted}</span>
+          <span>👤 ${item.owner || 'mío'}</span>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px;">
+        <a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>
+        <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('filterDownloadsInput')?.addEventListener('input', (e) => {
+  const query = e.target.value.toLowerCase().trim();
+  if (!query) {
+    renderRecentDownloads(userDownloadsList);
+  } else {
+    const filtered = userDownloadsList.filter(item => (item.filename || '').toLowerCase().includes(query));
+    renderRecentDownloads(filtered);
+  }
+});
+
 window.deleteUserDownload = async function(jobId) {
-  if (!confirm('¿Deseas eliminar este archivo de tu servidor?')) return;
+  if (!confirm('¿Deseas eliminar este archivo y liberar espacio?')) return;
   try {
     const res = await fetch(`/api/my-downloads/${jobId}`, { method: 'DELETE' });
     const data = await res.json();
@@ -1133,15 +1532,15 @@ window.deleteUserDownload = async function(jobId) {
       showToast('Archivo eliminado con éxito', 'success');
       loadRecentDownloads();
     } else {
-      showToast(data.error || 'No se pudo eliminar', 'error');
+      showToast(data.error || 'Error al eliminar', 'error');
     }
   } catch (e) {
     showToast(e.message, 'error');
   }
 };
 
-document.getElementById('btnCleanMyDownloads').addEventListener('click', async () => {
-  if (!confirm('¿Deseas eliminar TODAS tus descargas recientes del servidor?')) return;
+document.getElementById('btnCleanMyDownloads')?.addEventListener('click', async () => {
+  if (!confirm('¿Deseas eliminar TODAS tus descargas recientes y liberar espacio?')) return;
   try {
     const res = await fetch('/api/my-downloads/cleanup', { method: 'POST' });
     const data = await res.json();
@@ -1152,63 +1551,15 @@ document.getElementById('btnCleanMyDownloads').addEventListener('click', async (
   }
 });
 
-const chkShowAllUsers = document.getElementById('chkShowAllUsers');
-if (chkShowAllUsers) chkShowAllUsers.addEventListener('change', loadRecentDownloads);
+document.getElementById('chkShowAllUsers')?.addEventListener('change', loadRecentDownloads);
 
-// ==================== ADMIN EXCLUSIVES ====================
-{% if is_admin %}
-async function updateDiskWidget() {
-  try {
-    const res = await fetch('/api/disk-status');
-    const data = await res.json();
-    const diskText = document.getElementById('diskText');
-    const diskDot = document.getElementById('diskDot');
-    if (diskText) diskText.textContent = `Disco: ${data.free_formatted} libre (${data.percent_used}%)`;
-    if (diskDot) diskDot.style.background = data.percent_used >= 85 ? 'var(--danger)' : 'var(--success)';
-  } catch (e) {}
-}
-updateDiskWidget();
-
-const cleanBtn = document.getElementById('cleanBtn');
-if (cleanBtn) {
-  cleanBtn.addEventListener('click', async () => {
-    if (!confirm('¿Deseas forzar la limpieza total de descargas de todo el servidor?')) return;
-    try {
-      const res = await fetch('/api/cleanup', { method: 'POST' });
-      const data = await res.json();
-      showToast(`Purga total completada: ${data.reclaimed_formatted} liberados.`, 'success');
-      loadRecentDownloads();
-      updateDiskWidget();
-    } catch (e) {
-      showToast(e.message, 'error');
-    }
-  });
-}
-
-const updateBtn = document.getElementById('updateBtn');
-if (updateBtn) {
-  updateBtn.addEventListener('click', async () => {
-    showToast('Actualizando motor yt-dlp...', 'info');
-    try {
-      const res = await fetch('/api/update-ytdlp', { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, data.error ? 'error' : 'success');
-    } catch (e) {
-      showToast(e.message, 'error');
-    }
-  });
-}
-{% endif %}
-
-// Logout handler
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
   if (confirm('¿Cerrar sesión de la cuenta actual?')) {
     window.location.href = '/logout';
   }
 });
 
-
-// Initial load
+// Load on start
 loadRecentDownloads();
 </script>
 

@@ -136,6 +136,19 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Lectura de cgroups v2 (`/sys/fs/cgroup/memory.current`) para obtener los MB/GB exactos del proyecto.
   - [x] Barra de progreso segmentada de doble color en `/admin` con desglose de consumo del proyecto, resto del VPS y memoria libre.
 
+---
+
+## 🎯 Versión `v2.5.0` (Completado)
+- [x] **Barra Lateral en Portal de Descargas (Sidebar Navigation):**
+  - [x] Homologación del layout con barra lateral fija y pestañas de navegación fluidas (`Modo Fácil`, `Modo Avanzado`, `Lote`, `Mis Descargas`).
+  - [x] Retiro del botón `⟳ yt-dlp` de la página de descargas.
+- [x] **⚡ Modo Fácil (Rápido):**
+  - [x] Interfaz minimalista con presets de 1 clic (720p, 1080p, MP3 320k, FLAC) y pegado directo.
+- [x] **📦 Gestión Interactiva de Playlists:**
+  - [x] Selector de elementos por checkboxes con acciones masivas (Todos / Ninguno).
+  - [x] Soporte para entrega en archivo `.ZIP` o **Descargas Individuales Progresivas**.
+
+
 
 
 
