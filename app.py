@@ -1799,7 +1799,7 @@ def get_git_info() -> dict:
     commit = "unknown"
     commit_date = ""
     tag = ""
-    remote_repo = "hernancussit/ytsite"
+    remote_repo = "hernancussit/dHtools"
     try:
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
@@ -1862,7 +1862,7 @@ def admin_git_status():
     rollback = load_rollback_state()
 
     branch = git_info["branch"] or "main"
-    remote_repo = git_info.get("remote_repo") or "hernancussit/ytsite"
+    remote_repo = git_info.get("remote_repo") or "hernancussit/dHtools"
     remote_commit = None
     remote_date = None
     update_available = False
