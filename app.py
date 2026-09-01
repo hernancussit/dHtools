@@ -1737,7 +1737,11 @@ def get_git_info() -> dict:
     commit = "unknown"
     commit_date = ""
     tag = ""
+    remote_repo = "hernancussit/ytsite"
     try:
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
+
         r = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True, timeout=3)
         if r.returncode == 0 and r.stdout.strip() == "true":
             is_repo = True
@@ -1752,6 +1756,13 @@ def get_git_info() -> dict:
 
             tg = subprocess.run(["git", "describe", "--tags", "--always"], capture_output=True, text=True, timeout=3)
             tag = tg.stdout.strip()
+
+            rem = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, timeout=3)
+            if rem.returncode == 0 and rem.stdout.strip():
+                rem_str = rem.stdout.strip()
+                m = re.search(r"github\.com[:/]([^/]+/[^/.]+)", rem_str)
+                if m:
+                    remote_repo = m.group(1)
     except Exception:
         pass
     return {
@@ -1760,6 +1771,7 @@ def get_git_info() -> dict:
         "commit": commit,
         "commit_date": commit_date,
         "tag": tag,
+        "remote_repo": remote_repo,
     }
 
 
@@ -1788,18 +1800,19 @@ def admin_git_status():
     rollback = load_rollback_state()
 
     branch = git_info["branch"] or "main"
+    remote_repo = git_info.get("remote_repo") or "hernancussit/ytsite"
     remote_commit = None
     remote_date = None
     update_available = False
 
     try:
-        gh_url = f"https://api.github.com/repos/hernancussit/dHtools/commits/{branch}"
+        gh_url = f"https://api.github.com/repos/{remote_repo}/commits/{branch}"
         r = requests.get(gh_url, headers={"User-Agent": "dHtools"}, timeout=4)
         if r.status_code == 200:
             gh_data = r.json()
             remote_commit = (gh_data.get("sha") or "")[:7]
             remote_date = gh_data.get("commit", {}).get("committer", {}).get("date", "")[:10]
-            if remote_commit and remote_commit != git_info["commit"]:
+            if remote_commit and remote_commit != git_info["commit"] and git_info["commit"] != "unknown":
                 update_available = True
     except Exception:
         pass
@@ -1808,12 +1821,14 @@ def admin_git_status():
         "app_version": APP_VERSION,
         "git": git_info,
         "remote_branch": branch,
+        "remote_repo": remote_repo,
         "remote_commit": remote_commit,
         "remote_date": remote_date,
         "update_available": update_available,
         "rollback_available": bool(rollback.get("previous_commit")),
         "rollback_info": rollback,
     })
+
 
 
 @app.route("/api/admin/git-switch-branch", methods=["POST"])
