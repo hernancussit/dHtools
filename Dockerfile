@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg curl unzip ca-certificates git && \
+    apt-get install -y --no-install-recommends ffmpeg curl unzip ca-certificates git openssh-client && \
     rm -rf /var/lib/apt/lists/*
+
 
 
 # Deno: motor de JavaScript que yt-dlp necesita para resolver los desafíos
