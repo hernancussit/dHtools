@@ -4,7 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<title>{{ (config and config.site_title) or 'Descargador Multimedia' }}</title>
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
+<title>{{ (config and config.site_title) or 'ytsite - Descargador Multimedia' }}</title>
 <style>
   :root, [data-theme="cyberpunk"] {
     --bg-gradient: linear-gradient(160deg, #0f172a, #1e1b4b);
@@ -18,6 +23,8 @@
     --border: #334155;
     --success: #10b981;
     --warning: #f59e0b;
+    --danger: #ef4444;
+    --card-shadow: 0 16px 40px rgba(0,0,0,0.35);
   }
   [data-theme="oled"] {
     --bg-gradient: #000000;
@@ -31,6 +38,8 @@
     --border: #27272a;
     --success: #10b981;
     --warning: #f59e0b;
+    --danger: #ef4444;
+    --card-shadow: 0 16px 40px rgba(0,0,0,0.8);
   }
   [data-theme="emerald"] {
     --bg-gradient: linear-gradient(160deg, #022c22, #064e3b);
@@ -44,6 +53,8 @@
     --border: #047857;
     --success: #10b981;
     --warning: #f59e0b;
+    --danger: #f87171;
+    --card-shadow: 0 16px 40px rgba(0,0,0,0.4);
   }
   [data-theme="light"] {
     --bg-gradient: linear-gradient(160deg, #f8fafc, #e2e8f0);
@@ -57,6 +68,8 @@
     --border: #cbd5e1;
     --success: #16a34a;
     --warning: #d97706;
+    --danger: #dc2626;
+    --card-shadow: 0 16px 40px rgba(0,0,0,0.08);
   }
 
   * { box-sizing: border-box; }
@@ -66,222 +79,217 @@
     background: var(--bg-gradient);
     color: var(--text);
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+    padding: 16px;
     transition: background 0.3s, color 0.3s;
   }
-  .card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 28px;
-    width: 100%;
-    max-width: 620px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    border: 1px solid var(--border);
-    transition: background 0.3s, border-color 0.3s;
+  .app-container {
+    max-width: 1200px;
+    margin: 0 auto;
   }
-  h1 {
-    font-size: 1.45rem;
-    margin: 0 0 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  p.subtitle { color: var(--muted); margin: 0 0 16px; font-size: 0.88rem; }
-  
+
+  /* TOP BAR */
   .top-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
   }
-  .disk-widget {
+  .branding {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.78rem;
-    color: var(--muted);
+    gap: 10px;
+  }
+  .branding h1 {
+    font-size: 1.35rem;
+    margin: 0;
+    font-weight: 700;
+  }
+  .branding .user-tag {
+    font-size: 0.75rem;
     background: var(--bg-input);
-    padding: 5px 10px;
-    border-radius: 8px;
     border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 12px;
+    color: var(--muted);
   }
-  .disk-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--success);
-    display: inline-block;
+  .top-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
   }
-  .disk-dot.warning { background: var(--warning); }
-  .disk-dot.danger { background: var(--accent); }
 
+  .btn-sm {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .btn-sm:hover { background: var(--border); }
+  .btn-install {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    border: none;
+  }
+  .btn-install:hover { opacity: 0.9; }
+
+  /* 2-COLUMN DASHBOARD GRID */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 920px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* CARD STYLES */
+  .panel-card {
+    background: var(--bg-card);
+    border-radius: 14px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+  }
+  .panel-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text);
+  }
+
+  /* MODE SWITCHER */
   .mode-switch {
     display: flex;
-    gap: 6px;
     background: var(--bg-input);
     padding: 4px;
     border-radius: 10px;
+    margin-bottom: 16px;
     border: 1px solid var(--border);
-    margin-bottom: 14px;
   }
   .mode-btn {
     flex: 1;
-    text-align: center;
     padding: 8px 12px;
-    font-size: 0.82rem;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.84rem;
     font-weight: 600;
     border-radius: 8px;
     cursor: pointer;
-    background: transparent;
-    color: var(--muted);
-    border: none;
     transition: all 0.2s;
   }
   .mode-btn.active {
     background: var(--bg-card);
     color: var(--text);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    border: 1px solid var(--border);
   }
 
-  .platform-tags {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-  }
-  .tag {
-    font-size: 0.72rem;
-    background: var(--bg-input);
+  /* FORMS & INPUTS */
+  label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
     color: var(--muted);
-    padding: 3px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: all 0.2s;
+    margin-bottom: 6px;
   }
-  .tag:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
-
-  input[type=text], select, textarea {
+  input[type="text"], input[type="password"], textarea, select {
     width: 100%;
-    padding: 11px 13px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
+    padding: 10px 12px;
     background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
     color: var(--text);
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     outline: none;
     transition: border-color 0.2s;
     font-family: inherit;
   }
-  input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
-  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-  select { flex: 1; }
-
-  label.checkbox {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--muted);
-    font-size: 0.85rem;
-    cursor: pointer;
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent-blue);
   }
-  button.btn-main {
-    margin-top: 16px;
+  textarea { resize: vertical; min-height: 90px; }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* BUTTONS */
+  .btn-primary {
     width: 100%;
-    padding: 13px;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
     border: none;
     border-radius: 10px;
-    background: var(--accent);
-    color: white;
-    font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
   }
-  button.btn-main:hover { background: var(--accent-2); }
-  button.btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .btn-sm {
-    width: auto;
-    margin: 0;
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 6px;
+  /* ENGINE SELECTOR */
+  .engine-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .engine-btn {
+    flex: 1;
+    padding: 8px 10px;
+    background: var(--bg-input);
     border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
   }
-  .btn-secondary {
-    background: var(--bg-input);
-    color: var(--text);
+  .engine-btn.active {
+    background: var(--bg-card);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
   }
-  .btn-secondary:hover { background: var(--border); }
 
-  #preview { margin-top: 20px; display: none; background: var(--bg-input); padding: 14px; border-radius: 12px; border: 1px solid var(--border); }
-  #preview img { width: 100%; border-radius: 8px; margin-bottom: 10px; max-height: 240px; object-fit: cover; }
-  #preview .title { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
-  #preview .meta { color: var(--muted); font-size: 0.82rem; margin-top: 4px; display: flex; align-items: center; gap: 8px; }
-  .badge-platform { background: var(--border); color: var(--accent-blue); padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; }
-
-  #progressWrap { margin-top: 18px; display: none; }
-  .bar-bg {
-    width: 100%;
-    height: 10px;
+  /* COLLAPSIBLE ACCORDIONS */
+  .accordion-box {
     background: var(--bg-input);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    transition: width 0.3s;
-  }
-  #statusText { margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
-  #downloadLink {
-    display: none;
-    margin-top: 14px;
-    text-align: center;
-    background: var(--success);
-    color: white;
-    padding: 12px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: 600;
-  }
-  .error { color: #f87171; font-size: 0.85rem; margin-top: 8px; }
-  .toast { padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 10px; display: none; }
-  .toast-info { background: #1e3a8a; color: #93c5fd; }
-  .toast-success { background: #14532d; color: #86efac; }
-
-  /* Deezer ARL Box */
-  #deezerSection {
-    display: none;
-    margin-top: 12px;
-    background: var(--bg-input);
-    padding: 12px;
-    border-radius: 10px;
     border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 10px;
   }
-
-  /* Advanced Formats & Subtitles */
-  .advanced-panel {
-    background: var(--bg-input);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    padding: 12px;
-    margin-top: 12px;
-  }
-  .advanced-header {
+  .accordion-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -290,80 +298,117 @@
     font-weight: 600;
     color: var(--muted);
   }
-  .advanced-header:hover { color: var(--text); }
-  .advanced-body { display: none; margin-top: 10px; }
-
-  /* Batch Queue Box */
-  #batchQueueSection {
+  .accordion-header:hover { color: var(--text); }
+  .accordion-body {
     display: none;
-    margin-top: 18px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* PREVIEW CARD */
+  .preview-card {
+    display: none;
     background: var(--bg-input);
-    padding: 16px;
-    border-radius: 12px;
+    border-radius: 10px;
+    padding: 12px;
     border: 1px solid var(--border);
+    margin-bottom: 14px;
   }
-  .batch-header {
+  .preview-inner {
     display: flex;
-    justify-content: space-between;
+    gap: 12px;
     align-items: center;
-    margin-bottom: 12px;
   }
-  .batch-queue-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 280px;
-    overflow-y: auto;
+  .preview-img {
+    width: 90px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: #000;
   }
-  .queue-item {
+  .preview-info {
+    overflow: hidden;
+    flex: 1;
+  }
+  .preview-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-badge {
+    font-size: 0.72rem;
+    background: #1e3a8a;
+    color: #93c5fd;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  /* PROGRESS BAR */
+  .progress-wrap {
+    display: none;
+    background: var(--bg-input);
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .bar-bg {
+    background: var(--bg-card);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .bar-fill {
+    background: linear-gradient(90deg, var(--accent), var(--accent-blue));
+    height: 100%;
+    width: 0%;
+    transition: width 0.2s;
+  }
+  .download-btn-finish {
+    display: none;
+    width: 100%;
+    padding: 10px;
+    background: var(--success);
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    margin-top: 10px;
+    box-sizing: border-box;
+  }
+
+  /* BATCH QUEUE CARDS */
+  .batch-item {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
   }
-  .queue-item-header {
+  .batch-item-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.82rem;
+    margin-bottom: 6px;
   }
-  .queue-item-title {
+  .batch-item-title {
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 380px;
-    font-weight: 600;
+    max-width: 280px;
   }
 
-  /* Recent Downloads */
-  .recent-section {
-    margin-top: 22px;
-    border-top: 1px solid var(--border);
-    padding-top: 14px;
-  }
-  .recent-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--muted);
-    user-select: none;
-  }
-  .recent-header:hover { color: var(--text); }
-  .recent-list {
-    margin-top: 10px;
-    display: none;
-    max-height: 220px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  /* RECENT DOWNLOADS (USER-SCOPED) */
   .recent-item {
     display: flex;
     justify-content: space-between;
@@ -371,352 +416,360 @@
     background: var(--bg-input);
     padding: 8px 10px;
     border-radius: 8px;
-    font-size: 0.8rem;
     border: 1px solid var(--border);
+    margin-bottom: 6px;
+    font-size: 0.8rem;
   }
-  .recent-item-title {
+  .recent-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 340px;
+    max-width: 240px;
     color: var(--text);
   }
-  .recent-item-meta {
-    font-size: 0.72rem;
-    color: var(--muted);
+  .recent-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
-  .recent-btn {
-    padding: 4px 8px;
-    font-size: 0.75rem;
+  .btn-icon {
+    padding: 3px 6px;
+    border-radius: 6px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    color: var(--accent-blue);
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 600;
-    margin-left: 8px;
-  }
-  .recent-btn:hover { background: var(--border); }
-  .recent-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 12px 0; }
-
-  footer {
-    margin-top: 20px;
-    font-size: 0.75rem;
     color: var(--muted);
-    text-align: center;
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    text-decoration: none;
+  }
+  .btn-icon:hover { color: var(--text); background: var(--border); }
+  .btn-icon-danger:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* FOOTER */
+  footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-top: 16px;
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--muted);
     flex-wrap: wrap;
     gap: 8px;
   }
+  .toast {
+    display: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    margin-bottom: 12px;
+  }
+  .toast-info { background: #1e3a8a; color: #93c5fd; }
+  .toast-success { background: #064e3b; color: #6ee7b7; }
+  .toast-error { background: #450a0a; color: #fca5a5; }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="top-bar">
-      <div id="diskWidget" class="disk-widget">
-        <span class="disk-dot" id="diskDot"></span>
-        <span id="diskText">Disco VPS: consultando...</span>
-      </div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <select id="themeSelector" style="width:auto; padding:4px 8px; font-size:0.75rem; height:28px;" title="Cambiar tema visual">
-          <option value="cyberpunk">🌌 Cyberpunk</option>
-          <option value="oled">🖤 OLED Black</option>
-          <option value="emerald">🌲 Emerald</option>
-          <option value="light">☀️ Light</option>
-        </select>
-        <button id="cleanBtn" title="Forzar limpieza de descargas" class="btn-sm btn-secondary">
-          🧹 Limpiar
-        </button>
-        <button id="updateBtn" title="Actualizar motor yt-dlp" class="btn-sm btn-secondary">
-          ⟳ yt-dlp
-        </button>
-        <a href="/wiki" title="Documentación y Wiki Técnica" class="btn-sm btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">
-          📚 Wiki
-        </a>
-        <a href="/admin" title="Panel de Administración" class="btn-sm btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">
-          ⚙️ Admin
-        </a>
-      </div>
+<div class="app-container">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="branding">
+      <h1>{{ (config and config.site_title) or '🎬 Descargador Multimedia' }}</h1>
+      <span class="user-tag">👤 {{ username }}</span>
     </div>
+    <div class="top-actions">
+      <button id="pwaInstallBtn" class="btn-sm btn-install" style="display:none;" title="Instalar como App nativa">
+        📲 Instalar App
+      </button>
+      <select id="themeSelector" style="width:auto; padding:4px 8px; font-size:0.75rem; height:28px;" title="Cambiar tema visual">
+        <option value="cyberpunk">🌌 Cyberpunk</option>
+        <option value="oled">🖤 OLED Black</option>
+        <option value="emerald">🌲 Emerald</option>
+        <option value="light">☀️ Light</option>
+      </select>
+      {% if is_admin %}
+      <button id="diskWidget" class="btn-sm" style="font-size:0.75rem;" title="Espacio en Disco VPS">
+        <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--success);" id="diskDot"></span>
+        <span id="diskText">Disco: ...</span>
+      </button>
+      <button id="cleanBtn" title="Limpieza total del servidor" class="btn-sm">
+        🧹 Servidor
+      </button>
+      <button id="updateBtn" title="Actualizar motor yt-dlp" class="btn-sm">
+        ⟳ yt-dlp
+      </button>
+      <a href="/admin" title="Panel de Administración" class="btn-sm">
+        ⚙️ Admin
+      </a>
+      {% endif %}
+      <a href="/wiki" title="Documentación y Wiki Técnica" class="btn-sm">
+        📚 Wiki
+      </a>
+    </div>
+  </div>
 
+  <div id="toast" class="toast"></div>
+
+  <!-- DASHBOARD MAIN GRID -->
+  <div class="dashboard-grid">
+    <!-- LEFT PANEL: DOWNLOAD CONTROLS -->
     <div>
-      <h1 id="siteTitleHeading">{{ (config and config.site_title) or '🎬 Descargador Multimedia' }}</h1>
-      <p class="subtitle" id="siteSubtitleHeading">{{ (config and config.site_subtitle) or 'Descargá videos, playlists o música pegando el enlace.' }}</p>
-    </div>
+      <div class="panel-card">
+        <div class="mode-switch">
+          <button class="mode-btn active" id="btnModeSingle">🔗 Enlace Individual / Álbum</button>
+          <button class="mode-btn" id="btnModeBatch">📋 Modo Múltiples Enlaces</button>
+        </div>
 
-    <!-- Single vs Batch Mode Switcher -->
-    <div class="mode-switch">
-      <button class="mode-btn active" id="btnModeSingle">🔗 Enlace Individual / Álbum</button>
-      <button class="mode-btn" id="btnModeBatch">📋 Cola de Enlaces Múltiples</button>
-    </div>
+        <!-- SINGLE LINK FORM -->
+        <div id="singleModeForm">
+          <label>Enlace del Video, Canción o Playlist</label>
+          <div class="input-row">
+            <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=... o spotify.com/track/..." autocomplete="off">
+            <button id="infoBtn" class="btn-sm" style="background:var(--bg-input); white-space:nowrap;">🔍 Inspeccionar</button>
+          </div>
+        </div>
 
-    <div class="platform-tags">
-      <span class="tag" id="tagYoutube">YouTube</span>
-      <span class="tag" id="tagShorts">Shorts</span>
-      <span class="tag" id="tagDeezer" title="Hacé clic para configurar tu ARL">Deezer (ARL)</span>
-      <span class="tag" id="tagSpotify">Spotify</span>
-      <span class="tag">Instagram</span>
-      <span class="tag">Facebook</span>
-      <span class="tag">Twitch</span>
-      <span class="tag">Kick</span>
-      <span class="tag">TikTok</span>
-      <span class="tag">X / Twitter</span>
-    </div>
+        <!-- BATCH LINK FORM -->
+        <div id="batchModeForm" style="display:none;">
+          <label>Pegar Lista de URLs (una por línea)</label>
+          <textarea id="batchUrlsInput" placeholder="https://youtube.com/watch?v=...&#10;https://open.spotify.com/track/...&#10;https://www.deezer.com/track/..."></textarea>
+        </div>
 
-    <div id="toastAlert" class="toast toast-info"></div>
+        <!-- ENGINE & BASIC FORMAT -->
+        <div style="margin-top:14px;">
+          <label>Motor de Extracción</label>
+          <div class="engine-selector">
+            <button class="engine-btn active" data-engine="ytdlp">🚀 yt-dlp (Completo + Playlists)</button>
+            <button class="engine-btn" data-engine="cobalt">⚡ Cobalt v11 (Ultra Rápido)</button>
+          </div>
+        </div>
 
-    <!-- Single URL Input -->
-    <div id="singleInputWrap">
-      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..., Spotify, Deezer...">
-    </div>
-
-    <!-- Batch Multi-URL Input -->
-    <div id="batchInputWrap" style="display:none;">
-      <textarea id="batchUrls" rows="4" placeholder="Pegá múltiples enlaces (uno por línea):&#10;https://www.youtube.com/watch?v=...&#10;https://open.spotify.com/track/...&#10;https://www.deezer.com/track/..."></textarea>
-    </div>
-
-    <!-- Deezer ARL Configuration Box -->
-    <div id="deezerSection">
-      <div style="font-size:0.8rem; color:var(--accent-blue); font-weight:600; display:flex; justify-content:space-between; align-items:center;">
-        <span>🔑 Token ARL de Deezer (Opcional)</span>
-        <span style="font-size:0.7rem; color:var(--muted);">Para FLAC / 320kbps</span>
-      </div>
-      <input type="text" id="deezerArlInput" placeholder="Pegá tu token ARL de Deezer aquí..." style="margin-top:6px; font-size:0.85rem; padding:8px 10px;">
-      <div style="font-size:0.72rem; color:var(--muted); margin-top:4px;">
-        Se guarda automáticamente en tu navegador. Si no ingresás ARL o está vencido, se descarga igual sin ARL.
-      </div>
-    </div>
-
-    <div class="row">
-      <select id="engine">
-        <option value="ytdlp">Motor: yt-dlp (Recomendado)</option>
-        <option value="cobalt">Motor: Cobalt (Alta velocidad)</option>
-      </select>
-    </div>
-
-    <div class="row">
-      <select id="quality">
-        <optgroup label="Video (Calidad)">
-          <option value="best">Mejor calidad</option>
-          <option value="2160p">4K (2160p)</option>
-          <option value="1440p">1440p (2K)</option>
-          <option value="1080p">1080p Full HD</option>
-          <option value="720p">720p HD</option>
-          <option value="480p">480p SD</option>
-        </optgroup>
-        <optgroup label="Solo Audio">
-          <option value="audio_320">MP3 320 kbps (Máxima fidelidad)</option>
-          <option value="audio_256">MP3 256 kbps</option>
-          <option value="audio_192">MP3 192 kbps (Estándar)</option>
-          <option value="audio_128">MP3 128 kbps (Ligero)</option>
-          <option value="audio_flac">FLAC (Sin pérdida / Lossless)</option>
-          <option value="audio_m4a">M4A (AAC)</option>
-          <option value="audio_opus">Opus</option>
-          <option value="audio_wav">WAV</option>
-        </optgroup>
-      </select>
-    </div>
-
-    <!-- Advanced Format & Subtitles Panel -->
-    <div class="advanced-panel" id="advancedPanel">
-      <div class="advanced-header" id="advancedHeader">
-        <span>⚙️ Opciones Avanzadas (Formato de Video y Subtítulos)</span>
-        <span id="advancedIcon">▼</span>
-      </div>
-      <div class="advanced-body" id="advancedBody">
-        <div class="row" style="margin-top:6px;">
-          <div style="flex:1;">
-            <label style="font-size:0.75rem; color:var(--muted);">Contenedor Video</label>
-            <select id="videoFormat">
-              <option value="mp4">MP4 (Universal)</option>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+          <div>
+            <label>Calidad / Formato</label>
+            <select id="qualitySelect">
+              <optgroup label="🎬 Video (Mejor disponible)">
+                <option value="best" selected>Mejor Calidad (Automático)</option>
+                <option value="2160p">4K UHD (2160p)</option>
+                <option value="1440p">2K QHD (1440p)</option>
+                <option value="1080p">Full HD (1080p)</option>
+                <option value="720p">HD (720p)</option>
+                <option value="480p">SD (480p)</option>
+              </optgroup>
+              <optgroup label="🎵 Audio (Extracción / Música)">
+                <option value="audio_320">MP3 — 320 kbps (Máxima Fidelidad)</option>
+                <option value="audio_256">MP3 — 256 kbps (Muy Alta)</option>
+                <option value="audio_192">MP3 — 192 kbps (Estándar)</option>
+                <option value="audio_128">MP3 — 128 kbps (Ahorro de espacio)</option>
+                <option value="flac">FLAC (Lossless / Sin Pérdida)</option>
+                <option value="m4a">M4A (AAC)</option>
+                <option value="opus">Opus</option>
+                <option value="wav">WAV (Audio sin comprimir)</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label>Contenedor de Salida</label>
+            <select id="videoFormatSelect">
+              <option value="mp4" selected>MP4 (Universal)</option>
               <option value="mkv">MKV (Matroska)</option>
               <option value="webm">WebM</option>
             </select>
           </div>
-          <div style="flex:1;">
-            <label style="font-size:0.75rem; color:var(--muted);">Subtítulos</label>
-            <select id="subtitlesOption">
-              <option value="none">Sin subtítulos</option>
-              <option value="embed">Incrustar en video</option>
-              <option value="download">Descargar archivo (.srt/.vtt)</option>
-            </select>
+        </div>
+
+        <div style="margin-top:10px;" id="playlistWrap">
+          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="playlistCheckbox"> Descargar Playlist / Álbum completo (.ZIP)
+          </label>
+        </div>
+
+        <!-- ACCORDION: ADVANCED FORMATS & SUBTITLES -->
+        <div class="accordion-box" id="advAccordion">
+          <div class="accordion-header" id="advAccordionHeader">
+            <span>⚙️ Opciones Avanzadas (Recorte & Subtítulos)</span>
+            <span id="advToggleIcon">▼</span>
+          </div>
+          <div class="accordion-body" id="advAccordionBody">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div>
+                <label>Recortar desde (ej. 01:15)</label>
+                <input type="text" id="startTimeInput" placeholder="00:00">
+              </div>
+              <div>
+                <label>Recortar hasta (ej. 03:40)</label>
+                <input type="text" id="endTimeInput" placeholder="00:00">
+              </div>
+            </div>
+            <div style="margin-top:10px;">
+              <label>Subtítulos</label>
+              <select id="subtitlesSelect">
+                <option value="none" selected>Sin subtítulos</option>
+                <option value="embed">Incrustar subtítulos en el video</option>
+                <option value="download">Descargar archivo .srt/.vtt independiente</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCORDION: DEEZER ARL -->
+        <div class="accordion-box" id="deezerSection" style="display:none;">
+          <div class="accordion-header" id="deezerHeader">
+            <span>🎵 Token Deezer ARL (FLAC / 320k Directo)</span>
+            <span id="deezerToggleIcon">▼</span>
+          </div>
+          <div class="accordion-body" id="deezerBody" style="display:block;">
+            <label>Token ARL de tu cuenta</label>
+            <input type="password" id="deezerArlInput" placeholder="Pegá tu ARL para descargas en FLAC directo...">
+            <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
+              💡 Si no tenés ARL o expira, se descargará automáticamente mediante <em>Audio Matching</em>.
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCORDION: USER CLOUD SYNC -->
+        <div class="accordion-box">
+          <div class="accordion-header" id="userCloudHeader">
+            <span>☁️ Enviar a mi Nube Personal (Nextcloud / FTP / Webhook)</span>
+            <span id="userCloudToggleIcon">▼</span>
+          </div>
+          <div class="accordion-body" id="userCloudBody">
+            <div style="font-size:0.78rem; color:var(--muted); margin-bottom:8px;">
+              Tus credenciales se guardan de forma privada en tu navegador.
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+              <div>
+                <label style="margin:0 0 4px; display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" id="userWebdavEnabled"> Nextcloud / WebDAV
+                </label>
+                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="font-size:0.8rem; margin-bottom:4px;">
+                <input type="text" id="userWebdavUser" placeholder="Usuario" style="font-size:0.8rem; margin-bottom:4px;">
+                <input type="password" id="userWebdavPass" placeholder="App Token" style="font-size:0.8rem;">
+              </div>
+              <div>
+                <label style="margin:0 0 4px; display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" id="userFtpEnabled"> Servidor FTP
+                </label>
+                <input type="text" id="userFtpHost" placeholder="ftp.dominio.com" style="font-size:0.8rem; margin-bottom:4px;">
+                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="font-size:0.8rem; margin-bottom:4px;">
+                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.8rem;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBMIT BUTTON -->
+        <button id="downloadBtn" class="btn-primary">
+          <span>⬇️ Iniciar Descarga</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: MONITOR, QUEUE & USER RECENT DOWNLOADS -->
+    <div>
+      <!-- LIVE PREVIEW CARD -->
+      <div class="preview-card" id="previewCard">
+        <div class="preview-inner">
+          <img id="previewImg" class="preview-img" alt="Portada">
+          <div class="preview-info">
+            <div class="preview-title" id="previewTitle">Título del contenido</div>
+            <span class="preview-badge" id="previewPlatform">YouTube</span>
+            <span style="font-size:0.75rem; color:var(--muted); margin-left:6px;" id="previewDuration"></span>
           </div>
         </div>
       </div>
-    </div>
-    
-    <div id="singleOptionsWrap">
-      <label class="checkbox" style="margin-top:12px;" id="playlistLabel">
-        <input type="checkbox" id="playlistCheck"> Descargar toda la playlist / álbum (se empaqueta en .zip)
-      </label>
-      <div class="meta" id="engineNote" style="display:none; margin-top:6px; font-size:0.8rem; color:#f59e0b;"></div>
 
-      <div id="trimSection" style="display:none; margin-top:14px;">
-        <label class="checkbox">
-          <input type="checkbox" id="trimCheck"> Recortar (solo video individual)
-        </label>
-        <div class="row" id="trimInputs" style="display:none;">
-          <input type="text" id="trimStart" placeholder="Desde (ej. 00:00:00)" style="flex:1;">
-          <input type="text" id="trimEnd" placeholder="Hasta (ej. 00:05:30)" style="flex:1;">
+      <!-- SINGLE PROGRESS MONITOR -->
+      <div class="progress-wrap" id="singleProgressWrap">
+        <div style="font-weight:600; font-size:0.88rem;" id="currentTitleLabel">Procesando...</div>
+        <div class="bar-bg"><div class="bar-fill" id="singleBarFill"></div></div>
+        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--muted);">
+          <span id="singleStatusText">Iniciando...</span>
+          <span id="singleSpeedText"></span>
+        </div>
+        <a id="singleDownloadFinishBtn" href="#" class="download-btn-finish">💾 Guardar Archivo</a>
+      </div>
+
+      <!-- BATCH QUEUE MONITOR -->
+      <div class="panel-card" id="batchProgressCard" style="display:none;">
+        <div class="panel-title">
+          <span>📋 Cola de Descargas en Progreso</span>
+          <a id="btnBatchZipDownload" href="#" class="btn-sm" style="display:none; background:var(--success); color:white; text-decoration:none;">
+            📦 Descargar Todo (.ZIP)
+          </a>
+        </div>
+        <div style="font-size:0.8rem; color:var(--muted); margin-bottom:10px;" id="batchQueueStats">0 de 0 completadas</div>
+        <div id="batchQueueList"></div>
+      </div>
+
+      <!-- USER-SCOPED RECENT DOWNLOADS -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>📂 Mis Descargas Recientes</span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            {% if is_admin %}
+            <label style="font-size:0.72rem; margin:0; display:flex; align-items:center; gap:4px; cursor:pointer;" title="Ver descargas de todos los usuarios">
+              <input type="checkbox" id="chkShowAllUsers"> Ver Todas
+            </label>
+            {% endif %}
+            <button id="btnCleanMyDownloads" class="btn-sm" style="font-size:0.72rem; padding:3px 8px;" title="Borrar mis descargas del servidor">
+              🧹 Limpiar Mías
+            </button>
+          </div>
+        </div>
+        <div id="recentDownloadsList" style="max-height:280px; overflow-y:auto;">
+          <div style="font-size:0.8rem; color:var(--muted); text-align:center; padding:16px;">Cargando tus descargas...</div>
         </div>
       </div>
-
-      <button id="infoBtn" class="btn-main">Buscar</button>
     </div>
-
-    <!-- Batch Download Action Button -->
-    <div id="batchActionWrap" style="display:none;">
-      <button id="batchDownloadBtn" class="btn-main">🚀 Iniciar Cola de Descargas</button>
-    </div>
-
-    <!-- Single Preview -->
-    <div id="preview">
-      <img id="previewImg" src="" alt="">
-      <div class="title" id="previewTitle"></div>
-      <div class="meta" id="previewMeta"></div>
-      <button id="downloadBtn" class="btn-main" style="margin-top:12px;">Descargar</button>
-    </div>
-
-    <!-- Single Progress -->
-    <div id="progressWrap">
-      <div id="playlistInfo" style="display:none; font-size:0.85rem; color:var(--muted); margin-bottom:6px;">
-        Elemento <span id="plIndex">0</span> de <span id="plTotal">0</span> · <span id="plCompleted">0</span> completados
-      </div>
-      <div id="currentTitle" style="font-size:0.85rem; margin-bottom:6px; display:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
-      <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
-      <div id="statusText">Iniciando descarga...</div>
-      <div id="speedText" style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:none;"></div>
-    </div>
-
-    <a id="downloadLink" href="#">Guardar archivo</a>
-    <div class="error" id="errorText"></div>
-
-    <!-- Batch Queue Box -->
-    <div id="batchQueueSection">
-      <div class="batch-header">
-        <div>
-          <strong style="font-size:0.95rem;">📋 Cola de Descargas en Progreso</strong>
-          <div style="font-size:0.78rem; color:var(--muted);" id="batchProgressLabel">0 de 0 completadas</div>
-        </div>
-        <a id="btnDownloadBatchZip" href="#" class="btn-sm btn-secondary" style="display:none; background:var(--success); color:white; text-decoration:none;">
-          📦 Descargar Todo (.ZIP)
-        </a>
-      </div>
-      <div class="batch-queue-list" id="batchQueueList"></div>
-    </div>
-
-    <!-- Recent Downloads Section -->
-    <div class="recent-section">
-      <div class="recent-header" id="recentHeader">
-        <span>📂 Descargas Recientes en Servidor</span>
-        <span id="recentToggleIcon">▼</span>
-      </div>
-      <div class="recent-list" id="recentList" style="display:none;">
-        <div class="recent-empty" id="recentEmpty">Cargando...</div>
-      </div>
-    </div>
-
-    <footer>
-      <span>Uso privado para contenido autorizado. · <a href="/wiki" style="color:var(--muted); text-decoration:none;">📚 Documentación / Wiki</a></span>
-      <span style="background:var(--bg-input); padding:2px 8px; border-radius:12px; border:1px solid var(--border);">Versión: <strong style="color:var(--text);">v{{ version or '2.0.0' }}</strong></span>
-    </footer>
   </div>
 
+  <!-- FOOTER -->
+  <footer>
+    <div>
+      Uso privado para contenido autorizado. · <a href="/wiki" style="color:var(--muted); text-decoration:none;">📚 Wiki Técnica</a>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span style="background:var(--bg-input); padding:2px 8px; border-radius:12px; border:1px solid var(--border);">
+        Versión: <strong>v{{ version or '2.0.0' }}</strong>
+      </span>
+    </div>
+  </footer>
+</div>
+
 <script>
-const urlInput = document.getElementById('urlInput');
-const infoBtn = document.getElementById('infoBtn');
-const preview = document.getElementById('preview');
-const previewImg = document.getElementById('previewImg');
-const previewTitle = document.getElementById('previewTitle');
-const previewMeta = document.getElementById('previewMeta');
-const downloadBtn = document.getElementById('downloadBtn');
-const quality = document.getElementById('quality');
-const videoFormat = document.getElementById('videoFormat');
-const subtitlesOption = document.getElementById('subtitlesOption');
-const playlistCheck = document.getElementById('playlistCheck');
-const progressWrap = document.getElementById('progressWrap');
-const barFill = document.getElementById('barFill');
-const statusText = document.getElementById('statusText');
-const downloadLink = document.getElementById('downloadLink');
-const errorText = document.getElementById('errorText');
-const updateBtn = document.getElementById('updateBtn');
-const cleanBtn = document.getElementById('cleanBtn');
-const toastAlert = document.getElementById('toastAlert');
-const diskWidget = document.getElementById('diskWidget');
-const diskText = document.getElementById('diskText');
-const diskDot = document.getElementById('diskDot');
-const playlistInfo = document.getElementById('playlistInfo');
-const plIndex = document.getElementById('plIndex');
-const plTotal = document.getElementById('plTotal');
-const plCompleted = document.getElementById('plCompleted');
-const currentTitleEl = document.getElementById('currentTitle');
-const speedText = document.getElementById('speedText');
-const trimSection = document.getElementById('trimSection');
-const trimCheck = document.getElementById('trimCheck');
-const trimInputs = document.getElementById('trimInputs');
-const trimStart = document.getElementById('trimStart');
-const trimEnd = document.getElementById('trimEnd');
-const engineSelect = document.getElementById('engine');
-const engineNote = document.getElementById('engineNote');
-const playlistLabel = document.getElementById('playlistLabel');
-const recentHeader = document.getElementById('recentHeader');
-const recentList = document.getElementById('recentList');
-const recentToggleIcon = document.getElementById('recentToggleIcon');
-const recentEmpty = document.getElementById('recentEmpty');
-const deezerSection = document.getElementById('deezerSection');
-const deezerArlInput = document.getElementById('deezerArlInput');
-const tagDeezer = document.getElementById('tagDeezer');
+// ==================== PWA SERVICE WORKER & INSTALL ====================
+let deferredPrompt;
+const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW error:', err));
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (pwaInstallBtn) pwaInstallBtn.style.display = 'inline-flex';
+});
+
+if (pwaInstallBtn) {
+  pwaInstallBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        pwaInstallBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    }
+  });
+}
+
+// ==================== THEME MANAGEMENT ====================
 const themeSelector = document.getElementById('themeSelector');
-const advancedHeader = document.getElementById('advancedHeader');
-const advancedBody = document.getElementById('advancedBody');
-const advancedIcon = document.getElementById('advancedIcon');
-
-// Mode Switcher
-const btnModeSingle = document.getElementById('btnModeSingle');
-const btnModeBatch = document.getElementById('btnModeBatch');
-const singleInputWrap = document.getElementById('singleInputWrap');
-const batchInputWrap = document.getElementById('batchInputWrap');
-const singleOptionsWrap = document.getElementById('singleOptionsWrap');
-const batchActionWrap = document.getElementById('batchActionWrap');
-const batchUrls = document.getElementById('batchUrls');
-const batchDownloadBtn = document.getElementById('batchDownloadBtn');
-const batchQueueSection = document.getElementById('batchQueueSection');
-const batchQueueList = document.getElementById('batchQueueList');
-const batchProgressLabel = document.getElementById('batchProgressLabel');
-const btnDownloadBatchZip = document.getElementById('btnDownloadBatchZip');
-
-let isBatchMode = false;
-
-btnModeSingle.addEventListener('click', () => {
-  isBatchMode = false;
-  btnModeSingle.classList.add('active');
-  btnModeBatch.classList.remove('active');
-  singleInputWrap.style.display = 'block';
-  singleOptionsWrap.style.display = 'block';
-  batchInputWrap.style.display = 'none';
-  batchActionWrap.style.display = 'none';
-  resetError();
-});
-
-btnModeBatch.addEventListener('click', () => {
-  isBatchMode = true;
-  btnModeBatch.classList.add('active');
-  btnModeSingle.classList.remove('active');
-  singleInputWrap.style.display = 'none';
-  singleOptionsWrap.style.display = 'none';
-  preview.style.display = 'none';
-  progressWrap.style.display = 'none';
-  downloadLink.style.display = 'none';
-  batchInputWrap.style.display = 'block';
-  batchActionWrap.style.display = 'block';
-  resetError();
-});
-
-// Theme Switcher & Persistence
 const currentTheme = localStorage.getItem('site_theme') || '{{ (config and config.default_theme) or "cyberpunk" }}';
 document.documentElement.setAttribute('data-theme', currentTheme);
 themeSelector.value = currentTheme;
@@ -727,162 +780,145 @@ themeSelector.addEventListener('change', (e) => {
   localStorage.setItem('site_theme', chosen);
 });
 
-// Advanced Panel toggle
-advancedHeader.addEventListener('click', () => {
-  const isHidden = advancedBody.style.display === 'none' || advancedBody.style.display === '';
-  advancedBody.style.display = isHidden ? 'block' : 'none';
-  advancedIcon.textContent = isHidden ? '▲' : '▼';
-});
-
-// Deezer ARL persistence in LocalStorage
-const savedArl = localStorage.getItem('deezer_arl') || '';
-if (savedArl) {
-  deezerArlInput.value = savedArl;
-}
-deezerArlInput.addEventListener('input', () => {
-  localStorage.setItem('deezer_arl', deezerArlInput.value.trim());
-});
-
-tagDeezer.addEventListener('click', () => {
-  deezerSection.style.display = deezerSection.style.display === 'none' || deezerSection.style.display === '' ? 'block' : 'none';
-});
-
-urlInput.addEventListener('input', () => {
-  const val = urlInput.value.toLowerCase();
-  if (val.includes('deezer.com') || val.includes('deezer.page.link')) {
-    deezerSection.style.display = 'block';
-  }
-});
-
+// ==================== TOAST HELPER ====================
 function showToast(msg, type = 'info', timeout = 4000) {
-  toastAlert.className = `toast toast-${type}`;
-  toastAlert.textContent = msg;
-  toastAlert.style.display = 'block';
-  if (timeout) {
-    setTimeout(() => { toastAlert.style.display = 'none'; }, timeout);
-  }
+  const t = document.getElementById('toast');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  t.style.display = 'block';
+  if (timeout) setTimeout(() => { t.style.display = 'none'; }, timeout);
 }
 
-async function updateDiskStatus() {
-  try {
-    const res = await fetch('/api/disk-status');
-    const data = await res.json();
-    if (data.percent_used !== undefined) {
-      diskText.textContent = `Disco VPS: ${data.free_formatted} libres (${data.percent_used}% usado)`;
-      diskDot.className = 'disk-dot';
-      if (data.percent_used >= 85) diskDot.classList.add('danger');
-      else if (data.percent_used >= 70) diskDot.classList.add('warning');
-    }
-  } catch (e) {
-    diskText.textContent = 'Disco VPS: OK';
-  }
+// ==================== MODE SWITCHER ====================
+const btnModeSingle = document.getElementById('btnModeSingle');
+const btnModeBatch = document.getElementById('btnModeBatch');
+const singleModeForm = document.getElementById('singleModeForm');
+const batchModeForm = document.getElementById('batchModeForm');
+let currentMode = 'single';
+
+btnModeSingle.addEventListener('click', () => {
+  currentMode = 'single';
+  btnModeSingle.classList.add('active');
+  btnModeBatch.classList.remove('active');
+  singleModeForm.style.display = 'block';
+  batchModeForm.style.display = 'none';
+});
+
+btnModeBatch.addEventListener('click', () => {
+  currentMode = 'batch';
+  btnModeBatch.classList.add('active');
+  btnModeSingle.classList.remove('active');
+  singleModeForm.style.display = 'none';
+  batchModeForm.style.display = 'block';
+});
+
+// ==================== ENGINE SELECTOR ====================
+let selectedEngine = 'ytdlp';
+document.querySelectorAll('.engine-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.engine-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedEngine = btn.dataset.engine;
+  });
+});
+
+// ==================== ACCORDIONS TOGGLE ====================
+function setupAccordion(headerId, bodyId, iconId) {
+  const h = document.getElementById(headerId);
+  const b = document.getElementById(bodyId);
+  const i = document.getElementById(iconId);
+  if (!h || !b) return;
+  h.addEventListener('click', () => {
+    const isHidden = b.style.display === 'none' || b.style.display === '';
+    b.style.display = isHidden ? 'block' : 'none';
+    if (i) i.textContent = isHidden ? '▲' : '▼';
+  });
+}
+setupAccordion('advAccordionHeader', 'advAccordionBody', 'advToggleIcon');
+setupAccordion('userCloudHeader', 'userCloudBody', 'userCloudToggleIcon');
+
+// ==================== PERSISTENT USER SETTINGS ====================
+const deezerArlInput = document.getElementById('deezerArlInput');
+const savedArl = localStorage.getItem('deezer_arl') || '';
+if (deezerArlInput && savedArl) deezerArlInput.value = savedArl;
+
+if (deezerArlInput) {
+  deezerArlInput.addEventListener('input', (e) => {
+    localStorage.setItem('deezer_arl', e.target.value.trim());
+  });
 }
 
-async function loadRecentDownloads() {
+// User Cloud Settings
+const userWebdavEnabled = document.getElementById('userWebdavEnabled');
+const userWebdavUrl = document.getElementById('userWebdavUrl');
+const userWebdavUser = document.getElementById('userWebdavUser');
+const userWebdavPass = document.getElementById('userWebdavPass');
+const userFtpEnabled = document.getElementById('userFtpEnabled');
+const userFtpHost = document.getElementById('userFtpHost');
+const userFtpUser = document.getElementById('userFtpUser');
+const userFtpPass = document.getElementById('userFtpPass');
+
+function loadUserCloudSettings() {
   try {
-    const res = await fetch('/api/recent-downloads');
-    const data = await res.json();
-    const items = data.downloads || [];
-    recentList.innerHTML = '';
-    if (items.length === 0) {
-      recentList.innerHTML = '<div class="recent-empty">No hay archivos descargados en el servidor.</div>';
-      return;
+    const s = JSON.parse(localStorage.getItem('user_cloud_sync') || '{}');
+    if (s.webdav) {
+      userWebdavEnabled.checked = !!s.webdav.enabled;
+      userWebdavUrl.value = s.webdav.url || '';
+      userWebdavUser.value = s.webdav.username || '';
+      userWebdavPass.value = s.webdav.password || '';
     }
-    items.forEach(it => {
-      const row = document.createElement('div');
-      row.className = 'recent-item';
-      row.innerHTML = `
-        <div style="overflow:hidden;">
-          <div class="recent-item-title" title="${it.filename}">${it.filename}</div>
-          <div class="recent-item-meta">${it.size_formatted}</div>
-        </div>
-        <a href="${it.download_url}" class="recent-btn" download>Descargar</a>
-      `;
-      recentList.appendChild(row);
-    });
-  } catch (e) {
-    recentList.innerHTML = '<div class="recent-empty">Error al cargar descargas recientes.</div>';
-  }
+    if (s.ftp) {
+      userFtpEnabled.checked = !!s.ftp.enabled;
+      userFtpHost.value = s.ftp.host || '';
+      userFtpUser.value = s.ftp.username || '';
+      userFtpPass.value = s.ftp.password || '';
+    }
+  } catch (e) {}
 }
-
-recentHeader.addEventListener('click', () => {
-  const isHidden = recentList.style.display === 'none' || recentList.style.display === '';
-  recentList.style.display = isHidden ? 'flex' : 'none';
-  recentToggleIcon.textContent = isHidden ? '▲' : '▼';
-  if (isHidden) loadRecentDownloads();
-});
-
-cleanBtn.addEventListener('click', async () => {
-  if (!confirm('¿Estás seguro de que deseas forzar la limpieza de todas las descargas del servidor?')) return;
-  cleanBtn.disabled = true;
-  showToast('Limpiando descargas del servidor...', 'info', 0);
-  try {
-    const res = await fetch('/api/cleanup', { method: 'POST' });
-    const data = await res.json();
-    showToast(`¡Limpieza completada! ${data.cleaned_count} archivo(s) eliminados (${data.reclaimed_formatted} liberados).`, 'success', 5000);
-    updateDiskStatus();
-    loadRecentDownloads();
-  } catch (e) {
-    showToast('Error al limpiar descargas: ' + e.message, 'info');
-  } finally {
-    cleanBtn.disabled = false;
-  }
-});
-
-updateBtn.addEventListener('click', async () => {
-  showToast('Buscando actualizaciones de yt-dlp...', 'info', 0);
-  updateBtn.disabled = true;
-  try {
-    const res = await fetch('/api/update-ytdlp', { method: 'POST' });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    showToast(data.message, 'success', 5000);
-    if (data.updated) {
-      setTimeout(() => window.location.reload(), 4000);
-    } else {
-      updateBtn.disabled = false;
+function saveUserCloudSettings() {
+  const s = {
+    webdav: {
+      enabled: userWebdavEnabled.checked,
+      url: userWebdavUrl.value.trim(),
+      username: userWebdavUser.value.trim(),
+      password: userWebdavPass.value.trim()
+    },
+    ftp: {
+      enabled: userFtpEnabled.checked,
+      host: userFtpHost.value.trim(),
+      username: userFtpUser.value.trim(),
+      password: userFtpPass.value.trim()
     }
-  } catch (e) {
-    showToast('Error: ' + e.message, 'info');
-    updateBtn.disabled = false;
-  }
-});
-
-function applyEngineConstraints() {
-  const isCobalt = engineSelect.value === 'cobalt';
-  playlistLabel.style.display = isCobalt ? 'none' : 'flex';
-  if (isCobalt) {
-    playlistCheck.checked = false;
-    trimCheck.checked = false;
-    trimInputs.style.display = 'none';
-    trimSection.style.display = 'none';
-    engineNote.style.display = 'block';
-    engineNote.textContent = 'Cobalt: solo videos individuales, sin recorte. Para playlists, subtítulos o música, usá yt-dlp.';
-  } else {
-    engineNote.style.display = 'none';
-    if (currentInfo && currentInfo.type === 'video' && currentInfo.platform !== 'Deezer' && currentInfo.platform !== 'Spotify') {
-      trimSection.style.display = 'block';
-    }
-  }
+  };
+  localStorage.setItem('user_cloud_sync', JSON.stringify(s));
+  return s;
 }
-engineSelect.addEventListener('change', applyEngineConstraints);
-
-trimCheck.addEventListener('change', () => {
-  trimInputs.style.display = trimCheck.checked ? 'flex' : 'none';
+[userWebdavEnabled, userWebdavUrl, userWebdavUser, userWebdavPass, userFtpEnabled, userFtpHost, userFtpUser, userFtpPass].forEach(el => {
+  if (el) el.addEventListener('input', saveUserCloudSettings);
 });
+loadUserCloudSettings();
 
-let currentInfo = null;
-function resetError() { errorText.textContent = ''; }
+// ==================== URL INSPECTION & PREVIEW ====================
+const urlInput = document.getElementById('urlInput');
+const previewCard = document.getElementById('previewCard');
+const previewImg = document.getElementById('previewImg');
+const previewTitle = document.getElementById('previewTitle');
+const previewPlatform = document.getElementById('previewPlatform');
+const previewDuration = document.getElementById('previewDuration');
+const deezerSection = document.getElementById('deezerSection');
 
-infoBtn.addEventListener('click', async () => {
-  resetError();
-  downloadLink.style.display = 'none';
-  progressWrap.style.display = 'none';
+let inspectedData = null;
+
+async function inspectUrl() {
   const url = urlInput.value.trim();
   if (!url) return;
+  
+  if (url.includes('deezer.com')) {
+    deezerSection.style.display = 'block';
+  } else {
+    deezerSection.style.display = 'none';
+  }
 
-  infoBtn.disabled = true;
-  infoBtn.textContent = 'Buscando...';
   try {
     const res = await fetch('/api/info', {
       method: 'POST',
@@ -890,238 +926,278 @@ infoBtn.addEventListener('click', async () => {
       body: JSON.stringify({ url })
     });
     const data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    currentInfo = data;
-    preview.style.display = 'block';
-    previewImg.src = data.thumbnail || '';
-    previewImg.style.display = data.thumbnail ? 'block' : 'none';
-    previewTitle.textContent = data.title;
-    
-    if (data.platform === 'Deezer') {
-      deezerSection.style.display = 'block';
-    }
-
-    const platformBadge = `<span class="badge-platform">${data.platform || 'Video'}</span>`;
-    const metaText = data.type === 'playlist'
-      ? `Playlist/Álbum · ${data.count} elementos`
-      : (data.duration ? `${Math.round(data.duration/60)} min` : '');
-    previewMeta.innerHTML = `${platformBadge} <span>${metaText}</span>`;
-
-    playlistCheck.disabled = data.type !== 'playlist';
-    if (data.type === 'playlist') playlistCheck.checked = true;
-
-    if (engineSelect.value !== 'cobalt' && data.platform !== 'Deezer' && data.platform !== 'Spotify') {
-      trimSection.style.display = data.type === 'video' ? 'block' : 'none';
-      if (data.type !== 'video') {
-        trimCheck.checked = false;
-        trimInputs.style.display = 'none';
-      }
+    if (data.error) return;
+    inspectedData = data;
+    previewTitle.textContent = data.title || 'Contenido detectado';
+    previewPlatform.textContent = data.platform || 'Web';
+    previewDuration.textContent = data.duration ? `⏱️ ${Math.floor(data.duration/60)}:${(data.duration%60).toString().padStart(2,'0')}` : '';
+    if (data.thumbnail) {
+      previewImg.src = data.thumbnail;
+      previewImg.style.display = 'block';
     } else {
-      trimSection.style.display = 'none';
+      previewImg.style.display = 'none';
     }
-  } catch (e) {
-    errorText.textContent = e.message;
-  } finally {
-    infoBtn.disabled = false;
-    infoBtn.textContent = 'Buscar';
-  }
-});
+    previewCard.style.display = 'block';
+  } catch (e) {}
+}
+
+document.getElementById('infoBtn').addEventListener('click', inspectUrl);
+urlInput.addEventListener('paste', () => setTimeout(inspectUrl, 200));
+
+// ==================== SINGLE & BATCH DOWNLOAD EXECUTION ====================
+const downloadBtn = document.getElementById('downloadBtn');
+const singleProgressWrap = document.getElementById('singleProgressWrap');
+const singleBarFill = document.getElementById('singleBarFill');
+const currentTitleLabel = document.getElementById('currentTitleLabel');
+const singleStatusText = document.getElementById('singleStatusText');
+const singleSpeedText = document.getElementById('singleSpeedText');
+const singleDownloadFinishBtn = document.getElementById('singleDownloadFinishBtn');
 
 downloadBtn.addEventListener('click', async () => {
-  resetError();
-  downloadLink.style.display = 'none';
-  progressWrap.style.display = 'block';
-  barFill.style.width = '0%';
-  statusText.textContent = 'Iniciando descarga...';
-  downloadBtn.disabled = true;
+  const userCloudCfg = saveUserCloudSettings();
+  const quality = document.getElementById('qualitySelect').value;
+  const videoFormat = document.getElementById('videoFormatSelect').value;
+  const subtitles = document.getElementById('subtitlesSelect').value;
+  const deezerArl = (deezerArlInput ? deezerArlInput.value.trim() : '');
 
-  const isPlaylist = currentInfo && currentInfo.type === 'playlist' && playlistCheck.checked;
-  playlistInfo.style.display = isPlaylist ? 'block' : 'none';
-  currentTitleEl.style.display = isPlaylist ? 'block' : 'none';
-  speedText.style.display = 'none';
-  if (isPlaylist) {
-    plTotal.textContent = currentInfo.count || '?';
-    plIndex.textContent = '0';
-    plCompleted.textContent = '0';
-  }
+  if (currentMode === 'single') {
+    const url = urlInput.value.trim();
+    if (!url) {
+      showToast('Ingresá una URL válida', 'error');
+      return;
+    }
+    const isPlaylist = document.getElementById('playlistCheckbox').checked;
+    const startTime = document.getElementById('startTimeInput').value.trim();
+    const endTime = document.getElementById('endTimeInput').value.trim();
 
-  try {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: urlInput.value.trim(),
-        quality: quality.value,
-        video_format: videoFormat.value,
-        subtitles: subtitlesOption.value,
-        engine: engineSelect.value,
-        deezer_arl: deezerArlInput ? deezerArlInput.value.trim() : '',
-        video_title: currentInfo ? currentInfo.title : '',
-        playlist: playlistCheck.checked,
-        total_count: currentInfo && currentInfo.type === 'playlist' ? currentInfo.count : 0,
-        start_time: (trimCheck.checked && !playlistCheck.checked) ? trimStart.value.trim() : null,
-        end_time: (trimCheck.checked && !playlistCheck.checked) ? trimEnd.value.trim() : null
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
+    downloadBtn.disabled = true;
+    singleProgressWrap.style.display = 'block';
+    singleDownloadFinishBtn.style.display = 'none';
+    singleBarFill.style.width = '5%';
+    singleStatusText.textContent = 'Encolando descarga...';
 
-    poll(data.job_id);
-  } catch (e) {
-    errorText.textContent = e.message;
-    downloadBtn.disabled = false;
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url, quality, video_format: videoFormat, subtitles,
+          playlist: isPlaylist, start_time: startTime, end_time: endTime,
+          engine: selectedEngine, video_title: inspectedData ? inspectedData.title : '',
+          deezer_arl: deezerArl, user_cloud_sync: userCloudCfg
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      pollSingleJob(data.job_id);
+    } catch (e) {
+      showToast(e.message, 'error');
+      downloadBtn.disabled = false;
+      singleProgressWrap.style.display = 'none';
+    }
+  } else {
+    // BATCH MODE
+    const urlsRaw = document.getElementById('batchUrlsInput').value.trim();
+    if (!urlsRaw) {
+      showToast('Pegá al menos una URL', 'error');
+      return;
+    }
+    downloadBtn.disabled = true;
+    try {
+      const res = await fetch('/api/batch-download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          urls: urlsRaw, quality, video_format: videoFormat, subtitles,
+          engine: selectedEngine, deezer_arl: deezerArl, user_cloud_sync: userCloudCfg
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      pollBatchJob(data.batch_id);
+    } catch (e) {
+      showToast(e.message, 'error');
+      downloadBtn.disabled = false;
+    }
   }
 });
 
-function formatEta(seconds) {
-  if (!seconds && seconds !== 0) return '';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')} restante`;
-}
-
-function poll(jobId) {
+function pollSingleJob(jobId) {
   const interval = setInterval(async () => {
-    const res = await fetch(`/api/status/${jobId}`);
-    const job = await res.json();
+    try {
+      const res = await fetch(`/api/status/${jobId}`);
+      const data = await res.json();
+      
+      const pct = data.percent || 0;
+      singleBarFill.style.width = pct + '%';
+      currentTitleLabel.textContent = data.current_title || 'Descargando...';
+      singleStatusText.textContent = data.status === 'finished' ? '✅ Descarga completada' : `Estado: ${data.status} (${pct}%)`;
+      singleSpeedText.textContent = data.speed || '';
 
-    if (job.total_count) {
-      plTotal.textContent = job.total_count;
-      plIndex.textContent = job.current_index || job.completed_count || 0;
-      plCompleted.textContent = job.completed_count || 0;
-    }
-    if (job.current_title) {
-      currentTitleEl.textContent = job.current_title;
-    }
-
-    if (job.status === 'downloading') {
-      barFill.style.width = (job.percent || job.file_percent || 15) + '%';
-      const filePct = job.file_percent || job.percent || 0;
-      statusText.textContent = job.total_count
-        ? `Procesando ${job.current_index || job.completed_count} de ${job.total_count}...`
-        : (job.current_title || `Descargando... ${filePct}%`);
-      if (job.speed) {
-        speedText.style.display = 'block';
-        speedText.textContent = job.speed + (job.eta_seconds ? ' · ' + formatEta(job.eta_seconds) : '');
+      if (data.status === 'finished') {
+        clearInterval(interval);
+        downloadBtn.disabled = false;
+        singleDownloadFinishBtn.href = `/api/files/${jobId}`;
+        singleDownloadFinishBtn.style.display = 'block';
+        loadRecentDownloads();
+      } else if (data.status === 'error') {
+        clearInterval(interval);
+        downloadBtn.disabled = false;
+        showToast('Error en la descarga: ' + (data.error || 'Desconocido'), 'error');
       }
-    } else if (job.status === 'processing') {
-      barFill.style.width = (job.percent || 85) + '%';
-      statusText.textContent = job.current_title || 'Procesando archivo final...';
-      speedText.style.display = 'none';
-    } else if (job.status === 'finished') {
+    } catch (e) {
       clearInterval(interval);
-      barFill.style.width = '100%';
-      statusText.textContent = '¡Listo!';
-      speedText.style.display = 'none';
-      downloadLink.href = `/api/files/${jobId}`;
-      downloadLink.style.display = 'block';
-      downloadBtn.disabled = false;
-      updateDiskStatus();
-      loadRecentDownloads();
-    } else if (job.status === 'error') {
-      clearInterval(interval);
-      errorText.textContent = job.error || 'Ocurrió un error';
       downloadBtn.disabled = false;
     }
-  }, 1200);
+  }, 1000);
 }
 
-// Batch Queue Logic
-batchDownloadBtn.addEventListener('click', async () => {
-  resetError();
-  const raw = batchUrls.value.trim();
-  if (!raw) {
-    errorText.textContent = 'Por favor ingresá al menos una URL.';
-    return;
-  }
-  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length === 0) {
-    errorText.textContent = 'No hay URLs válidas.';
-    return;
-  }
+function pollBatchJob(batchId) {
+  const card = document.getElementById('batchProgressCard');
+  const list = document.getElementById('batchQueueList');
+  const stats = document.getElementById('batchQueueStats');
+  const btnZip = document.getElementById('btnBatchZipDownload');
+  card.style.display = 'block';
 
-  batchDownloadBtn.disabled = true;
-  batchDownloadBtn.textContent = 'Iniciando Lote...';
-  batchQueueSection.style.display = 'block';
-  btnDownloadBatchZip.style.display = 'none';
-  batchQueueList.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); text-align:center; padding:12px;">Encolando tareas...</div>';
-
-  try {
-    const res = await fetch('/api/batch-download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        urls: lines,
-        quality: quality.value,
-        video_format: videoFormat.value,
-        subtitles: subtitlesOption.value,
-        engine: engineSelect.value,
-        deezer_arl: deezerArlInput ? deezerArlInput.value.trim() : ''
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    pollBatch(data.batch_id);
-  } catch (e) {
-    errorText.textContent = e.message;
-    batchDownloadBtn.disabled = false;
-    batchDownloadBtn.textContent = '🚀 Iniciar Cola de Descargas';
-  }
-});
-
-function pollBatch(batchId) {
   const interval = setInterval(async () => {
     try {
       const res = await fetch(`/api/batch-status/${batchId}`);
       const data = await res.json();
-      if (!data || !data.jobs) return;
+      stats.textContent = `${data.completed_count || 0} de ${data.total_count || 0} completadas`;
 
-      batchProgressLabel.textContent = `${data.completed_count} de ${data.total_count} completadas`;
-      batchQueueList.innerHTML = '';
-
-      data.jobs.forEach((j, idx) => {
-        const item = document.createElement('div');
-        item.className = 'queue-item';
-        const isDone = j.status === 'finished';
-        const isErr = j.status === 'error';
-        const statusBadge = isDone
-          ? '<span style="color:var(--success); font-weight:600;">✓ Listo</span>'
-          : (isErr ? `<span style="color:var(--accent); font-weight:600;">✗ Error</span>` : `<span>${j.status}... ${j.percent}%</span>`);
-
-        item.innerHTML = `
-          <div class="queue-item-header">
-            <div class="queue-item-title" title="${j.title || j.url}">#${idx+1} ${j.title || j.url}</div>
-            <div>${statusBadge}</div>
+      list.innerHTML = (data.jobs || []).map(j => `
+        <div class="batch-item">
+          <div class="batch-item-top">
+            <span class="batch-item-title">${j.title || j.url}</span>
+            <span>${j.status === 'finished' ? '🟢 Listo' : (j.status === 'error' ? '🔴 Error' : '⏳ ' + (j.percent||0) + '%')}</span>
           </div>
-          <div class="bar-bg" style="height:6px;">
-            <div class="bar-fill" style="width:${j.percent || (isDone?100:10)}%; background:${isErr?'var(--accent)':'linear-gradient(90deg, var(--accent), var(--accent-2))'};"></div>
-          </div>
-          ${isDone ? `<div style="text-align:right;"><a href="${j.download_url}" class="recent-btn" download>Guardar Archivo</a></div>` : ''}
-          ${isErr ? `<div style="font-size:0.72rem; color:var(--accent);">${j.error || 'Error'}</div>` : ''}
-        `;
-        batchQueueList.appendChild(item);
-      });
+          ${j.status === 'finished' ? `<a href="/api/files/${j.job_id}" class="btn-icon" style="color:var(--success); text-decoration:none; display:inline-block; margin-top:4px;">⬇️ Descargar Archivo</a>` : ''}
+        </div>
+      `).join('');
 
       if (data.all_finished) {
         clearInterval(interval);
-        batchDownloadBtn.disabled = false;
-        batchDownloadBtn.textContent = '🚀 Iniciar Cola de Descargas';
-        btnDownloadBatchZip.href = `/api/batch-download-zip/${batchId}`;
-        btnDownloadBatchZip.style.display = 'inline-block';
-        updateDiskStatus();
+        downloadBtn.disabled = false;
+        btnZip.href = `/api/batch-download-zip/${batchId}`;
+        btnZip.style.display = 'inline-flex';
         loadRecentDownloads();
       }
     } catch (e) {
-      console.error(e);
+      clearInterval(interval);
+      downloadBtn.disabled = false;
     }
   }, 1500);
 }
 
+// ==================== USER-SCOPED RECENT DOWNLOADS ====================
+async function loadRecentDownloads() {
+  const list = document.getElementById('recentDownloadsList');
+  const chkAll = document.getElementById('chkShowAllUsers');
+  const showAll = chkAll && chkAll.checked;
+
+  try {
+    const res = await fetch(`/api/recent-downloads${showAll ? '?all=1' : ''}`);
+    const data = await res.json();
+    const items = data.downloads || [];
+
+    if (!items.length) {
+      list.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); text-align:center; padding:16px;">No tenés descargas recientes en el servidor.</div>';
+      return;
+    }
+
+    list.innerHTML = items.map(item => `
+      <div class="recent-item">
+        <div style="overflow:hidden; flex:1;">
+          <div class="recent-title" title="${item.filename}">${item.filename}</div>
+          <div style="font-size:0.7rem; color:var(--muted);">${item.size_formatted} · Propietario: ${item.owner || 'mío'}</div>
+        </div>
+        <div class="recent-actions">
+          <a href="${item.download_url}" class="btn-icon" title="Descargar de nuevo">⬇️</a>
+          <button class="btn-icon btn-icon-danger" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar mi archivo y liberar espacio">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {}
+}
+
+window.deleteUserDownload = async function(jobId) {
+  if (!confirm('¿Deseas eliminar este archivo de tu servidor?')) return;
+  try {
+    const res = await fetch(`/api/my-downloads/${jobId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Archivo eliminado con éxito', 'success');
+      loadRecentDownloads();
+    } else {
+      showToast(data.error || 'No se pudo eliminar', 'error');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+};
+
+document.getElementById('btnCleanMyDownloads').addEventListener('click', async () => {
+  if (!confirm('¿Deseas eliminar TODAS tus descargas recientes del servidor?')) return;
+  try {
+    const res = await fetch('/api/my-downloads/cleanup', { method: 'POST' });
+    const data = await res.json();
+    showToast(`Se liberaron ${data.reclaimed_formatted} (${data.cleaned_count} archivos eliminados).`, 'success');
+    loadRecentDownloads();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+});
+
+const chkShowAllUsers = document.getElementById('chkShowAllUsers');
+if (chkShowAllUsers) chkShowAllUsers.addEventListener('change', loadRecentDownloads);
+
+// ==================== ADMIN EXCLUSIVES ====================
+{% if is_admin %}
+async function updateDiskWidget() {
+  try {
+    const res = await fetch('/api/disk-status');
+    const data = await res.json();
+    const diskText = document.getElementById('diskText');
+    const diskDot = document.getElementById('diskDot');
+    if (diskText) diskText.textContent = `Disco: ${data.free_formatted} libre (${data.percent_used}%)`;
+    if (diskDot) diskDot.style.background = data.percent_used >= 85 ? 'var(--danger)' : 'var(--success)';
+  } catch (e) {}
+}
+updateDiskWidget();
+
+const cleanBtn = document.getElementById('cleanBtn');
+if (cleanBtn) {
+  cleanBtn.addEventListener('click', async () => {
+    if (!confirm('¿Deseas forzar la limpieza total de descargas de todo el servidor?')) return;
+    try {
+      const res = await fetch('/api/cleanup', { method: 'POST' });
+      const data = await res.json();
+      showToast(`Purga total completada: ${data.reclaimed_formatted} liberados.`, 'success');
+      loadRecentDownloads();
+      updateDiskWidget();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  });
+}
+
+const updateBtn = document.getElementById('updateBtn');
+if (updateBtn) {
+  updateBtn.addEventListener('click', async () => {
+    showToast('Actualizando motor yt-dlp...', 'info');
+    try {
+      const res = await fetch('/api/update-ytdlp', { method: 'POST' });
+      const data = await res.json();
+      showToast(data.message, data.error ? 'error' : 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  });
+}
+{% endif %}
+
 // Initial load
-updateDiskStatus();
-setInterval(updateDiskStatus, 30000);
+loadRecentDownloads();
 </script>
 </body>
 </html>

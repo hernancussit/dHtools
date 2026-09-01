@@ -81,3 +81,18 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Módulo configurable para Nextcloud / WebDAV, FTP, Telegram Bot Uploader y Webhooks HTTP.
   - [x] Pestaña de administración web con formularios y pruebas de conectividad en vivo.
 
+---
+
+## 🎯 Versión `v2.1.0` (Completado)
+- [x] **Rediseño Visual & Layout Amplio (2 Columnas):**
+  - [x] Aprovechamiento total del ancho de pantalla con layout fluido responsivo.
+- [x] **Soporte PWA (Progressive Web App):**
+  - [x] `manifest.json`, Service Worker `sw.js` y botón de instalación rápida para móviles y PC.
+- [x] **Privacidad Estricta de Descargas por Usuario:**
+  - [x] Filtrado por propietario (`username`), eliminación personal de archivos y liberación de espacio.
+- [x] **Controles Exclusivos para Administradores:**
+  - [x] Ocultamiento de herramientas críticas para usuarios `downloader`.
+- [x] **Verificador de Actualizaciones de Motores & Diagnóstico de Memoria RAM:**
+  - [x] Comprobador en tiempo real contra PyPI y métricas de RAM en vivo.
+
+

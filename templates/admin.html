@@ -289,6 +289,18 @@
           <button id="btnPurgeNow" class="btn btn-secondary btn-sm">🧹 Forzar Purga de Descargas</button>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-title">Consumo de Memoria RAM (VPS / Proyecto)</div>
+        <div style="font-size:0.9rem; margin-bottom:8px;" id="ramUsageLabel">Consultando memoria RAM...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="ramUsageBar" style="background:var(--accent-blue);"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.8rem; color:var(--muted);">
+          <span id="ramDetailsLabel">Total: - | Usada: - | Libre: -</span>
+          <span id="ramPercentBadge" class="status-badge status-online">RAM OK</span>
+        </div>
+      </div>
     </div>
 
     <!-- TAB 2: ENGINES UPDATE & DIAGNOSTIC -->
@@ -300,18 +312,23 @@
         </p>
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
-          <div style="flex:1; min-width:260px; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <div style="flex:1; min-width:280px; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
             <div style="font-weight:600; margin-bottom:4px;">Motor yt-dlp</div>
-            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;" id="ytdlpVersionLabel">Versión actual: Consultando...</div>
-            <button id="btnUpdateYtdlp" class="btn btn-primary" style="width:100%;">⟳ Actualizar yt-dlp Ahora</button>
+            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="ytdlpVersionLabel">Versión actual: Consultando...</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="btnCheckUpdates" class="btn btn-secondary" style="flex:1; min-width:130px;">🔍 Comprobar</button>
+              <button id="btnUpdateYtdlp" class="btn btn-primary" style="flex:1; min-width:130px;">⟳ Actualizar</button>
+            </div>
+            <div id="updateStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
           </div>
 
-          <div style="flex:1; min-width:260px; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <div style="flex:1; min-width:280px; background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border);">
             <div style="font-weight:600; margin-bottom:4px;">Prueba Rápida de Extracción</div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad de los extractores.</div>
             <button id="btnTestEngines" class="btn btn-secondary" style="width:100%;">🧪 Ejecutar Test de Diagnóstico</button>
           </div>
         </div>
+
 
         <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
       </div>
@@ -612,6 +629,24 @@ async function loadServicesStatus() {
       bar.style.background = pct >= 85 ? 'var(--danger)' : (pct >= 70 ? 'var(--warning)' : 'var(--accent-blue)');
       document.getElementById('diskDetailsLabel').textContent = `Total: ${data.disk.total_formatted} | Usado: ${data.disk.used_formatted} | Libre: ${data.disk.free_formatted}`;
     }
+
+    // RAM
+    if (data.ram) {
+      const rpct = data.ram.percent_used || 0;
+      document.getElementById('ramUsageLabel').textContent = `Memoria RAM: ${rpct}% ocupada (${data.ram.used_formatted} / ${data.ram.total_formatted})`;
+      const rbar = document.getElementById('ramUsageBar');
+      rbar.style.width = rpct + '%';
+      rbar.style.background = rpct >= 85 ? 'var(--danger)' : (rpct >= 70 ? 'var(--warning)' : 'var(--accent-blue)');
+      document.getElementById('ramDetailsLabel').textContent = `Total: ${data.ram.total_formatted} | Usada: ${data.ram.used_formatted} | Libre: ${data.ram.free_formatted}`;
+      const rBadge = document.getElementById('ramPercentBadge');
+      if (rpct >= 85) {
+        rBadge.className = 'status-badge status-warning';
+        rBadge.textContent = `⚠️ Uso Alto (${rpct}%)`;
+      } else {
+        rBadge.className = 'status-badge status-online';
+        rBadge.textContent = `🟢 RAM OK (${rpct}%)`;
+      }
+    }
   } catch (e) {
     console.error(e);
   }
@@ -640,6 +675,36 @@ async function loadEnginesInfo() {
   }
 }
 
+document.getElementById('btnCheckUpdates').addEventListener('click', async () => {
+  const notice = document.getElementById('updateStatusNotice');
+  notice.style.display = 'block';
+  notice.style.background = 'var(--bg-input)';
+  notice.style.border = '1px solid var(--border)';
+  notice.style.color = 'var(--text)';
+  notice.textContent = '⏳ Consultando repositorio oficial de yt-dlp...';
+
+  try {
+    const res = await fetch('/api/admin/check-updates');
+    const data = await res.json();
+    if (data.update_available) {
+      notice.style.background = 'rgba(245, 158, 11, 0.15)';
+      notice.style.border = '1px solid var(--warning)';
+      notice.style.color = 'var(--warning)';
+      notice.innerHTML = `⚠️ <strong>Nueva versión disponible:</strong> v${data.latest_version} (Instalada: v${data.current_version}). Hacé clic en "Actualizar".`;
+    } else {
+      notice.style.background = 'rgba(16, 185, 129, 0.15)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--success)';
+      notice.innerHTML = `✅ <strong>El motor está al día:</strong> Tenés instalada la versión más reciente (v${data.current_version}).`;
+    }
+  } catch (e) {
+    notice.style.background = 'rgba(239, 68, 68, 0.15)';
+    notice.style.border = '1px solid var(--danger)';
+    notice.style.color = 'var(--danger)';
+    notice.textContent = 'Error al comprobar actualizaciones: ' + e.message;
+  }
+});
+
 document.getElementById('btnUpdateYtdlp').addEventListener('click', async () => {
   const box = document.getElementById('engineLogsBox');
   box.style.display = 'block';
@@ -651,6 +716,7 @@ document.getElementById('btnUpdateYtdlp').addEventListener('click', async () => 
     box.textContent += `[+] ${data.message}\n`;
     if (data.output) box.textContent += `--- Salida del sistema ---\n${data.output}\n`;
     loadEnginesInfo();
+
     showToast(data.message, data.error ? 'error' : 'success');
   } catch (e) {
     box.textContent += `[!] Error: ${e.message}\n`;

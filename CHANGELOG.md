@@ -6,6 +6,29 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ---
 
+## [2.1.0] - 2026-09-01
+
+### ✨ Novedades y Características
+- **Rediseño Visual Amplio (Full-Screen 2-Column Dashboard):**
+  - Nuevo diseño moderno que aprovecha al máximo el ancho de pantalla en monitores y tablets.
+  - Distribución en 2 columnas: panel de configuración y descarga a la izquierda, monitor en vivo y descargas personales a la derecha.
+- **Soporte PWA (Progressive Web App):**
+  - Aplicación instalable en dispositivos móviles (Android / iOS) y PC con un clic (`manifest.json`, `sw.js` y botón `📲 Instalar App`).
+- **Privacidad Estricta de Descargas por Usuario:**
+  - El historial de descargas recientes ahora está estrictamente aislado por usuario (`username`).
+  - Los usuarios estándar solo ven y gestionan sus propias descargas sin acceso a las de otros.
+  - Nuevos endpoints: `DELETE /api/my-downloads/<job_id>` y `POST /api/my-downloads/cleanup` para que cada usuario pueda eliminar sus descargas personales y liberar espacio.
+- **Restricción de Herramientas de Administración:**
+  - Los botones de actualización de motor (`⟳ yt-dlp`), widget de disco VPS y limpieza total del servidor ahora son exclusivos para el rol `admin`.
+- **Verificador de Actualizaciones de Motor en `/admin`:**
+  - Botón **"🔍 Comprobar Actualización"** y endpoint `GET /api/admin/check-updates` que consulta PyPI en tiempo real para verificar si existe una nueva versión de `yt-dlp` antes de actualizar.
+- **Consumo de Memoria RAM en Tiempo Real:**
+  - Medición del uso de memoria RAM total del VPS y proyecto en `GET /api/admin/services-status` y tarjeta interactiva en el panel `/admin`.
+- **Subida a la Nube para el Usuario Común:**
+  - Acordeón personal en el panel de descargas para enviar archivos a Nextcloud / WebDAV o FTP personal (guardando credenciales privadas en `localStorage`).
+
+---
+
 ## [2.0.0] - 2026-09-01
 
 ### ✨ Novedades y Características

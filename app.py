@@ -19,20 +19,24 @@ import yt_dlp
 from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
+APP_VERSION = "2.1.0"
 
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
+
 
 COOKIES_FILE = os.environ.get("COOKIES_FILE", "/app/cookies.txt")
 USERS_FILE = os.environ.get("USERS_FILE", "/app/users.json")
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "/app/config.json")
 CLOUD_CONFIG_FILE = os.environ.get("CLOUD_CONFIG_FILE", "/app/cloud_sync.json")
+DOWNLOADS_META_FILE = os.environ.get("DOWNLOADS_META_FILE", "/app/downloads_meta.json")
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://potprovider:4416")
 COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
 
 BATCH_JOBS = {}
 BATCH_LOCK = threading.Lock()
+
 
 
 
@@ -283,10 +287,56 @@ def save_cloud_config(cfg: dict):
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
-def sync_to_cloud(filepath: str, filename: str, job_info: dict = None):
+def load_downloads_meta() -> dict:
+    if os.path.exists(DOWNLOADS_META_FILE):
+        try:
+            with open(DOWNLOADS_META_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_downloads_meta(meta: dict):
+    try:
+        with open(DOWNLOADS_META_FILE, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error saving downloads meta: {e}")
+
+
+def record_download_meta(job_id: str, filename: str, username: str, size_bytes: int):
+    meta = load_downloads_meta()
+    meta[job_id] = {
+        "job_id": job_id,
+        "filename": filename,
+        "username": username or "admin",
+        "size_bytes": size_bytes,
+        "created_at": time.time(),
+    }
+    save_downloads_meta(meta)
+
+
+def delete_download_meta(job_id: str):
+    meta = load_downloads_meta()
+    if job_id in meta:
+        meta.pop(job_id, None)
+        save_downloads_meta(meta)
+
+
+def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_cloud_cfg: dict = None):
     if not filepath or not os.path.exists(filepath):
         return
     cfg = load_cloud_config()
+    
+    # If user provided their own cloud settings (e.g. Nextcloud/WebDAV, FTP, Webhook), merge/prioritize them
+    if user_cloud_cfg and isinstance(user_cloud_cfg, dict):
+        if "webdav" in user_cloud_cfg and user_cloud_cfg["webdav"].get("enabled"):
+            cfg["webdav"] = user_cloud_cfg["webdav"]
+        if "ftp" in user_cloud_cfg and user_cloud_cfg["ftp"].get("enabled"):
+            cfg["ftp"] = user_cloud_cfg["ftp"]
+        if "webhook" in user_cloud_cfg and user_cloud_cfg["webhook"].get("enabled"):
+            cfg["webhook"] = user_cloud_cfg["webhook"]
 
     # 1. Webhook
     if cfg.get("webhook", {}).get("enabled") and cfg["webhook"].get("url"):
@@ -337,7 +387,7 @@ def sync_to_cloud(filepath: str, filename: str, job_info: dict = None):
         except Exception as e:
             print(f"[CloudSync FTP Error] {e}")
 
-    # 4. Telegram Bot
+    # 4. Telegram Bot (Admin Only)
     tg = cfg.get("telegram", {})
     if tg.get("enabled") and tg.get("bot_token") and tg.get("chat_id"):
         try:
@@ -353,6 +403,40 @@ def sync_to_cloud(filepath: str, filename: str, job_info: dict = None):
                     )
         except Exception as e:
             print(f"[CloudSync Telegram Error] {e}")
+
+
+def get_ram_status():
+    try:
+        if os.path.exists("/proc/meminfo"):
+            meminfo = {}
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    parts = line.split(":")
+                    if len(parts) == 2:
+                        key = parts[0].strip()
+                        val = parts[1].strip().split()[0]
+                        meminfo[key] = int(val) * 1024
+            total = meminfo.get("MemTotal", 0)
+            free = meminfo.get("MemAvailable", meminfo.get("MemFree", 0))
+            used = total - free
+            percent = round((used / total) * 100, 1) if total > 0 else 0
+            return {
+                "total_bytes": total,
+                "used_bytes": used,
+                "free_bytes": free,
+                "total_formatted": format_bytes(total),
+                "used_formatted": format_bytes(used),
+                "free_formatted": format_bytes(free),
+                "percent_used": percent,
+            }
+    except Exception:
+        pass
+    return {
+        "total_bytes": 0, "used_bytes": 0, "free_bytes": 0,
+        "total_formatted": "N/A", "used_formatted": "N/A", "free_formatted": "N/A",
+        "percent_used": 0
+    }
+
 
 
 
@@ -766,15 +850,12 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
             search_query = f"{artist} - {title}"
             with JOBS_LOCK:
                 JOBS[job_id].update({
-                    "status": "downloading",
-                    "current_title": f"Buscando y descargando audio ({display_name})...",
-                    "file_percent": 30,
-                })
-
             ydl_opts = {
+                "outtmpl": os.path.join(job_dir, "raw_audio.%(ext)s"),
                 "format": "ba/b",
-                "outtmpl": raw_audio_tmpl,
+                "format_sort": ["acodec:opus", "abr", "asr"],
                 "quiet": True,
+                "no_warnings": True,
                 "noplaylist": True,
                 **cookies_opts(),
             }
@@ -846,9 +927,13 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 "filename": final_filename,
                 "finished_at": time.time(),
                 "speed": None,
+                "owner": owner,
             })
             job_snap = dict(JOBS[job_id])
-        threading.Thread(target=sync_to_cloud, args=(final_path, final_filename, job_snap), daemon=True).start()
+
+        if os.path.exists(final_path):
+            record_download_meta(job_id, final_filename, owner, os.path.getsize(final_path))
+        threading.Thread(target=sync_to_cloud, args=(final_path, final_filename, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({
@@ -864,7 +949,25 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
 @app.route("/")
 def index():
     cfg = load_config()
-    return render_template("index.html", version=APP_VERSION, config=cfg)
+    user = getattr(request, "current_user", {}) or {}
+    is_admin = (user.get("role") == "admin")
+    return render_template(
+        "index.html",
+        version=APP_VERSION,
+        config=cfg,
+        is_admin=is_admin,
+        username=user.get("username", "admin"),
+    )
+
+
+@app.route("/manifest.json")
+def manifest():
+    return send_file(os.path.join(app.root_path, "static", "manifest.json"), mimetype="application/manifest+json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_file(os.path.join(app.root_path, "static", "sw.js"), mimetype="application/javascript")
 
 
 @app.route("/api/version")
@@ -881,6 +984,7 @@ def api_disk_status():
 
 
 @app.route("/api/cleanup", methods=["POST"])
+@require_admin
 def api_cleanup():
     res = purge_downloads(force_all=False)
     disk = get_disk_status()
@@ -894,6 +998,12 @@ def api_cleanup():
 
 @app.route("/api/recent-downloads")
 def recent_downloads():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+    show_all = is_admin and (request.args.get("all") == "1")
+
+    meta = load_downloads_meta()
     items = []
     if os.path.exists(DOWNLOAD_DIR):
         for entry in os.listdir(DOWNLOAD_DIR):
@@ -906,18 +1016,97 @@ def recent_downloads():
                     parts = entry.split("_", 1)
                     job_id = parts[0].replace(".zip", "")
                     clean_name = parts[1] if len(parts) > 1 else entry
+
+                    item_owner = meta.get(job_id, {}).get("username")
+                    if not item_owner:
+                        with JOBS_LOCK:
+                            job = JOBS.get(job_id)
+                            if job:
+                                item_owner = job.get("owner")
+                    if not item_owner:
+                        item_owner = "admin"
+
+                    if not show_all and item_owner != username:
+                        continue
+
                     items.append({
                         "job_id": job_id,
                         "filename": clean_name,
                         "size_bytes": stat.st_size,
                         "size_formatted": format_bytes(stat.st_size),
                         "mtime": stat.st_mtime,
+                        "owner": item_owner,
                         "download_url": f"/api/files/{job_id}",
                     })
                 except OSError:
                     continue
     items.sort(key=lambda x: x["mtime"], reverse=True)
-    return jsonify({"downloads": items[:20]})
+    return jsonify({"downloads": items[:30], "is_admin": is_admin, "user": username})
+
+
+@app.route("/api/my-downloads/<job_id>", methods=["DELETE"])
+def delete_single_my_download(job_id):
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    meta = load_downloads_meta()
+    item_owner = meta.get(job_id, {}).get("username")
+    with JOBS_LOCK:
+        job = JOBS.pop(job_id, None)
+        if job and not item_owner:
+            item_owner = job.get("owner")
+    if not item_owner:
+        item_owner = "admin"
+
+    if not is_admin and item_owner != username:
+        return jsonify({"error": "No tenés permiso para eliminar este archivo"}), 403
+
+    deleted = False
+    if os.path.exists(DOWNLOAD_DIR):
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry.startswith(job_id):
+                fpath = os.path.join(DOWNLOAD_DIR, entry)
+                try:
+                    os.remove(fpath)
+                    deleted = True
+                except Exception:
+                    pass
+    delete_download_meta(job_id)
+    return jsonify({"success": True, "deleted": deleted})
+
+
+@app.route("/api/my-downloads/cleanup", methods=["POST"])
+def cleanup_my_downloads():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+
+    meta = load_downloads_meta()
+    user_job_ids = [jid for jid, info in meta.items() if info.get("username") == username]
+
+    cleaned_count = 0
+    reclaimed_bytes = 0
+    if os.path.exists(DOWNLOAD_DIR):
+        for jid in user_job_ids:
+            for entry in os.listdir(DOWNLOAD_DIR):
+                if entry.startswith(jid):
+                    fpath = os.path.join(DOWNLOAD_DIR, entry)
+                    try:
+                        size = os.path.getsize(fpath)
+                        os.remove(fpath)
+                        cleaned_count += 1
+                        reclaimed_bytes += size
+                    except Exception:
+                        pass
+            delete_download_meta(jid)
+            with JOBS_LOCK:
+                JOBS.pop(jid, None)
+
+    return jsonify({
+        "success": True,
+        "cleaned_count": cleaned_count,
+        "reclaimed_formatted": format_bytes(reclaimed_bytes),
+    })
 
 
 @app.route("/wiki")
@@ -933,7 +1122,6 @@ def wiki_page():
 def admin_panel():
     cfg = load_config()
     return render_template("admin.html", version=APP_VERSION, config=cfg)
-
 
 
 @app.route("/api/admin/services-status")
@@ -976,7 +1164,30 @@ def admin_services_status():
         "cobalt": {"online": cobalt_ok, "latency_ms": cobalt_lat},
         "deno": {"installed": deno_installed, "version": deno_ver},
         "disk": get_disk_status(),
+        "ram": get_ram_status(),
     })
+
+
+@app.route("/api/admin/check-updates")
+@require_admin
+def admin_check_updates():
+    curr = get_ytdlp_version()
+    latest = curr
+    has_update = False
+    try:
+        r = requests.get("https://pypi.org/pypi/yt-dlp/json", timeout=4)
+        if r.status_code == 200:
+            latest = r.json().get("info", {}).get("version", curr)
+            if latest and latest != curr:
+                has_update = True
+    except Exception:
+        pass
+    return jsonify({
+        "current_version": curr,
+        "latest_version": latest,
+        "update_available": has_update,
+    })
+
 
 
 @app.route("/api/admin/config", methods=["GET", "POST"])
@@ -1171,7 +1382,7 @@ COBALT_AUDIO_BITRATES = {
 }
 
 
-def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = ""):
+def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin", user_cloud_sync: dict = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
 
@@ -1255,9 +1466,12 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                 "filename": final_name,
                 "finished_at": time.time(),
                 "speed": None,
+                "owner": owner,
             })
             job_snap = dict(JOBS[job_id])
-        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap), daemon=True).start()
+        if os.path.exists(final_path):
+            record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
@@ -1266,7 +1480,8 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
 
 
 def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
-                  start_time=None, end_time=None, video_format="mp4", subtitles="none"):
+                  start_time=None, end_time=None, video_format="mp4", subtitles="none",
+                  owner: str = "admin", user_cloud_sync: dict = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
 
@@ -1310,74 +1525,83 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             job["percent"] = min(100, int((job["completed_count"] + file_fraction) / total_for_pct * 100))
 
     try:
-        container_fmt = video_format if video_format in ("mp4", "mkv", "webm") else "mp4"
+        outtmpl = os.path.join(job_dir, "%(playlist_index&{:02d} - |)s%(title).100B.%(ext)s")
+
         ydl_opts = {
-            "outtmpl": os.path.join(job_dir, "%(title)s.%(ext)s"),
-            "format": format_for_quality(quality),
-            "format_sort": ["res", "fps", "vcodec:av01", "acodec:opus"],
-            "noplaylist": not playlist_mode,
+            "outtmpl": outtmpl,
             "progress_hooks": [hook],
-            "merge_output_format": container_fmt,
             "quiet": True,
             "no_warnings": True,
+            "noplaylist": not playlist_mode,
+            "ignoreerrors": True,
             **cookies_opts(),
         }
+
+        if is_audio_quality(quality):
+            bitrate_map = {
+                "audio_128": "128", "audio_192": "192",
+                "audio_256": "256", "audio_320": "320",
+            }
+            target_format = "mp3"
+            if quality in ("flac", "m4a", "opus", "wav"):
+                target_format = quality
+
+            pp = {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": target_format,
+            }
+            if target_format == "mp3":
+                pp["preferredquality"] = bitrate_map.get(quality, "320")
+
+            ydl_opts["format"] = "bestaudio/best"
+            ydl_opts["postprocessors"] = [pp]
+        else:
+            fmt_str = QUALITY_FORMAT_MAP.get(quality, "bestvideo+bestaudio/best")
+            ydl_opts["format"] = fmt_str
+            ydl_opts["merge_output_format"] = video_format if video_format in ("mp4", "mkv", "webm") else "mp4"
 
         if subtitles in ("embed", "download"):
             ydl_opts["writesubtitles"] = True
             ydl_opts["writeautomaticsub"] = True
-            ydl_opts["subtitleslangs"] = ["es", "en"]
+            ydl_opts["subtitleslangs"] = ["es", "en", "all"]
             if subtitles == "embed" and not is_audio_quality(quality):
-                ydl_opts["postprocessors"] = [{
+                if "postprocessors" not in ydl_opts:
+                    ydl_opts["postprocessors"] = []
+                ydl_opts["postprocessors"].append({
                     "key": "FFmpegEmbedSubtitle",
                     "already_have_subtitle": False,
-                }]
+                })
 
-        if is_audio_quality(quality):
-            audio_ext_map = {
-                "audio_flac": "flac",
-                "audio_m4a": "m4a",
-                "audio_opus": "opus",
-                "audio_wav": "wav",
-            }
-            target_codec = audio_ext_map.get(quality, "mp3")
-            pp = {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": target_codec,
-            }
-            if target_codec == "mp3":
-                pp["preferredquality"] = AUDIO_BITRATES.get(quality, "192")
-
-            if "postprocessors" in ydl_opts:
-                ydl_opts["postprocessors"].append(pp)
-            else:
-                ydl_opts["postprocessors"] = [pp]
-            ydl_opts.pop("merge_output_format", None)
-
-        if not playlist_mode and (start_time is not None or end_time is not None):
-            ydl_opts["download_ranges"] = download_range_func(None, [(start_time or 0, end_time or None)])
+        if start_time is not None or end_time is not None:
+            ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
+                None, [(start_time or 0, end_time or float("inf"))]
+            )
             ydl_opts["force_keyframes_at_cuts"] = True
 
-        info_result = extract_with_fallback(url, ydl_opts, download=True)
+        with JOBS_LOCK:
+            JOBS[job_id]["status"] = "downloading"
 
+        extract_with_fallback(url, ydl_opts, download=True)
 
-        title = info_result.get("title", "descarga")
-
-        files = [f for f in os.listdir(job_dir) if os.path.isfile(os.path.join(job_dir, f))]
+        files = [f for f in os.listdir(job_dir) if not f.endswith(".part") and not f.endswith(".ytdl")]
         if not files:
             raise RuntimeError("No se generó ningún archivo")
 
-        if len(files) > 1 or "entries" in info_result:
-            zip_path = os.path.join(DOWNLOAD_DIR, f"{job_id}.zip")
+        if playlist_mode:
+            with JOBS_LOCK:
+                JOBS[job_id]["status"] = "zipping"
+                JOBS[job_id]["current_title"] = "Comprimiendo playlist..."
+            zip_filename = f"playlist_{job_id[:8]}.zip"
+            zip_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{zip_filename}")
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for f in files:
-                    zf.write(os.path.join(job_dir, f), arcname=f)
+                    zf.write(os.path.join(job_dir, f), f)
             final_path = zip_path
-            final_name = safe_filename(title) + ".zip"
+            final_name = zip_filename
         else:
-            src = os.path.join(job_dir, files[0])
-            final_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{files[0]}")
-            shutil.move(src, final_path)
+            final_filename = f"{job_id}_{files[0]}"
+            final_path = os.path.join(DOWNLOAD_DIR, final_filename)
+            shutil.move(os.path.join(job_dir, files[0]), final_path)
             final_name = files[0]
 
         with JOBS_LOCK:
@@ -1388,9 +1612,13 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 "filename": final_name,
                 "finished_at": time.time(),
                 "speed": None,
+                "owner": owner,
             })
             job_snap = dict(JOBS[job_id])
-        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap), daemon=True).start()
+
+        if os.path.exists(final_path):
+            record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
@@ -1411,6 +1639,10 @@ def download():
     end_raw = (data or {}).get("end_time")
     engine = (data or {}).get("engine", "ytdlp")
     video_title = (data or {}).get("video_title", "")
+    user_cloud_sync = (data or {}).get("user_cloud_sync")
+
+    user = getattr(request, "current_user", {}) or {}
+    owner = user.get("username", "admin")
 
     if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
@@ -1444,6 +1676,7 @@ def download():
             "file_percent": 0,
             "speed": None,
             "eta_seconds": None,
+            "owner": owner,
         }
 
     deezer_arl = (data or {}).get("deezer_arl", "").strip()
@@ -1452,7 +1685,7 @@ def download():
     if platform in ("Deezer", "Spotify") and not playlist_mode:
         thread = threading.Thread(
             target=run_download_music,
-            args=(job_id, raw_url, quality, deezer_arl),
+            args=(job_id, raw_url, quality, deezer_arl, owner, user_cloud_sync),
             daemon=True,
         )
         thread.start()
@@ -1460,12 +1693,12 @@ def download():
 
     if engine == "cobalt":
         thread = threading.Thread(
-            target=run_download_cobalt, args=(job_id, url, quality, video_title), daemon=True
+            target=run_download_cobalt, args=(job_id, url, quality, video_title, owner, user_cloud_sync), daemon=True
         )
     else:
         thread = threading.Thread(
             target=run_download,
-            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time, video_format, subtitles),
+            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time, video_format, subtitles, owner, user_cloud_sync),
             daemon=True,
         )
     thread.start()
@@ -1524,6 +1757,10 @@ def batch_download():
     subtitles = data.get("subtitles", "none")
     engine = data.get("engine", "ytdlp")
     deezer_arl = data.get("deezer_arl", "").strip()
+    user_cloud_sync = data.get("user_cloud_sync")
+
+    user = getattr(request, "current_user", {}) or {}
+    owner = user.get("username", "admin")
 
     batch_id = uuid.uuid4().hex
     job_ids = []
@@ -1544,6 +1781,7 @@ def batch_download():
                 "eta_seconds": None,
                 "url": raw_url,
                 "batch_id": batch_id,
+                "owner": owner,
             }
 
         platform = detect_platform(raw_url)
@@ -1551,19 +1789,19 @@ def batch_download():
         if platform in ("Deezer", "Spotify"):
             t = threading.Thread(
                 target=run_download_music,
-                args=(job_id, raw_url, quality, deezer_arl),
+                args=(job_id, raw_url, quality, deezer_arl, owner, user_cloud_sync),
                 daemon=True,
             )
         elif engine == "cobalt":
             t = threading.Thread(
                 target=run_download_cobalt,
-                args=(job_id, norm_url, quality, ""),
+                args=(job_id, norm_url, quality, "", owner, user_cloud_sync),
                 daemon=True,
             )
         else:
             t = threading.Thread(
                 target=run_download,
-                args=(job_id, norm_url, quality, False, 1, None, None, video_format, subtitles),
+                args=(job_id, norm_url, quality, False, 1, None, None, video_format, subtitles, owner, user_cloud_sync),
                 daemon=True,
             )
         t.start()
