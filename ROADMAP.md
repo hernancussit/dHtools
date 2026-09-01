@@ -129,6 +129,14 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Herramienta de Diagnóstico Unitario Deno JS:**
   - [x] Endpoint `POST /api/admin/test-deno` y botón interactivo para probar compilación JS y diagnosticar algoritmos de YouTube.
 
+---
+
+## 🎯 Versión `v2.4.1` (Completado)
+- [x] **Métricas de Memoria RAM Proyecto vs VPS:**
+  - [x] Lectura de cgroups v2 (`/sys/fs/cgroup/memory.current`) para obtener los MB/GB exactos del proyecto.
+  - [x] Barra de progreso segmentada de doble color en `/admin` con desglose de consumo del proyecto, resto del VPS y memoria libre.
+
+
 
 
 

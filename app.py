@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.4.1"
+
 
 
 
@@ -498,8 +499,45 @@ def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_clou
             print(f"[CloudSync Telegram Error] {e}")
 
 
+def get_project_memory_bytes() -> int:
+    # 1. Try cgroups v2 (standard inside modern Docker)
+    if os.path.exists("/sys/fs/cgroup/memory.current"):
+        try:
+            with open("/sys/fs/cgroup/memory.current", "r") as f:
+                val = int(f.read().strip())
+                if val > 0:
+                    return val
+        except Exception:
+            pass
+    # 2. Try cgroups v1
+    for p in ("/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/memory.usage_in_bytes"):
+        if os.path.exists(p):
+            try:
+                with open(p, "r") as f:
+                    val = int(f.read().strip())
+                    if val > 0:
+                        return val
+            except Exception:
+                pass
+    # 3. Fallback to /proc/self/status VmRSS
+    if os.path.exists("/proc/self/status"):
+        try:
+            with open("/proc/self/status", "r") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        parts = line.split()
+                        return int(parts[1]) * 1024
+        except Exception:
+            pass
+    return 0
+
+
 def get_ram_status():
     try:
+        total = 0
+        free = 0
+        used = 0
+        percent = 0
         if os.path.exists("/proc/meminfo"):
             meminfo = {}
             with open("/proc/meminfo", "r") as f:
@@ -513,22 +551,34 @@ def get_ram_status():
             free = meminfo.get("MemAvailable", meminfo.get("MemFree", 0))
             used = total - free
             percent = round((used / total) * 100, 1) if total > 0 else 0
-            return {
-                "total_bytes": total,
-                "used_bytes": used,
-                "free_bytes": free,
-                "total_formatted": format_bytes(total),
-                "used_formatted": format_bytes(used),
-                "free_formatted": format_bytes(free),
-                "percent_used": percent,
-            }
+
+        project_bytes = get_project_memory_bytes()
+        project_percent = round((project_bytes / total) * 100, 2) if total > 0 else 0
+
+        return {
+            # VPS System RAM
+            "total_bytes": total,
+            "used_bytes": used,
+            "free_bytes": free,
+            "total_formatted": format_bytes(total),
+            "used_formatted": format_bytes(used),
+            "free_formatted": format_bytes(free),
+            "percent_used": percent,
+
+            # Project / Container RAM
+            "project_bytes": project_bytes,
+            "project_formatted": format_bytes(project_bytes),
+            "project_percent_used": project_percent,
+        }
     except Exception:
         pass
     return {
         "total_bytes": 0, "used_bytes": 0, "free_bytes": 0,
         "total_formatted": "N/A", "used_formatted": "N/A", "free_formatted": "N/A",
-        "percent_used": 0
+        "percent_used": 0,
+        "project_bytes": 0, "project_formatted": "N/A", "project_percent_used": 0,
     }
+
 
 
 

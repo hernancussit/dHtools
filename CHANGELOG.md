@@ -4,7 +4,18 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.4.1] - 2026-09-01
+
+### 📊 Métricas y Diagnóstico
+- **Monitoreo Detallado de Memoria RAM (Proyecto vs VPS Total):**
+  - Lectura en tiempo real del consumo específico de memoria RAM del proyecto mediante cgroups v2 (`/sys/fs/cgroup/memory.current`), cgroups v1 y RSS de procesos.
+  - Barra de progreso segmentada de doble color que diferencia el consumo del contenedor respecto al consumo global de otros procesos del VPS y la memoria disponible.
+  - Indicador dinámico en tarjeta de diagnóstico con desglose exacto en MB/GB y porcentaje relativo.
+
+---
+
 ## [2.4.0] - 2026-09-01
+
 
 ### ✨ Novedades y Diagnóstico
 - **Detección y Monitoreo del Motor Deno JS:**

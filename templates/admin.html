@@ -497,13 +497,14 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Consumo de Memoria RAM (VPS / Proyecto)</div>
+        <div class="card-title">Consumo de Memoria RAM (Proyecto & VPS Total)</div>
         <div style="font-size:0.9rem; margin-bottom:8px;" id="ramUsageLabel">Consultando memoria RAM...</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" id="ramUsageBar" style="background:var(--accent-blue);"></div>
+        <div class="progress-bar-wrap" style="display:flex; background:#0b1220; overflow:hidden;">
+          <div id="ramProjectBar" style="height:100%; width:0%; background:var(--accent-blue); transition:width 0.3s;" title="Proyecto"></div>
+          <div id="ramOtherBar" style="height:100%; width:0%; background:rgba(56,189,248,0.35); transition:width 0.3s;" title="Resto VPS"></div>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.8rem; color:var(--muted);">
-          <span id="ramDetailsLabel">Total: - | Usada: - | Libre: -</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.8rem; color:var(--muted); flex-wrap:wrap; gap:8px;">
+          <span id="ramDetailsLabel">Proyecto: - | VPS Usado: - | VPS Libre: -</span>
           <span id="ramPercentBadge" class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> RAM OK</span>
         </div>
       </div>
@@ -899,15 +900,27 @@ async function loadServicesStatus() {
     }
 
     if (data.ram) {
-      document.getElementById('ramUsageLabel').textContent = `Uso de memoria RAM: ${data.ram.percent_used}% (${data.ram.used_formatted} de ${data.ram.total_formatted})`;
-      const ramBar = document.getElementById('ramUsageBar');
-      ramBar.style.width = `${data.ram.percent_used}%`;
-      ramBar.style.background = data.ram.percent_used >= 85 ? 'var(--danger)' : 'var(--accent-blue)';
-      document.getElementById('ramDetailsLabel').textContent = `Total: ${data.ram.total_formatted} | Usada: ${data.ram.used_formatted} | Libre: ${data.ram.free_formatted}`;
+      const projFormatted = data.ram.project_formatted || '0 B';
+      const projPct = data.ram.project_percent_used || 0;
+      const vpsTotalPct = data.ram.percent_used || 0;
+      const otherVpsPct = Math.max(0, vpsTotalPct - projPct);
+
+      document.getElementById('ramUsageLabel').innerHTML = `
+        <strong style="color:var(--accent-blue);">Proyecto: ${projFormatted} (${projPct}%)</strong>
+        <span style="color:var(--muted);"> &bull; VPS Total: ${data.ram.used_formatted} de ${data.ram.total_formatted} (${vpsTotalPct}%)</span>
+      `;
+
+      const projBar = document.getElementById('ramProjectBar');
+      const otherBar = document.getElementById('ramOtherBar');
+      if (projBar) projBar.style.width = `${Math.min(100, Math.max(projPct, 0.8))}%`;
+      if (otherBar) otherBar.style.width = `${otherVpsPct}%`;
+
+      document.getElementById('ramDetailsLabel').textContent = `Proyecto: ${projFormatted} | VPS Total Usado: ${data.ram.used_formatted} | VPS Libre: ${data.ram.free_formatted}`;
+
       const ramBadge = document.getElementById('ramPercentBadge');
       if (ramBadge) {
-        ramBadge.className = `status-badge ${data.ram.percent_used >= 85 ? 'status-offline' : 'status-online'}`;
-        ramBadge.innerHTML = `<span class="badge-dot" style="background:${data.ram.percent_used >= 85 ? '#ef4444' : '#10b981'};"></span> ${data.ram.percent_used}% Usado`;
+        ramBadge.className = `status-badge ${vpsTotalPct >= 85 ? 'status-offline' : 'status-online'}`;
+        ramBadge.innerHTML = `<span class="badge-dot" style="background:${vpsTotalPct >= 85 ? '#ef4444' : '#10b981'};"></span> Proyecto: ${projFormatted}`;
       }
     }
   } catch (e) {
