@@ -11,6 +11,7 @@ import zipfile
 import json
 import hashlib
 import functools
+import ftplib
 import requests
 from flask import Flask, request, jsonify, send_file, render_template, abort, Response
 
@@ -25,9 +26,14 @@ APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
 COOKIES_FILE = os.environ.get("COOKIES_FILE", "/app/cookies.txt")
 USERS_FILE = os.environ.get("USERS_FILE", "/app/users.json")
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "/app/config.json")
+CLOUD_CONFIG_FILE = os.environ.get("CLOUD_CONFIG_FILE", "/app/cloud_sync.json")
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://potprovider:4416")
 COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
+
+BATCH_JOBS = {}
+BATCH_LOCK = threading.Lock()
+
 
 
 def cookies_opts():
@@ -251,6 +257,103 @@ def load_config() -> dict:
 def save_config(cfg: dict):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def load_cloud_config() -> dict:
+    default_cfg = {
+        "webdav": {"enabled": False, "url": "", "username": "", "password": "", "remote_path": "/ytsite"},
+        "ftp": {"enabled": False, "host": "", "port": 21, "username": "", "password": "", "remote_dir": "/"},
+        "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
+        "webhook": {"enabled": False, "url": ""},
+    }
+    if os.path.exists(CLOUD_CONFIG_FILE):
+        try:
+            with open(CLOUD_CONFIG_FILE, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                for k, v in cfg.items():
+                    if k in default_cfg and isinstance(v, dict):
+                        default_cfg[k].update(v)
+        except Exception:
+            pass
+    return default_cfg
+
+
+def save_cloud_config(cfg: dict):
+    with open(CLOUD_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def sync_to_cloud(filepath: str, filename: str, job_info: dict = None):
+    if not filepath or not os.path.exists(filepath):
+        return
+    cfg = load_cloud_config()
+
+    # 1. Webhook
+    if cfg.get("webhook", {}).get("enabled") and cfg["webhook"].get("url"):
+        try:
+            requests.post(
+                cfg["webhook"]["url"],
+                json={
+                    "event": "download_completed",
+                    "filename": filename,
+                    "size_bytes": os.path.getsize(filepath),
+                    "job_info": job_info or {},
+                    "timestamp": time.time(),
+                },
+                timeout=10,
+            )
+        except Exception as e:
+            print(f"[CloudSync Webhook Error] {e}")
+
+    # 2. WebDAV / Nextcloud
+    wd = cfg.get("webdav", {})
+    if wd.get("enabled") and wd.get("url"):
+        try:
+            base_url = wd["url"].rstrip("/")
+            remote_path = wd.get("remote_path", "").strip("/ ")
+            target_url = f"{base_url}/{remote_path}/{filename}" if remote_path else f"{base_url}/{filename}"
+            auth = (wd.get("username", ""), wd.get("password", "")) if wd.get("username") else None
+            with open(filepath, "rb") as f:
+                requests.put(target_url, data=f, auth=auth, timeout=60)
+        except Exception as e:
+            print(f"[CloudSync WebDAV Error] {e}")
+
+    # 3. FTP
+    ftp_cfg = cfg.get("ftp", {})
+    if ftp_cfg.get("enabled") and ftp_cfg.get("host"):
+        try:
+            ftp = ftplib.FTP()
+            ftp.connect(ftp_cfg["host"], int(ftp_cfg.get("port", 21)), timeout=30)
+            ftp.login(ftp_cfg.get("username", "anonymous"), ftp_cfg.get("password", ""))
+            remote_dir = ftp_cfg.get("remote_dir", "/").strip()
+            if remote_dir and remote_dir != "/":
+                try:
+                    ftp.cwd(remote_dir)
+                except Exception:
+                    pass
+            with open(filepath, "rb") as f:
+                ftp.storbinary(f"STOR {filename}", f)
+            ftp.quit()
+        except Exception as e:
+            print(f"[CloudSync FTP Error] {e}")
+
+    # 4. Telegram Bot
+    tg = cfg.get("telegram", {})
+    if tg.get("enabled") and tg.get("bot_token") and tg.get("chat_id"):
+        try:
+            token = tg["bot_token"]
+            chat_id = tg["chat_id"]
+            if os.path.getsize(filepath) <= 50 * 1024 * 1024:
+                with open(filepath, "rb") as f:
+                    requests.post(
+                        f"https://api.telegram.org/bot{token}/sendDocument",
+                        data={"chat_id": chat_id, "caption": f"🎬 {filename}"},
+                        files={"document": (filename, f)},
+                        timeout=120,
+                    )
+        except Exception as e:
+            print(f"[CloudSync Telegram Error] {e}")
+
 
 
 def format_bytes(bytes_val: int) -> str:
@@ -478,7 +581,7 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
 
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "2.0.0"
 
 
 def normalize_url(url: str) -> str:
@@ -744,6 +847,8 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 "finished_at": time.time(),
                 "speed": None,
             })
+            job_snap = dict(JOBS[job_id])
+        threading.Thread(target=sync_to_cloud, args=(final_path, final_filename, job_snap), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({
@@ -1144,6 +1249,8 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                 "finished_at": time.time(),
                 "speed": None,
             })
+            job_snap = dict(JOBS[job_id])
+        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
@@ -1275,6 +1382,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 "finished_at": time.time(),
                 "speed": None,
             })
+            job_snap = dict(JOBS[job_id])
+        threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
@@ -1387,6 +1496,230 @@ def files(job_id):
     abort(404)
 
 
+# ==================== BATCH DOWNLOAD QUEUE API ====================
+
+@app.route("/api/batch-download", methods=["POST"])
+def batch_download():
+    data = request.get_json(force=True) or {}
+    urls_raw = data.get("urls", [])
+    if isinstance(urls_raw, str):
+        urls = [u.strip() for u in urls_raw.splitlines() if u.strip()]
+    elif isinstance(urls_raw, list):
+        urls = [str(u).strip() for u in urls_raw if str(u).strip()]
+    else:
+        urls = []
+
+    if not urls:
+        return jsonify({"error": "No se enviaron URLs válidas"}), 400
+
+    quality = data.get("quality", "best")
+    video_format = data.get("video_format", "mp4")
+    subtitles = data.get("subtitles", "none")
+    engine = data.get("engine", "ytdlp")
+    deezer_arl = data.get("deezer_arl", "").strip()
+
+    batch_id = uuid.uuid4().hex
+    job_ids = []
+
+    for raw_url in urls:
+        job_id = uuid.uuid4().hex
+        job_ids.append(job_id)
+        with JOBS_LOCK:
+            JOBS[job_id] = {
+                "status": "queued",
+                "percent": 0,
+                "completed_count": 0,
+                "total_count": 1,
+                "current_index": 1,
+                "current_title": None,
+                "file_percent": 0,
+                "speed": None,
+                "eta_seconds": None,
+                "url": raw_url,
+                "batch_id": batch_id,
+            }
+
+        platform = detect_platform(raw_url)
+        norm_url = normalize_url(raw_url)
+        if platform in ("Deezer", "Spotify"):
+            t = threading.Thread(
+                target=run_download_music,
+                args=(job_id, raw_url, quality, deezer_arl),
+                daemon=True,
+            )
+        elif engine == "cobalt":
+            t = threading.Thread(
+                target=run_download_cobalt,
+                args=(job_id, norm_url, quality, ""),
+                daemon=True,
+            )
+        else:
+            t = threading.Thread(
+                target=run_download,
+                args=(job_id, norm_url, quality, False, 1, None, None, video_format, subtitles),
+                daemon=True,
+            )
+        t.start()
+
+    with BATCH_LOCK:
+        BATCH_JOBS[batch_id] = {
+            "batch_id": batch_id,
+            "created_at": time.time(),
+            "job_ids": job_ids,
+            "total_count": len(job_ids),
+        }
+
+    return jsonify({"batch_id": batch_id, "job_ids": job_ids, "total": len(job_ids)})
+
+
+@app.route("/api/batch-status/<batch_id>")
+def batch_status(batch_id):
+    with BATCH_LOCK:
+        batch = BATCH_JOBS.get(batch_id)
+    if not batch:
+        abort(404)
+
+    jobs_summary = []
+    completed_count = 0
+    with JOBS_LOCK:
+        for jid in batch["job_ids"]:
+            j = JOBS.get(jid, {})
+            st = j.get("status", "unknown")
+            if st in ("finished", "error"):
+                completed_count += 1
+            jobs_summary.append({
+                "job_id": jid,
+                "url": j.get("url"),
+                "status": st,
+                "percent": j.get("percent", 0),
+                "title": j.get("current_title") or j.get("filename"),
+                "filename": j.get("filename"),
+                "error": j.get("error"),
+                "download_url": f"/api/files/{jid}" if st == "finished" else None,
+            })
+
+    all_done = (completed_count == len(batch["job_ids"]))
+    return jsonify({
+        "batch_id": batch_id,
+        "total_count": len(batch["job_ids"]),
+        "completed_count": completed_count,
+        "all_finished": all_done,
+        "jobs": jobs_summary,
+    })
+
+
+@app.route("/api/batch-download-zip/<batch_id>")
+def batch_download_zip(batch_id):
+    with BATCH_LOCK:
+        batch = BATCH_JOBS.get(batch_id)
+    if not batch:
+        abort(404)
+
+    files_to_zip = []
+    with JOBS_LOCK:
+        for jid in batch["job_ids"]:
+            j = JOBS.get(jid)
+            if j and j.get("status") == "finished" and j.get("filepath") and os.path.exists(j["filepath"]):
+                files_to_zip.append((j["filepath"], j.get("filename") or os.path.basename(j["filepath"])))
+
+    if not files_to_zip:
+        return jsonify({"error": "No hay archivos terminados para empaquetar"}), 404
+
+    zip_path = os.path.join(DOWNLOAD_DIR, f"batch_{batch_id}.zip")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fpath, fname in files_to_zip:
+            zf.write(fpath, arcname=fname)
+
+    return send_file(
+        zip_path,
+        as_attachment=True,
+        download_name=f"lote_{batch_id[:8]}.zip",
+        mimetype="application/zip",
+    )
+
+
+# ==================== CLOUD SYNC ADMIN API ====================
+
+@app.route("/api/admin/cloud-sync", methods=["GET", "POST"])
+@require_admin
+def admin_cloud_sync():
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        save_cloud_config(data)
+        return jsonify({"message": "Configuración de Sincronización en la Nube guardada exitosamente", "cloud_sync": data})
+    return jsonify({"cloud_sync": load_cloud_config()})
+
+
+@app.route("/api/admin/cloud-sync/test", methods=["POST"])
+@require_admin
+def admin_cloud_sync_test():
+    data = request.get_json(force=True) or {}
+    service = data.get("service")
+    config = data.get("config", {})
+
+    if service == "webhook":
+        url = config.get("url")
+        if not url:
+            return jsonify({"error": "Falta la URL del webhook"}), 400
+        try:
+            r = requests.post(url, json={"test": True, "message": "ytsite cloud sync test"}, timeout=5)
+            return jsonify({"success": True, "message": f"Webhook respondió HTTP {r.status_code}"})
+        except Exception as e:
+            return jsonify({"error": f"Error conectando al webhook: {e}"}), 400
+
+    if service == "telegram":
+        token = config.get("bot_token")
+        chat_id = config.get("chat_id")
+        if not token or not chat_id:
+            return jsonify({"error": "Falta Bot Token o Chat ID"}), 400
+        try:
+            r = requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": "✅ Prueba de conexión de ytsite exitosa!"},
+                timeout=6,
+            )
+            res = r.json()
+            if res.get("ok"):
+                return jsonify({"success": True, "message": "Mensaje de prueba enviado a Telegram correctamente"})
+            return jsonify({"error": res.get("description", "Error de Telegram")}), 400
+        except Exception as e:
+            return jsonify({"error": f"Error conectando con Telegram: {e}"}), 400
+
+    if service == "ftp":
+        host = config.get("host")
+        port = int(config.get("port", 21))
+        user = config.get("username", "anonymous")
+        pwd = config.get("password", "")
+        if not host:
+            return jsonify({"error": "Falta host FTP"}), 400
+        try:
+            ftp = ftplib.FTP()
+            ftp.connect(host, port, timeout=6)
+            ftp.login(user, pwd)
+            ftp.quit()
+            return jsonify({"success": True, "message": "Conexión FTP exitosa"})
+        except Exception as e:
+            return jsonify({"error": f"Error conectando a FTP: {e}"}), 400
+
+    if service == "webdav":
+        url = config.get("url")
+        if not url:
+            return jsonify({"error": "Falta URL WebDAV"}), 400
+        try:
+            auth = (config.get("username", ""), config.get("password", "")) if config.get("username") else None
+            r = requests.request("PROPFIND", url, auth=auth, headers={"Depth": "0"}, timeout=6)
+            if r.status_code in (200, 207, 301, 302, 401):
+                if r.status_code == 401:
+                    return jsonify({"error": "Autenticación WebDAV fallida (401)"}), 400
+                return jsonify({"success": True, "message": f"Servidor WebDAV respondió HTTP {r.status_code}"})
+            return jsonify({"error": f"WebDAV respondió HTTP {r.status_code}"}), 400
+        except Exception as e:
+            return jsonify({"error": f"Error WebDAV: {e}"}), 400
+
+    return jsonify({"error": "Servicio desconocido"}), 400
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
 

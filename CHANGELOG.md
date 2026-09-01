@@ -6,6 +6,26 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ---
 
+## [2.0.0] - 2026-09-01
+
+### ✨ Novedades y Características
+- **Cola de Descargas Simultáneas Multi-Enlace (Batch Queue):**
+  - Nuevo selector de modo en la interfaz: **Enlace Individual** vs **📋 Modo Múltiples Enlaces**.
+  - Permite pegar múltiples URLs simultáneas (una por línea) de diferentes plataformas (YouTube, Spotify, Deezer, TikTok, etc.).
+  - Panel visual de cola en tiempo real con barras de progreso por archivo y enlaces de descarga independientes.
+  - **Empaquetador de Lote:** Botón **"📦 Descargar Todo (.ZIP)"** que comprime automáticamente todas las descargas terminadas del lote.
+  - Nuevos endpoints API: `POST /api/batch-download`, `GET /api/batch-status/<batch_id>`, `GET /api/batch-download-zip/<batch_id>`.
+- **Módulo de Sincronización en la Nube (Cloud Sync):**
+  - Subida y notificación automática de archivos finalizados sin consumir ancho de banda local.
+  - **Nextcloud / ownCloud / WebDAV:** Subida directa mediante protocolo WebDAV con autenticación por credenciales o App Token.
+  - **Servidor FTP:** Subida automatizada a servidores FTP remotos.
+  - **Telegram Bot Uploader:** Envío de audios y videos directamente a chats o canales de Telegram mediante la API de bots.
+  - **Webhook HTTP:** Disparo de eventos `POST` JSON con metadatos y enlaces de descarga para integración con servicios externos (n8n, Zapier, Make, etc.).
+- **Centro de Control Cloud Sync en `/admin`:**
+  - Nueva pestaña **☁️ Sincronización en la Nube** en el panel de administración con formularios dedicados y **botones de prueba de conexión en vivo** para cada servicio.
+
+---
+
 ## [1.4.0] - 2026-09-01
 
 ### ✨ Novedades y Características

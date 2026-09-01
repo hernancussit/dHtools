@@ -73,10 +73,11 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-### 📌 Versión 2.0.0 — Cola de Descargas y Cloud Sync
-- [ ] **Cola de Descargas Simultáneas:**
-  - Posibilidad de pegar múltiples enlaces a la vez y ver el progreso en paralelo.
-- [ ] **Sincronización en la Nube:**
-  - Enviar descargas directamente a Google Drive, Nextcloud, Dropbox o FTP sin pasar por el dispositivo local.
-- [ ] **Sistema de Registro Abierto / Invitaciones (Opcional):**
-  - Registro de usuarios con confirmación o invitaciones privadas con cuotas de descarga.
+## 🎯 Versión `v2.0.0` (Completado)
+- [x] **Cola de Descargas Simultáneas (Multi-Enlace / Batch Queue):**
+  - [x] Interfaz de pegado múltiple de URLs con procesamiento concurrente en segundo plano.
+  - [x] Panel de cola en tiempo real con monitoreo por elemento y empaquetador automático `.zip` (`GET /api/batch-download-zip/<batch_id>`).
+- [x] **Sincronización en la Nube (Cloud Sync):**
+  - [x] Módulo configurable para Nextcloud / WebDAV, FTP, Telegram Bot Uploader y Webhooks HTTP.
+  - [x] Pestaña de administración web con formularios y pruebas de conectividad en vivo.
+

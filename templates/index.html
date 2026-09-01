@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<title>{{ site_title or 'Descargador Multimedia' }}</title>
+<title>{{ (config and config.site_title) or 'Descargador Multimedia' }}</title>
 <style>
   :root, [data-theme="cyberpunk"] {
     --bg-gradient: linear-gradient(160deg, #0f172a, #1e1b4b);
@@ -77,7 +77,7 @@
     border-radius: 16px;
     padding: 28px;
     width: 100%;
-    max-width: 580px;
+    max-width: 620px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
     border: 1px solid var(--border);
     transition: background 0.3s, border-color 0.3s;
@@ -122,6 +122,35 @@
   .disk-dot.warning { background: var(--warning); }
   .disk-dot.danger { background: var(--accent); }
 
+  .mode-switch {
+    display: flex;
+    gap: 6px;
+    background: var(--bg-input);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .mode-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: var(--bg-card);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+  }
+
   .platform-tags {
     display: flex;
     gap: 6px;
@@ -140,7 +169,7 @@
   }
   .tag:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
 
-  input[type=text], select {
+  input[type=text], select, textarea {
     width: 100%;
     padding: 11px 13px;
     border-radius: 10px;
@@ -150,8 +179,9 @@
     font-size: 0.92rem;
     outline: none;
     transition: border-color 0.2s;
+    font-family: inherit;
   }
-  input[type=text]:focus, select:focus { border-color: var(--accent-blue); }
+  input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
   .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   select { flex: 1; }
 
@@ -263,6 +293,51 @@
   .advanced-header:hover { color: var(--text); }
   .advanced-body { display: none; margin-top: 10px; }
 
+  /* Batch Queue Box */
+  #batchQueueSection {
+    display: none;
+    margin-top: 18px;
+    background: var(--bg-input);
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .batch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .batch-queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .queue-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .queue-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+  }
+  .queue-item-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 380px;
+    font-weight: 600;
+  }
+
   /* Recent Downloads */
   .recent-section {
     margin-top: 22px;
@@ -303,7 +378,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 320px;
+    max-width: 340px;
     color: var(--text);
   }
   .recent-item-meta {
@@ -370,6 +445,12 @@
       <p class="subtitle" id="siteSubtitleHeading">{{ (config and config.site_subtitle) or 'Descargá videos, playlists o música pegando el enlace.' }}</p>
     </div>
 
+    <!-- Single vs Batch Mode Switcher -->
+    <div class="mode-switch">
+      <button class="mode-btn active" id="btnModeSingle">🔗 Enlace Individual / Álbum</button>
+      <button class="mode-btn" id="btnModeBatch">📋 Cola de Enlaces Múltiples</button>
+    </div>
+
     <div class="platform-tags">
       <span class="tag" id="tagYoutube">YouTube</span>
       <span class="tag" id="tagShorts">Shorts</span>
@@ -385,7 +466,15 @@
 
     <div id="toastAlert" class="toast toast-info"></div>
 
-    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..., Spotify, Deezer...">
+    <!-- Single URL Input -->
+    <div id="singleInputWrap">
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..., Spotify, Deezer...">
+    </div>
+
+    <!-- Batch Multi-URL Input -->
+    <div id="batchInputWrap" style="display:none;">
+      <textarea id="batchUrls" rows="4" placeholder="Pegá múltiples enlaces (uno por línea):&#10;https://www.youtube.com/watch?v=...&#10;https://open.spotify.com/track/...&#10;https://www.deezer.com/track/..."></textarea>
+    </div>
 
     <!-- Deezer ARL Configuration Box -->
     <div id="deezerSection">
@@ -457,23 +546,31 @@
       </div>
     </div>
     
-    <label class="checkbox" style="margin-top:12px;" id="playlistLabel">
-      <input type="checkbox" id="playlistCheck"> Descargar toda la playlist / álbum (se empaqueta en .zip)
-    </label>
-    <div class="meta" id="engineNote" style="display:none; margin-top:6px; font-size:0.8rem; color:#f59e0b;"></div>
-
-    <div id="trimSection" style="display:none; margin-top:14px;">
-      <label class="checkbox">
-        <input type="checkbox" id="trimCheck"> Recortar (solo video individual)
+    <div id="singleOptionsWrap">
+      <label class="checkbox" style="margin-top:12px;" id="playlistLabel">
+        <input type="checkbox" id="playlistCheck"> Descargar toda la playlist / álbum (se empaqueta en .zip)
       </label>
-      <div class="row" id="trimInputs" style="display:none;">
-        <input type="text" id="trimStart" placeholder="Desde (ej. 00:00:00)" style="flex:1;">
-        <input type="text" id="trimEnd" placeholder="Hasta (ej. 00:05:30)" style="flex:1;">
+      <div class="meta" id="engineNote" style="display:none; margin-top:6px; font-size:0.8rem; color:#f59e0b;"></div>
+
+      <div id="trimSection" style="display:none; margin-top:14px;">
+        <label class="checkbox">
+          <input type="checkbox" id="trimCheck"> Recortar (solo video individual)
+        </label>
+        <div class="row" id="trimInputs" style="display:none;">
+          <input type="text" id="trimStart" placeholder="Desde (ej. 00:00:00)" style="flex:1;">
+          <input type="text" id="trimEnd" placeholder="Hasta (ej. 00:05:30)" style="flex:1;">
+        </div>
       </div>
+
+      <button id="infoBtn" class="btn-main">Buscar</button>
     </div>
 
-    <button id="infoBtn" class="btn-main">Buscar</button>
+    <!-- Batch Download Action Button -->
+    <div id="batchActionWrap" style="display:none;">
+      <button id="batchDownloadBtn" class="btn-main">🚀 Iniciar Cola de Descargas</button>
+    </div>
 
+    <!-- Single Preview -->
     <div id="preview">
       <img id="previewImg" src="" alt="">
       <div class="title" id="previewTitle"></div>
@@ -481,6 +578,7 @@
       <button id="downloadBtn" class="btn-main" style="margin-top:12px;">Descargar</button>
     </div>
 
+    <!-- Single Progress -->
     <div id="progressWrap">
       <div id="playlistInfo" style="display:none; font-size:0.85rem; color:var(--muted); margin-bottom:6px;">
         Elemento <span id="plIndex">0</span> de <span id="plTotal">0</span> · <span id="plCompleted">0</span> completados
@@ -493,6 +591,20 @@
 
     <a id="downloadLink" href="#">Guardar archivo</a>
     <div class="error" id="errorText"></div>
+
+    <!-- Batch Queue Box -->
+    <div id="batchQueueSection">
+      <div class="batch-header">
+        <div>
+          <strong style="font-size:0.95rem;">📋 Cola de Descargas en Progreso</strong>
+          <div style="font-size:0.78rem; color:var(--muted);" id="batchProgressLabel">0 de 0 completadas</div>
+        </div>
+        <a id="btnDownloadBatchZip" href="#" class="btn-sm btn-secondary" style="display:none; background:var(--success); color:white; text-decoration:none;">
+          📦 Descargar Todo (.ZIP)
+        </a>
+      </div>
+      <div class="batch-queue-list" id="batchQueueList"></div>
+    </div>
 
     <!-- Recent Downloads Section -->
     <div class="recent-section">
@@ -507,7 +619,7 @@
 
     <footer>
       <span>Uso privado para contenido autorizado.</span>
-      <span style="background:var(--bg-input); padding:2px 8px; border-radius:12px; border:1px solid var(--border);">Versión: <strong style="color:var(--text);">v{{ version or '1.4.0' }}</strong></span>
+      <span style="background:var(--bg-input); padding:2px 8px; border-radius:12px; border:1px solid var(--border);">Versión: <strong style="color:var(--text);">v{{ version or '2.0.0' }}</strong></span>
     </footer>
   </div>
 
@@ -559,6 +671,47 @@ const themeSelector = document.getElementById('themeSelector');
 const advancedHeader = document.getElementById('advancedHeader');
 const advancedBody = document.getElementById('advancedBody');
 const advancedIcon = document.getElementById('advancedIcon');
+
+// Mode Switcher
+const btnModeSingle = document.getElementById('btnModeSingle');
+const btnModeBatch = document.getElementById('btnModeBatch');
+const singleInputWrap = document.getElementById('singleInputWrap');
+const batchInputWrap = document.getElementById('batchInputWrap');
+const singleOptionsWrap = document.getElementById('singleOptionsWrap');
+const batchActionWrap = document.getElementById('batchActionWrap');
+const batchUrls = document.getElementById('batchUrls');
+const batchDownloadBtn = document.getElementById('batchDownloadBtn');
+const batchQueueSection = document.getElementById('batchQueueSection');
+const batchQueueList = document.getElementById('batchQueueList');
+const batchProgressLabel = document.getElementById('batchProgressLabel');
+const btnDownloadBatchZip = document.getElementById('btnDownloadBatchZip');
+
+let isBatchMode = false;
+
+btnModeSingle.addEventListener('click', () => {
+  isBatchMode = false;
+  btnModeSingle.classList.add('active');
+  btnModeBatch.classList.remove('active');
+  singleInputWrap.style.display = 'block';
+  singleOptionsWrap.style.display = 'block';
+  batchInputWrap.style.display = 'none';
+  batchActionWrap.style.display = 'none';
+  resetError();
+});
+
+btnModeBatch.addEventListener('click', () => {
+  isBatchMode = true;
+  btnModeBatch.classList.add('active');
+  btnModeSingle.classList.remove('active');
+  singleInputWrap.style.display = 'none';
+  singleOptionsWrap.style.display = 'none';
+  preview.style.display = 'none';
+  progressWrap.style.display = 'none';
+  downloadLink.style.display = 'none';
+  batchInputWrap.style.display = 'block';
+  batchActionWrap.style.display = 'block';
+  resetError();
+});
 
 // Theme Switcher & Persistence
 const currentTheme = localStorage.getItem('site_theme') || '{{ (config and config.default_theme) or "cyberpunk" }}';
@@ -869,6 +1022,98 @@ function poll(jobId) {
       downloadBtn.disabled = false;
     }
   }, 1200);
+}
+
+// Batch Queue Logic
+batchDownloadBtn.addEventListener('click', async () => {
+  resetError();
+  const raw = batchUrls.value.trim();
+  if (!raw) {
+    errorText.textContent = 'Por favor ingresá al menos una URL.';
+    return;
+  }
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) {
+    errorText.textContent = 'No hay URLs válidas.';
+    return;
+  }
+
+  batchDownloadBtn.disabled = true;
+  batchDownloadBtn.textContent = 'Iniciando Lote...';
+  batchQueueSection.style.display = 'block';
+  btnDownloadBatchZip.style.display = 'none';
+  batchQueueList.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); text-align:center; padding:12px;">Encolando tareas...</div>';
+
+  try {
+    const res = await fetch('/api/batch-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        urls: lines,
+        quality: quality.value,
+        video_format: videoFormat.value,
+        subtitles: subtitlesOption.value,
+        engine: engineSelect.value,
+        deezer_arl: deezerArlInput ? deezerArlInput.value.trim() : ''
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    pollBatch(data.batch_id);
+  } catch (e) {
+    errorText.textContent = e.message;
+    batchDownloadBtn.disabled = false;
+    batchDownloadBtn.textContent = '🚀 Iniciar Cola de Descargas';
+  }
+});
+
+function pollBatch(batchId) {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/batch-status/${batchId}`);
+      const data = await res.json();
+      if (!data || !data.jobs) return;
+
+      batchProgressLabel.textContent = `${data.completed_count} de ${data.total_count} completadas`;
+      batchQueueList.innerHTML = '';
+
+      data.jobs.forEach((j, idx) => {
+        const item = document.createElement('div');
+        item.className = 'queue-item';
+        const isDone = j.status === 'finished';
+        const isErr = j.status === 'error';
+        const statusBadge = isDone
+          ? '<span style="color:var(--success); font-weight:600;">✓ Listo</span>'
+          : (isErr ? `<span style="color:var(--accent); font-weight:600;">✗ Error</span>` : `<span>${j.status}... ${j.percent}%</span>`);
+
+        item.innerHTML = `
+          <div class="queue-item-header">
+            <div class="queue-item-title" title="${j.title || j.url}">#${idx+1} ${j.title || j.url}</div>
+            <div>${statusBadge}</div>
+          </div>
+          <div class="bar-bg" style="height:6px;">
+            <div class="bar-fill" style="width:${j.percent || (isDone?100:10)}%; background:${isErr?'var(--accent)':'linear-gradient(90deg, var(--accent), var(--accent-2))'};"></div>
+          </div>
+          ${isDone ? `<div style="text-align:right;"><a href="${j.download_url}" class="recent-btn" download>Guardar Archivo</a></div>` : ''}
+          ${isErr ? `<div style="font-size:0.72rem; color:var(--accent);">${j.error || 'Error'}</div>` : ''}
+        `;
+        batchQueueList.appendChild(item);
+      });
+
+      if (data.all_finished) {
+        clearInterval(interval);
+        batchDownloadBtn.disabled = false;
+        batchDownloadBtn.textContent = '🚀 Iniciar Cola de Descargas';
+        btnDownloadBatchZip.href = `/api/batch-download-zip/${batchId}`;
+        btnDownloadBatchZip.style.display = 'inline-block';
+        updateDiskStatus();
+        loadRecentDownloads();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, 1500);
 }
 
 // Initial load

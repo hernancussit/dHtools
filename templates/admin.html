@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<title>Panel de Administración - Descargador Multimedia</title>
+<title>Panel de Administración - {{ (config and config.site_title) or 'ytsite' }}</title>
 <style>
   :root {
-    --bg: #0f172a;
-    --card: #1e293b;
+    --bg-dark: #090d16;
+    --bg-card: #131d31;
+    --bg-input: #0b1220;
     --accent: #ef4444;
-    --accent-blue: #3b82f6;
-    --accent-purple: #8b5cf6;
+    --accent-blue: #38bdf8;
     --text: #f1f5f9;
     --muted: #94a3b8;
-    --border: #334155;
+    --border: #22324e;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -23,13 +23,13 @@
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(160deg, #0f172a, #1e1b4b);
+    background: var(--bg-dark);
     color: var(--text);
     min-height: 100vh;
-    padding: 24px;
+    padding: 24px 16px;
   }
   .container {
-    max-width: 900px;
+    max-width: 960px;
     margin: 0 auto;
   }
   .header {
@@ -43,34 +43,34 @@
     gap: 12px;
   }
   h1 {
-    margin: 0;
     font-size: 1.5rem;
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 10px;
   }
   .btn {
     padding: 8px 14px;
-    font-size: 0.85rem;
-    font-weight: 600;
     border-radius: 8px;
-    border: 1px solid var(--border);
+    border: none;
+    font-weight: 600;
+    font-size: 0.85rem;
     cursor: pointer;
+    transition: all 0.2s;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    transition: all 0.2s;
   }
-  .btn-primary { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
-  .btn-primary:hover { background: #2563eb; }
-  .btn-secondary { background: #1e293b; color: var(--text); }
-  .btn-secondary:hover { background: #334155; }
-  .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
-  .btn-danger:hover { background: #dc2626; }
-  .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #dc2626; }
+  .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 0.75rem; border-radius: 6px; }
 
-  /* Navigation Tabs */
+  /* Tabs */
   .tabs {
     display: flex;
     gap: 8px;
@@ -83,69 +83,67 @@
     background: transparent;
     border: none;
     color: var(--muted);
+    padding: 10px 16px;
     font-size: 0.9rem;
     font-weight: 600;
-    padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
   }
-  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
-  .tab-btn.active { color: white; background: var(--accent-blue); }
+  .tab-btn:hover { color: var(--text); background: var(--bg-card); }
+  .tab-btn.active { color: var(--accent-blue); background: var(--bg-card); border: 1px solid var(--border); }
 
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
   /* Cards */
   .card {
-    background: var(--card);
-    border-radius: 14px;
-    padding: 20px;
+    background: var(--bg-card);
+    border-radius: 12px;
     border: 1px solid var(--border);
+    padding: 20px;
     margin-bottom: 20px;
   }
   .card-title {
     font-size: 1.1rem;
     font-weight: 600;
-    margin: 0 0 14px;
+    margin-bottom: 14px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
   }
 
-  /* Grid of services */
+  /* Diagnostics Grid */
   .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 14px;
-    margin-bottom: 16px;
   }
   .service-card {
-    background: #0f172a;
-    padding: 14px;
-    border-radius: 10px;
+    background: var(--bg-input);
     border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
   .service-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
-  .service-name { font-weight: 600; font-size: 0.95rem; }
+  .service-name { font-weight: 600; font-size: 0.9rem; }
   .status-badge {
     font-size: 0.72rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
   }
-  .status-online { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
-  .status-offline { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+  .status-online { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+  .status-offline { background: #450a0a; color: #fca5a5; border: 1px solid #dc2626; }
+  .status-warning { background: #451a03; color: #fde047; border: 1px solid #d97706; }
 
   /* Tables */
   table {
@@ -155,12 +153,12 @@
     margin-top: 10px;
   }
   th, td {
-    padding: 10px 12px;
+    padding: 12px 14px;
     text-align: left;
     border-bottom: 1px solid var(--border);
   }
-  th { color: var(--muted); font-weight: 600; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+  tr:hover { background: rgba(255,255,255,0.02); }
 
   /* Forms */
   .form-group {
@@ -168,24 +166,26 @@
   }
   label {
     display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.82rem;
     color: var(--muted);
     margin-bottom: 6px;
+    font-weight: 500;
   }
   input[type=text], input[type=password], input[type=number], select, textarea {
     width: 100%;
     padding: 10px 12px;
-    border-radius: 8px;
+    background: var(--bg-input);
     border: 1px solid var(--border);
-    background: #0f172a;
+    border-radius: 8px;
     color: var(--text);
     font-size: 0.9rem;
     outline: none;
+    transition: border-color 0.2s;
   }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent-blue); }
-  textarea { resize: vertical; min-height: 140px; font-family: monospace; font-size: 0.8rem; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); }
+  textarea { min-height: 120px; font-family: monospace; font-size: 0.82rem; resize: vertical; }
 
+  /* Toast Notification */
   .toast {
     padding: 12px 16px;
     border-radius: 8px;
@@ -219,7 +219,7 @@
       <div>
         <h1>⚙️ Panel de Control y Administración</h1>
         <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">
-          Gestión de microservicios, motores, almacenamiento y usuarios.
+          Gestión de microservicios, motores, almacenamiento, nube y usuarios.
         </div>
       </div>
       <div style="display:flex; gap:8px;">
@@ -234,6 +234,7 @@
       <button class="tab-btn active" data-tab="tab-services">📊 Microservicios & Diagnóstico</button>
       <button class="tab-btn" data-tab="tab-engines">🚀 Actualizador de Motores</button>
       <button class="tab-btn" data-tab="tab-settings">⚙️ Configuración & Cookies</button>
+      <button class="tab-btn" data-tab="tab-cloud">☁️ Sincronización en la Nube</button>
       <button class="tab-btn" data-tab="tab-users">👥 Gestión de Usuarios</button>
     </div>
 
@@ -261,42 +262,40 @@
           </div>
           <div class="service-card">
             <div class="service-header">
-              <span class="service-name">⚡ cobalt-api (v11)</span>
+              <span class="service-name">⚡ Cobalt API (Motor v11)</span>
               <span class="status-badge" id="badgeCobalt">Consultando...</span>
             </div>
             <div style="font-size:0.8rem; color:var(--muted);" id="statCobaltInfo">Puerto 9000</div>
           </div>
           <div class="service-card">
             <div class="service-header">
-              <span class="service-name">🦕 Motor Deno JS</span>
+              <span class="service-name">🦕 Deno JS Engine</span>
               <span class="status-badge" id="badgeDeno">Consultando...</span>
             </div>
-            <div style="font-size:0.8rem; color:var(--muted);" id="statDenoInfo">Extractor JS challenges</div>
+            <div style="font-size:0.8rem; color:var(--muted);" id="statDenoInfo">Desafíos JS YouTube</div>
           </div>
         </div>
+      </div>
 
-        <div style="margin-top:16px; background:#0f172a; padding:14px; border-radius:10px; border:1px solid var(--border);">
-          <div style="display:flex; justify-content:space-between; font-size:0.88rem; font-weight:600; margin-bottom:4px;">
-            <span>Almacenamiento en Disco (VPS)</span>
-            <span id="diskPercentText">0% usado</span>
-          </div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" id="diskBarFill"></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--muted); margin-top:6px;">
-            <span id="diskFreeText">0 GB libres</span>
-            <span id="diskTotalText">Total: 0 GB</span>
-          </div>
+      <div class="card">
+        <div class="card-title">Almacenamiento en Servidor (VPS)</div>
+        <div style="font-size:0.9rem; margin-bottom:8px;" id="diskUsageLabel">Consultando disco...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="diskUsageBar"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.8rem; color:var(--muted);">
+          <span id="diskDetailsLabel">Total: - | Usado: - | Libre: -</span>
+          <button id="btnPurgeNow" class="btn btn-secondary btn-sm">🧹 Forzar Purga de Descargas</button>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2: ENGINES & UPDATES -->
+    <!-- TAB 2: ENGINES UPDATE & DIAGNOSTIC -->
     <div id="tab-engines" class="tab-content">
       <div class="card">
-        <div class="card-title">Actualizador de Motores</div>
-        <p style="font-size:0.88rem; color:var(--muted); margin-top:0;">
-          Actualizá los motores de extracción directamente desde aquí sin tocar la terminal de tu servidor.
+        <div class="card-title">Gestión y Actualización de Extractores</div>
+        <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
+          Mantené los motores al día para garantizar compatibilidad con cambios en los algoritmos de YouTube, Spotify, Deezer e Instagram.
         </p>
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
@@ -383,7 +382,112 @@
       </div>
     </div>
 
-    <!-- TAB 4: USER MANAGEMENT -->
+    <!-- TAB 4: CLOUD SYNC -->
+    <div id="tab-cloud" class="tab-content">
+      <div class="card">
+        <div class="card-title">
+          <span>☁️ Sincronización Automática en la Nube (Cloud Sync)</span>
+          <span style="font-size:0.78rem; color:var(--muted);">Sube los archivos automáticamente al finalizar</span>
+        </div>
+        <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
+          Configurá tus destinos de almacenamiento o notificaciones para que los archivos descargados se envíen directamente a tu nube, FTP, Telegram o Webhook sin consumir ancho de banda local.
+        </p>
+
+        <!-- Webhook -->
+        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong>🔗 Webhook HTTP (Notificaciones y Automatización)</strong>
+            <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="cloudWebhookEnabled"> Habilitar
+            </label>
+          </div>
+          <div class="form-group">
+            <label>URL de Destino (POST JSON)</label>
+            <input type="text" id="cloudWebhookUrl" placeholder="https://mi-servidor.com/api/webhook">
+          </div>
+          <button id="btnTestWebhook" class="btn btn-secondary btn-sm">🧪 Probar Webhook</button>
+        </div>
+
+        <!-- Nextcloud / WebDAV -->
+        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong>☁️ Nextcloud / ownCloud / WebDAV</strong>
+            <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="cloudWebdavEnabled"> Habilitar
+            </label>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+            <div class="form-group">
+              <label>URL WebDAV</label>
+              <input type="text" id="cloudWebdavUrl" placeholder="https://nube.midominio.com/remote.php/dav/files/user/">
+            </div>
+            <div class="form-group">
+              <label>Usuario</label>
+              <input type="text" id="cloudWebdavUser" placeholder="usuario">
+            </div>
+            <div class="form-group">
+              <label>Contraseña / App Token</label>
+              <input type="password" id="cloudWebdavPass" placeholder="••••••••">
+            </div>
+          </div>
+          <button id="btnTestWebdav" class="btn btn-secondary btn-sm">🧪 Probar Conexión WebDAV</button>
+        </div>
+
+        <!-- Telegram Bot -->
+        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong>📱 Telegram Bot Uploader (Archivos hasta 50MB)</strong>
+            <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="cloudTelegramEnabled"> Habilitar
+            </label>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+            <div class="form-group">
+              <label>Bot Token</label>
+              <input type="text" id="cloudTelegramToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+            </div>
+            <div class="form-group">
+              <label>Chat ID / Canal ID</label>
+              <input type="text" id="cloudTelegramChatId" placeholder="-1001234567890 o @micanal">
+            </div>
+          </div>
+          <button id="btnTestTelegram" class="btn btn-secondary btn-sm">🧪 Enviar Mensaje de Prueba</button>
+        </div>
+
+        <!-- FTP -->
+        <div style="background:#0f172a; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong>📂 Servidor FTP</strong>
+            <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="cloudFtpEnabled"> Habilitar
+            </label>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px;">
+            <div class="form-group">
+              <label>Host FTP</label>
+              <input type="text" id="cloudFtpHost" placeholder="ftp.midominio.com">
+            </div>
+            <div class="form-group">
+              <label>Puerto</label>
+              <input type="number" id="cloudFtpPort" value="21">
+            </div>
+            <div class="form-group">
+              <label>Usuario</label>
+              <input type="text" id="cloudFtpUser" placeholder="usuario_ftp">
+            </div>
+            <div class="form-group">
+              <label>Contraseña</label>
+              <input type="password" id="cloudFtpPass" placeholder="••••••••">
+            </div>
+          </div>
+          <button id="btnTestFtp" class="btn btn-secondary btn-sm">🧪 Probar Conexión FTP</button>
+        </div>
+
+        <button id="btnSaveCloudConfig" class="btn btn-primary">💾 Guardar Configuración de Cloud Sync</button>
+      </div>
+    </div>
+
+    <!-- TAB 5: USER MANAGEMENT -->
     <div id="tab-users" class="tab-content">
       <div class="card">
         <div class="card-title">
@@ -448,7 +552,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 function showToast(msg, type = 'success', timeout = 4000) {
   const t = document.getElementById('toast');
-  t.className = `toast toast-${type}`;
+  t.className = `toast toast-${type === 'error' ? 'error' : 'success'}`;
   t.textContent = msg;
   t.style.display = 'block';
   if (timeout) {
@@ -456,79 +560,107 @@ function showToast(msg, type = 'success', timeout = 4000) {
   }
 }
 
-// 1. Fetch Services Status
+// 1. Services & Diagnostics
 async function loadServicesStatus() {
   try {
     const res = await fetch('/api/admin/services-status');
     const data = await res.json();
-    
-    // Pot provider badge
+
+    // App Version
+    if (data.app) {
+      document.getElementById('statAppVersion').textContent = `Versión: v${data.app.version} · Uptime: ${Math.round(data.app.uptime_seconds/60)} min`;
+    }
+
+    // POT Provider
     const badgePot = document.getElementById('badgePot');
-    badgePot.className = `status-badge ${data.potprovider.online ? 'status-online' : 'status-offline'}`;
-    badgePot.textContent = data.potprovider.online ? '🟢 Online' : '🔴 Offline';
-    document.getElementById('statPotInfo').textContent = `Latencia: ${data.potprovider.latency_ms || 0} ms`;
+    if (data.potprovider && data.potprovider.online) {
+      badgePot.className = 'status-badge status-online';
+      badgePot.textContent = `🟢 Online (${data.potprovider.latency_ms}ms)`;
+    } else {
+      badgePot.className = 'status-badge status-offline';
+      badgePot.textContent = '🔴 Desconectado';
+    }
 
-    // Cobalt badge
+    // Cobalt
     const badgeCobalt = document.getElementById('badgeCobalt');
-    badgeCobalt.className = `status-badge ${data.cobalt.online ? 'status-online' : 'status-offline'}`;
-    badgeCobalt.textContent = data.cobalt.online ? '🟢 Online' : '🔴 Offline';
-    document.getElementById('statCobaltInfo').textContent = `Latencia: ${data.cobalt.latency_ms || 0} ms`;
+    if (data.cobalt && data.cobalt.online) {
+      badgeCobalt.className = 'status-badge status-online';
+      badgeCobalt.textContent = `🟢 Online (${data.cobalt.latency_ms}ms)`;
+    } else {
+      badgeCobalt.className = 'status-badge status-offline';
+      badgeCobalt.textContent = '🔴 Desconectado';
+    }
 
-    // Deno badge
+    // Deno
     const badgeDeno = document.getElementById('badgeDeno');
-    badgeDeno.className = `status-badge ${data.deno.installed ? 'status-online' : 'status-offline'}`;
-    badgeDeno.textContent = data.deno.installed ? '🟢 Instalado' : '🔴 No encontrado';
-    document.getElementById('statDenoInfo').textContent = data.deno.version || 'Deno JS Engine';
+    if (data.deno && data.deno.installed) {
+      badgeDeno.className = 'status-badge status-online';
+      badgeDeno.textContent = '🟢 Instalado';
+      document.getElementById('statDenoInfo').textContent = data.deno.version.split(' ')[0] + ' ' + data.deno.version.split(' ')[1];
+    } else {
+      badgeDeno.className = 'status-badge status-warning';
+      badgeDeno.textContent = '🟡 No detectado';
+    }
 
     // Disk
     if (data.disk) {
-      document.getElementById('diskPercentText').textContent = `${data.disk.percent_used}% usado`;
-      document.getElementById('diskBarFill').style.width = `${data.disk.percent_used}%`;
-      document.getElementById('diskFreeText').textContent = `${data.disk.free_formatted} disponibles`;
-      document.getElementById('diskTotalText').textContent = `Total: ${data.disk.total_formatted}`;
+      const pct = data.disk.percent_used || 0;
+      document.getElementById('diskUsageLabel').textContent = `Uso de almacenamiento: ${pct}% ocupado (${data.disk.free_formatted} libres)`;
+      const bar = document.getElementById('diskUsageBar');
+      bar.style.width = pct + '%';
+      bar.style.background = pct >= 85 ? 'var(--danger)' : (pct >= 70 ? 'var(--warning)' : 'var(--accent-blue)');
+      document.getElementById('diskDetailsLabel').textContent = `Total: ${data.disk.total_formatted} | Usado: ${data.disk.used_formatted} | Libre: ${data.disk.free_formatted}`;
     }
   } catch (e) {
     console.error(e);
   }
 }
 
+document.getElementById('btnPurgeNow').addEventListener('click', async () => {
+  if (!confirm('¿Deseas purgar todas las descargas del servidor ahora?')) return;
+  try {
+    const res = await fetch('/api/cleanup', { method: 'POST' });
+    const data = await res.json();
+    showToast(`Purga completada: ${data.cleaned_count} archivos eliminados (${data.reclaimed_formatted} liberados).`, 'success');
+    loadServicesStatus();
+  } catch (e) {
+    showToast('Error al purgar descargas: ' + e.message, 'error');
+  }
+});
+
 // 2. Engines & Updates
 async function loadEnginesInfo() {
   try {
     const res = await fetch('/api/version');
     const data = await res.json();
-    document.getElementById('ytdlpVersionLabel').textContent = `Versión actual: ${data.ytdlp_version || 'N/A'}`;
-  } catch (e) {}
+    document.getElementById('ytdlpVersionLabel').textContent = `Versión actual: ${data.ytdlp_version || 'Desconocida'}`;
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 document.getElementById('btnUpdateYtdlp').addEventListener('click', async () => {
-  const btn = document.getElementById('btnUpdateYtdlp');
   const box = document.getElementById('engineLogsBox');
-  btn.disabled = true;
   box.style.display = 'block';
-  box.textContent = 'Actualizando yt-dlp y dependencias...\n';
+  box.textContent = '[*] Solicitando actualización de yt-dlp a la última versión disponible...\n';
+  showToast('Actualizando motor yt-dlp...', 'success');
   try {
     const res = await fetch('/api/update-ytdlp', { method: 'POST' });
     const data = await res.json();
-    box.textContent += (data.message || 'Completado.') + '\n';
-    if (data.updated) {
-      box.textContent += 'Reiniciando contenedor para aplicar cambios...\n';
-      showToast('yt-dlp actualizado con éxito. El servicio se reiniciará en unos segundos.', 'success');
-      setTimeout(() => window.location.reload(), 4000);
-    } else {
-      showToast(data.message, 'success');
-      btn.disabled = false;
-    }
+    box.textContent += `[+] ${data.message}\n`;
+    if (data.output) box.textContent += `--- Salida del sistema ---\n${data.output}\n`;
+    loadEnginesInfo();
+    showToast(data.message, data.error ? 'error' : 'success');
   } catch (e) {
-    box.textContent += 'Error: ' + e.message + '\n';
-    btn.disabled = false;
+    box.textContent += `[!] Error: ${e.message}\n`;
+    showToast('Error al actualizar yt-dlp: ' + e.message, 'error');
   }
 });
 
 document.getElementById('btnTestEngines').addEventListener('click', async () => {
   const box = document.getElementById('engineLogsBox');
   box.style.display = 'block';
-  box.textContent = 'Iniciando prueba rápida de extracción en microservicios...\n';
+  box.textContent = '[*] Ejecutando prueba de extracción con YouTube (ID: dQw4w9WgXcQ)...\n';
   try {
     const res = await fetch('/api/info', {
       method: 'POST',
@@ -589,7 +721,6 @@ document.getElementById('formSettings').addEventListener('submit', async (e) => 
     const data = await res.json();
     showToast(data.message || 'Configuración guardada correctamente.', 'success');
   } catch (e) {
-
     showToast('Error al guardar configuración: ' + e.message, 'error');
   }
 });
@@ -610,7 +741,124 @@ document.getElementById('btnSaveCookies').addEventListener('click', async () => 
   }
 });
 
-// 4. User Management
+// 4. Cloud Sync
+async function loadCloudSyncConfig() {
+  try {
+    const res = await fetch('/api/admin/cloud-sync');
+    const data = await res.json();
+    const cfg = data.cloud_sync || {};
+
+    if (cfg.webhook) {
+      document.getElementById('cloudWebhookEnabled').checked = !!cfg.webhook.enabled;
+      document.getElementById('cloudWebhookUrl').value = cfg.webhook.url || '';
+    }
+    if (cfg.webdav) {
+      document.getElementById('cloudWebdavEnabled').checked = !!cfg.webdav.enabled;
+      document.getElementById('cloudWebdavUrl').value = cfg.webdav.url || '';
+      document.getElementById('cloudWebdavUser').value = cfg.webdav.username || '';
+      document.getElementById('cloudWebdavPass').value = cfg.webdav.password || '';
+    }
+    if (cfg.telegram) {
+      document.getElementById('cloudTelegramEnabled').checked = !!cfg.telegram.enabled;
+      document.getElementById('cloudTelegramToken').value = cfg.telegram.bot_token || '';
+      document.getElementById('cloudTelegramChatId').value = cfg.telegram.chat_id || '';
+    }
+    if (cfg.ftp) {
+      document.getElementById('cloudFtpEnabled').checked = !!cfg.ftp.enabled;
+      document.getElementById('cloudFtpHost').value = cfg.ftp.host || '';
+      document.getElementById('cloudFtpPort').value = cfg.ftp.port || 21;
+      document.getElementById('cloudFtpUser').value = cfg.ftp.username || '';
+      document.getElementById('cloudFtpPass').value = cfg.ftp.password || '';
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function getCloudConfigPayload() {
+  return {
+    webhook: {
+      enabled: document.getElementById('cloudWebhookEnabled').checked,
+      url: document.getElementById('cloudWebhookUrl').value.trim()
+    },
+    webdav: {
+      enabled: document.getElementById('cloudWebdavEnabled').checked,
+      url: document.getElementById('cloudWebdavUrl').value.trim(),
+      username: document.getElementById('cloudWebdavUser').value.trim(),
+      password: document.getElementById('cloudWebdavPass').value
+    },
+    telegram: {
+      enabled: document.getElementById('cloudTelegramEnabled').checked,
+      bot_token: document.getElementById('cloudTelegramToken').value.trim(),
+      chat_id: document.getElementById('cloudTelegramChatId').value.trim()
+    },
+    ftp: {
+      enabled: document.getElementById('cloudFtpEnabled').checked,
+      host: document.getElementById('cloudFtpHost').value.trim(),
+      port: parseInt(document.getElementById('cloudFtpPort').value) || 21,
+      username: document.getElementById('cloudFtpUser').value.trim(),
+      password: document.getElementById('cloudFtpPass').value
+    }
+  };
+}
+
+document.getElementById('btnSaveCloudConfig').addEventListener('click', async () => {
+  try {
+    const payload = getCloudConfigPayload();
+    const res = await fetch('/api/admin/cloud-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    showToast(data.message || 'Configuración de Cloud Sync guardada.', 'success');
+  } catch (e) {
+    showToast('Error al guardar Cloud Sync: ' + e.message, 'error');
+  }
+});
+
+async function testCloudService(service, configObj) {
+  try {
+    showToast(`Probando conexión con ${service}...`, 'success', 0);
+    const res = await fetch('/api/admin/cloud-sync/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service, config: configObj })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message || `Prueba de ${service} exitosa`, 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+document.getElementById('btnTestWebhook').addEventListener('click', () => {
+  testCloudService('webhook', { url: document.getElementById('cloudWebhookUrl').value.trim() });
+});
+document.getElementById('btnTestWebdav').addEventListener('click', () => {
+  testCloudService('webdav', {
+    url: document.getElementById('cloudWebdavUrl').value.trim(),
+    username: document.getElementById('cloudWebdavUser').value.trim(),
+    password: document.getElementById('cloudWebdavPass').value
+  });
+});
+document.getElementById('btnTestTelegram').addEventListener('click', () => {
+  testCloudService('telegram', {
+    bot_token: document.getElementById('cloudTelegramToken').value.trim(),
+    chat_id: document.getElementById('cloudTelegramChatId').value.trim()
+  });
+});
+document.getElementById('btnTestFtp').addEventListener('click', () => {
+  testCloudService('ftp', {
+    host: document.getElementById('cloudFtpHost').value.trim(),
+    port: parseInt(document.getElementById('cloudFtpPort').value) || 21,
+    username: document.getElementById('cloudFtpUser').value.trim(),
+    password: document.getElementById('cloudFtpPass').value
+  });
+});
+
+// 5. User Management
 async function loadUsers() {
   const tbody = document.getElementById('usersTableBody');
   try {
@@ -703,6 +951,7 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadServicesStatus();
   loadEnginesInfo();
   loadConfigAndCookies();
+  loadCloudSyncConfig();
   loadUsers();
   showToast('Datos actualizados en vivo.', 'success', 2000);
 });
@@ -711,6 +960,7 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
 loadServicesStatus();
 loadEnginesInfo();
 loadConfigAndCookies();
+loadCloudSyncConfig();
 loadUsers();
 setInterval(loadServicesStatus, 20000);
 </script>
