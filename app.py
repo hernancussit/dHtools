@@ -391,7 +391,7 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
 
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 
 def normalize_url(url: str) -> str:
@@ -406,6 +406,10 @@ def normalize_url(url: str) -> str:
 
 def detect_platform(url: str) -> str:
     url_lower = url.lower()
+    if "deezer.com" in url_lower or "deezer.page.link" in url_lower:
+        return "Deezer"
+    if "spotify.com" in url_lower:
+        return "Spotify"
     if "youtube.com/shorts" in url_lower:
         return "YouTube Shorts"
     if "youtube.com" in url_lower or "youtu.be" in url_lower:
@@ -423,6 +427,246 @@ def detect_platform(url: str) -> str:
     if "twitter.com" in url_lower or "x.com" in url_lower:
         return "Twitter / X"
     return "Web"
+
+
+def get_deezer_info(url: str):
+    try:
+        track_m = re.search(r"deezer\.com/(?:[a-zA-Z-]+/)?track/(\d+)", url)
+        if track_m:
+            track_id = track_m.group(1)
+            r = requests.get(f"https://api.deezer.com/track/{track_id}", timeout=10)
+            data = r.json()
+            if "error" not in data:
+                artist = data.get("artist", {}).get("name", "Artista")
+                title = data.get("title", "Canción")
+                album = data.get("album", {}).get("title", "")
+                cover = data.get("album", {}).get("cover_xl") or data.get("album", {}).get("cover_big")
+                return {
+                    "type": "video",
+                    "platform": "Deezer",
+                    "title": f"{artist} - {title}",
+                    "artist": artist,
+                    "track_title": title,
+                    "album": album,
+                    "duration": data.get("duration"),
+                    "thumbnail": cover,
+                    "url": url,
+                }
+
+        album_m = re.search(r"deezer\.com/(?:[a-zA-Z-]+/)?album/(\d+)", url)
+        if album_m:
+            album_id = album_m.group(1)
+            r = requests.get(f"https://api.deezer.com/album/{album_id}", timeout=10)
+            data = r.json()
+            if "error" not in data:
+                tracks = data.get("tracks", {}).get("data", [])
+                artist = data.get("artist", {}).get("name", "Artista")
+                title = data.get("title", "Álbum")
+                cover = data.get("cover_xl") or data.get("cover_big")
+                return {
+                    "type": "playlist",
+                    "platform": "Deezer",
+                    "title": f"{artist} - {title}",
+                    "count": len(tracks),
+                    "thumbnail": cover,
+                    "entries": tracks,
+                    "url": url,
+                }
+
+        playlist_m = re.search(r"deezer\.com/(?:[a-zA-Z-]+/)?playlist/(\d+)", url)
+        if playlist_m:
+            pl_id = playlist_m.group(1)
+            r = requests.get(f"https://api.deezer.com/playlist/{pl_id}", timeout=10)
+            data = r.json()
+            if "error" not in data:
+                tracks = data.get("tracks", {}).get("data", [])
+                return {
+                    "type": "playlist",
+                    "platform": "Deezer",
+                    "title": f"Playlist: {data.get('title', 'Deezer')}",
+                    "count": len(tracks),
+                    "thumbnail": data.get("picture_xl") or data.get("picture_big"),
+                    "entries": tracks,
+                    "url": url,
+                }
+    except Exception:
+        pass
+    return None
+
+
+def get_spotify_info(url: str):
+    try:
+        track_m = re.search(r"open\.spotify\.com/(?:[a-zA-Z-]+/)?track/([a-zA-Z0-9]+)", url)
+        if track_m:
+            r = requests.get(f"https://open.spotify.com/oembed?url={url}", timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                raw_title = data.get("title", "Spotify Track")
+                parts = raw_title.split(" by ", 1)
+                if len(parts) == 2:
+                    track_title, artist = parts[0], parts[1]
+                else:
+                    track_title, artist = raw_title, "Artista"
+                return {
+                    "type": "video",
+                    "platform": "Spotify",
+                    "title": f"{artist} - {track_title}",
+                    "artist": artist,
+                    "track_title": track_title,
+                    "album": "Spotify",
+                    "thumbnail": data.get("thumbnail_url"),
+                    "url": url,
+                }
+    except Exception:
+        pass
+    return None
+
+
+def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None):
+    job_dir = os.path.join(DOWNLOAD_DIR, job_id)
+    os.makedirs(job_dir, exist_ok=True)
+
+    try:
+        platform = detect_platform(url)
+        meta = music_meta or {}
+        if not meta:
+            if platform == "Deezer":
+                meta = get_deezer_info(url) or {}
+            elif platform == "Spotify":
+                meta = get_spotify_info(url) or {}
+
+        title = meta.get("track_title") or meta.get("title") or "Canción"
+        artist = meta.get("artist") or "Artista"
+        album = meta.get("album") or "Música"
+        cover_url = meta.get("thumbnail")
+        display_name = f"{artist} - {title}"
+
+        raw_audio_tmpl = os.path.join(job_dir, "raw_audio.%(ext)s")
+        cover_file = os.path.join(job_dir, "cover.jpg")
+        final_filename = safe_filename(display_name) + ".mp3"
+        final_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{final_filename}")
+
+        downloaded_direct = False
+
+        # Attempt direct Deezer download if ARL is provided
+        if platform == "Deezer" and deezer_arl:
+            with JOBS_LOCK:
+                JOBS[job_id].update({
+                    "status": "downloading",
+                    "current_title": f"Descargando de Deezer Hi-Fi ({display_name})...",
+                    "file_percent": 10,
+                })
+            try:
+                ydl_opts = {
+                    "format": "best",
+                    "outtmpl": raw_audio_tmpl,
+                    "quiet": True,
+                    "http_headers": {"Cookie": f"arl={deezer_arl}"},
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.extract_info(url, download=True)
+                downloaded_direct = True
+            except Exception as e:
+                with JOBS_LOCK:
+                    JOBS[job_id].update({
+                        "current_title": f"ARL inválido o expirado. Descargando sin ARL ({display_name})...",
+                    })
+
+        if not downloaded_direct:
+            search_query = f"{artist} - {title}"
+            with JOBS_LOCK:
+                JOBS[job_id].update({
+                    "status": "downloading",
+                    "current_title": f"Buscando y descargando audio ({display_name})...",
+                    "file_percent": 30,
+                })
+
+            ydl_opts = {
+                "format": "ba/b",
+                "outtmpl": raw_audio_tmpl,
+                "quiet": True,
+                "noplaylist": True,
+                **cookies_opts(),
+            }
+            extract_with_fallback(f"ytsearch1:{search_query}", ydl_opts, download=True)
+
+        actual_audio = None
+        for f in os.listdir(job_dir):
+            if f.startswith("raw_audio"):
+                actual_audio = os.path.join(job_dir, f)
+                break
+
+        if not actual_audio or not os.path.exists(actual_audio):
+            raise RuntimeError("No se pudo obtener el archivo de audio base")
+
+        with JOBS_LOCK:
+            JOBS[job_id].update({
+                "status": "processing",
+                "percent": 80,
+                "file_percent": 80,
+                "current_title": "Incrustando carátula y metadatos ID3...",
+            })
+
+        # Download Cover
+        has_cover = False
+        if cover_url:
+            try:
+                cr = requests.get(cover_url, timeout=10)
+                if cr.status_code == 200:
+                    with open(cover_file, "wb") as cf:
+                        cf.write(cr.content)
+                    has_cover = True
+            except Exception:
+                pass
+
+        # Target bitrate
+        bitrate_map = {"audio_128": "128k", "audio_192": "192k", "audio_256": "256k", "audio_320": "320k"}
+        br = bitrate_map.get(quality, "320k")
+
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", actual_audio]
+        if has_cover:
+            ffmpeg_cmd.extend([
+                "-i", cover_file,
+                "-map", "0:a", "-map", "1:v",
+                "-c:v", "mjpeg",
+                "-metadata:s:v", 'title="Album cover"',
+                "-metadata:s:v", 'comment="Cover (front)"'
+            ])
+        else:
+            ffmpeg_cmd.extend(["-map", "0:a"])
+
+        ffmpeg_cmd.extend([
+            "-c:a", "libmp3lame", "-b:a", br, "-id3v2_version", "3",
+            "-metadata", f"title={title}",
+            "-metadata", f"artist={artist}",
+            "-metadata", f"album={album}",
+            final_path,
+        ])
+
+        proc = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise RuntimeError(f"FFmpeg error: {proc.stderr[:200]}")
+
+        with JOBS_LOCK:
+            JOBS[job_id].update({
+                "status": "finished",
+                "percent": 100,
+                "file_percent": 100,
+                "filepath": final_path,
+                "filename": final_filename,
+                "finished_at": time.time(),
+                "speed": None,
+            })
+    except Exception as e:
+        with JOBS_LOCK:
+            JOBS[job_id].update({
+                "status": "error",
+                "error": str(e),
+                "finished_at": time.time(),
+            })
+    finally:
+        shutil.rmtree(job_dir, ignore_errors=True)
+
 
 
 @app.route("/")
@@ -493,6 +737,15 @@ def info():
     url = normalize_url(raw_url)
     platform = detect_platform(raw_url)
 
+    if platform == "Deezer":
+        d_info = get_deezer_info(raw_url)
+        if d_info:
+            return jsonify(d_info)
+    elif platform == "Spotify":
+        s_info = get_spotify_info(raw_url)
+        if s_info:
+            return jsonify(s_info)
+
     ydl_opts = {
         "quiet": True,
         "skip_download": True,
@@ -525,6 +778,7 @@ def info():
             "platform": platform,
             "thumbnail": thumbs[-1]["url"] if thumbs else result.get("thumbnail"),
         })
+
 
 
 
@@ -799,6 +1053,18 @@ def download():
             "eta_seconds": None,
         }
 
+    deezer_arl = (data or {}).get("deezer_arl", "").strip()
+    platform = detect_platform(raw_url)
+
+    if platform in ("Deezer", "Spotify") and not playlist_mode:
+        thread = threading.Thread(
+            target=run_download_music,
+            args=(job_id, raw_url, quality, deezer_arl),
+            daemon=True,
+        )
+        thread.start()
+        return jsonify({"job_id": job_id})
+
     if engine == "cobalt":
         thread = threading.Thread(
             target=run_download_cobalt, args=(job_id, url, quality, video_title), daemon=True
@@ -812,6 +1078,7 @@ def download():
     thread.start()
 
     return jsonify({"job_id": job_id})
+
 
 
 @app.route("/api/status/<job_id>")

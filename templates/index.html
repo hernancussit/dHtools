@@ -92,7 +92,10 @@
     padding: 3px 8px;
     border-radius: 6px;
     border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
   }
+  .tag:hover { color: #38bdf8; border-color: #38bdf8; }
 
   input[type=text] {
     width: 100%;
@@ -194,6 +197,16 @@
   .toast-info { background: #1e3a8a; color: #93c5fd; }
   .toast-success { background: #14532d; color: #86efac; }
 
+  /* Deezer ARL Box */
+  #deezerSection {
+    display: none;
+    margin-top: 12px;
+    background: #0f172a;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
   /* Recent Downloads */
   .recent-section {
     margin-top: 22px;
@@ -289,12 +302,14 @@
 
     <div>
       <h1>🎬 Descargador Multimedia</h1>
-      <p class="subtitle">Descargá videos, playlists o audios pegando el enlace.</p>
+      <p class="subtitle">Descargá videos, playlists o música pegando el enlace.</p>
     </div>
 
     <div class="platform-tags">
-      <span class="tag">YouTube</span>
-      <span class="tag">Shorts</span>
+      <span class="tag" id="tagYoutube">YouTube</span>
+      <span class="tag" id="tagShorts">Shorts</span>
+      <span class="tag" id="tagDeezer" title="Hacé clic para configurar tu ARL">Deezer (ARL)</span>
+      <span class="tag" id="tagSpotify">Spotify</span>
       <span class="tag">Instagram</span>
       <span class="tag">Facebook</span>
       <span class="tag">Twitch</span>
@@ -305,7 +320,19 @@
 
     <div id="toastAlert" class="toast toast-info"></div>
 
-    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=... o /shorts/...">
+    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..., Spotify, Deezer...">
+
+    <!-- Deezer ARL Configuration Box -->
+    <div id="deezerSection">
+      <div style="font-size:0.8rem; color:#38bdf8; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+        <span>🔑 Token ARL de Deezer (Opcional)</span>
+        <span style="font-size:0.7rem; color:var(--muted);">Para FLAC / 320kbps</span>
+      </div>
+      <input type="text" id="deezerArlInput" placeholder="Pegá tu token ARL de Deezer aquí..." style="margin-top:6px; font-size:0.85rem; padding:8px 10px;">
+      <div style="font-size:0.72rem; color:var(--muted); margin-top:4px;">
+        Se guarda automáticamente en tu navegador. Si no ingresás ARL o está vencido, se descarga igual sin ARL.
+      </div>
+    </div>
 
     <div class="row">
       <select id="engine">
@@ -334,7 +361,7 @@
     </div>
     
     <label class="checkbox" style="margin-top:10px;" id="playlistLabel">
-      <input type="checkbox" id="playlistCheck"> Descargar toda la playlist (se empaqueta en .zip)
+      <input type="checkbox" id="playlistCheck"> Descargar toda la playlist / álbum (se empaqueta en .zip)
     </label>
     <div class="meta" id="engineNote" style="display:none; margin-top:6px; font-size:0.8rem; color:#f59e0b;"></div>
 
@@ -359,7 +386,7 @@
 
     <div id="progressWrap">
       <div id="playlistInfo" style="display:none; font-size:0.85rem; color:var(--muted); margin-bottom:6px;">
-        Video <span id="plIndex">0</span> de <span id="plTotal">0</span> · <span id="plCompleted">0</span> completados
+        Elemento <span id="plIndex">0</span> de <span id="plTotal">0</span> · <span id="plCompleted">0</span> completados
       </div>
       <div id="currentTitle" style="font-size:0.85rem; margin-bottom:6px; display:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
       <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
@@ -383,7 +410,7 @@
 
     <footer>
       <span>Uso privado para contenido autorizado.</span>
-      <span style="background:#0f172a; padding:2px 8px; border-radius:12px; border:1px solid var(--border);">Versión: <strong style="color:var(--text);">v{{ version or '1.1.0' }}</strong></span>
+      <span style="background:#0f172a; padding:2px 8px; border-radius:12px; border:1px solid var(--border);">Versión: <strong style="color:var(--text);">v{{ version or '1.2.0' }}</strong></span>
     </footer>
   </div>
 
@@ -426,6 +453,29 @@ const recentHeader = document.getElementById('recentHeader');
 const recentList = document.getElementById('recentList');
 const recentToggleIcon = document.getElementById('recentToggleIcon');
 const recentEmpty = document.getElementById('recentEmpty');
+const deezerSection = document.getElementById('deezerSection');
+const deezerArlInput = document.getElementById('deezerArlInput');
+const tagDeezer = document.getElementById('tagDeezer');
+
+// Deezer ARL persistence in LocalStorage
+const savedArl = localStorage.getItem('deezer_arl') || '';
+if (savedArl) {
+  deezerArlInput.value = savedArl;
+}
+deezerArlInput.addEventListener('input', () => {
+  localStorage.setItem('deezer_arl', deezerArlInput.value.trim());
+});
+
+tagDeezer.addEventListener('click', () => {
+  deezerSection.style.display = deezerSection.style.display === 'none' || deezerSection.style.display === '' ? 'block' : 'none';
+});
+
+urlInput.addEventListener('input', () => {
+  const val = urlInput.value.toLowerCase();
+  if (val.includes('deezer.com') || val.includes('deezer.page.link')) {
+    deezerSection.style.display = 'block';
+  }
+});
 
 function showToast(msg, type = 'info', timeout = 4000) {
   toastAlert.className = `toast toast-${type}`;
@@ -530,10 +580,10 @@ function applyEngineConstraints() {
     trimInputs.style.display = 'none';
     trimSection.style.display = 'none';
     engineNote.style.display = 'block';
-    engineNote.textContent = 'Cobalt: solo videos individuales, sin recorte. Para playlists o recorte, usá yt-dlp.';
+    engineNote.textContent = 'Cobalt: solo videos individuales, sin recorte. Para playlists, Deezer o Spotify, usá yt-dlp.';
   } else {
     engineNote.style.display = 'none';
-    if (currentInfo && currentInfo.type === 'video') {
+    if (currentInfo && currentInfo.type === 'video' && currentInfo.platform !== 'Deezer' && currentInfo.platform !== 'Spotify') {
       trimSection.style.display = 'block';
     }
   }
@@ -571,21 +621,27 @@ infoBtn.addEventListener('click', async () => {
     previewImg.style.display = data.thumbnail ? 'block' : 'none';
     previewTitle.textContent = data.title;
     
+    if (data.platform === 'Deezer') {
+      deezerSection.style.display = 'block';
+    }
+
     const platformBadge = `<span class="badge-platform">${data.platform || 'Video'}</span>`;
     const metaText = data.type === 'playlist'
-      ? `Playlist · ${data.count} videos`
+      ? `Playlist/Álbum · ${data.count} elementos`
       : (data.duration ? `${Math.round(data.duration/60)} min` : '');
     previewMeta.innerHTML = `${platformBadge} <span>${metaText}</span>`;
 
     playlistCheck.disabled = data.type !== 'playlist';
     if (data.type === 'playlist') playlistCheck.checked = true;
 
-    if (engineSelect.value !== 'cobalt') {
+    if (engineSelect.value !== 'cobalt' && data.platform !== 'Deezer' && data.platform !== 'Spotify') {
       trimSection.style.display = data.type === 'video' ? 'block' : 'none';
       if (data.type !== 'video') {
         trimCheck.checked = false;
         trimInputs.style.display = 'none';
       }
+    } else {
+      trimSection.style.display = 'none';
     }
   } catch (e) {
     errorText.textContent = e.message;
@@ -621,6 +677,7 @@ downloadBtn.addEventListener('click', async () => {
         url: urlInput.value.trim(),
         quality: quality.value,
         engine: engineSelect.value,
+        deezer_arl: deezerArlInput ? deezerArlInput.value.trim() : '',
         video_title: currentInfo ? currentInfo.title : '',
         playlist: playlistCheck.checked,
         total_count: currentInfo && currentInfo.type === 'playlist' ? currentInfo.count : 0,
@@ -660,17 +717,18 @@ function poll(jobId) {
     }
 
     if (job.status === 'downloading') {
-      barFill.style.width = (job.percent || 0) + '%';
-      const filePct = job.file_percent || 0;
+      barFill.style.width = (job.percent || job.file_percent || 15) + '%';
+      const filePct = job.file_percent || job.percent || 0;
       statusText.textContent = job.total_count
-        ? `Descargando video ${job.current_index || job.completed_count} de ${job.total_count}... ${filePct}%`
-        : `Descargando... ${filePct}%`;
+        ? `Procesando ${job.current_index || job.completed_count} de ${job.total_count}...`
+        : (job.current_title || `Descargando... ${filePct}%`);
       if (job.speed) {
         speedText.style.display = 'block';
         speedText.textContent = job.speed + (job.eta_seconds ? ' · ' + formatEta(job.eta_seconds) : '');
       }
     } else if (job.status === 'processing') {
-      statusText.textContent = 'Procesando archivo...';
+      barFill.style.width = (job.percent || 85) + '%';
+      statusText.textContent = job.current_title || 'Incrustando carátula y metadatos...';
       speedText.style.display = 'none';
     } else if (job.status === 'finished') {
       clearInterval(interval);

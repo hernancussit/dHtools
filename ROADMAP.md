@@ -32,15 +32,17 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-### 📌 Versión 1.2.0 — Plataformas de Música (Deezer & Spotify)
-- [ ] **Integración de Deezer:**
-  - Descarga de canciones, álbumes y playlists.
-  - **Soporte ARL:** Configuración de token ARL para descargas en calidad alta (320 kbps MP3 / FLAC sin pérdida).
-  - Modo alternativo sin ARL (calidad estándar 128 kbps).
-  - Incrustación automática de metadatos completos y carátula en alta resolución.
-- [ ] **Integración de Spotify:**
-  - Reconocimiento de URLs de canciones, álbumes y playlists de Spotify.
-  - Emparejamiento de audio y descarga directa con metadatos y portada original.
+## 🎯 Versión `v1.2.0` (Completado)
+- [x] **Integración de Deezer:**
+  - [x] Descarga de canciones, álbumes y playlists con metadatos.
+  - [x] **Campo ARL en la interfaz con persistencia en localStorage:** Para descargas en máxima calidad (FLAC / 320 kbps).
+  - [x] **Fallback automático inteligente:** Descarga sin ARL garantizada ante token inválido o no ingresado.
+- [x] **Integración de Spotify:**
+  - [x] Reconocimiento de URLs de canciones de Spotify y extracción de metadatos.
+  - [x] Emparejamiento de audio y descarga en MP3.
+- [x] **Incrustación de ID3 y Carátulas:**
+  - [x] Portada en alta resolución incrustada y metadatos ID3 completos (Título, Artista, Álbum).
+
 
 ---
 

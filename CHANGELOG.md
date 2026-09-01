@@ -6,6 +6,25 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ---
 
+## [1.2.0] - 2026-09-01
+
+### ✨ Novedades y Características
+- **Integración de Plataformas Musicales:**
+  - **Deezer con y sin ARL:**
+    - Campo en la interfaz para ingresar token ARL de Deezer con persistencia local (`localStorage`).
+    - Descarga directa en alta fidelidad (FLAC / 320 kbps) si se proporciona ARL válido.
+    - **Fallback automático inteligente:** Si no se ingresa ARL o el token está vencido, se descarga igualmente mediante emparejamiento de audio sin interrumpir al usuario.
+    - Soporte para tracks individuales, álbumes y playlists de Deezer.
+  - **Spotify:**
+    - Detección de canciones de Spotify y extracción de metadatos (Título, Artista, Álbum, Carátula en alta resolución).
+    - Emparejamiento de audio y descarga directa.
+- **Incrustación Automática de Metadatos y Carátulas ID3:**
+  - FFmpeg incrusta automáticamente la portada del álbum en alta resolución y las etiquetas ID3v2 (Título, Artista, Álbum) en los archivos `.mp3` descargados.
+- **Insignias de Plataforma:**
+  - Insignias interactivas para Deezer y Spotify en la barra superior y tarjeta de vista previa.
+
+---
+
 ## [1.1.0] - 2026-08-31
 
 ### ✨ Novedades y Características
