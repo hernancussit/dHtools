@@ -1608,33 +1608,56 @@ def delete_single_my_download(job_id):
 def cleanup_my_downloads():
     user = getattr(request, "current_user", {}) or {}
     username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
 
     meta = load_downloads_meta()
-    user_job_ids = [jid for jid, info in meta.items() if info.get("username") == username]
-
     cleaned_count = 0
     reclaimed_bytes = 0
+
     if os.path.exists(DOWNLOAD_DIR):
-        for jid in user_job_ids:
+        if is_admin:
             for entry in os.listdir(DOWNLOAD_DIR):
-                if entry.startswith(jid):
-                    fpath = os.path.join(DOWNLOAD_DIR, entry)
-                    try:
-                        size = os.path.getsize(fpath)
+                if entry == ".gitkeep":
+                    continue
+                fpath = os.path.join(DOWNLOAD_DIR, entry)
+                try:
+                    if os.path.isdir(fpath):
+                        for root, _, files in os.walk(fpath):
+                            for f in files:
+                                reclaimed_bytes += os.path.getsize(os.path.join(root, f))
+                        shutil.rmtree(fpath, ignore_errors=True)
+                    else:
+                        reclaimed_bytes += os.path.getsize(fpath)
                         os.remove(fpath)
-                        cleaned_count += 1
-                        reclaimed_bytes += size
-                    except Exception:
-                        pass
-            delete_download_meta(jid)
+                    cleaned_count += 1
+                except Exception:
+                    pass
+            for jid in list(meta.keys()):
+                delete_download_meta(jid)
             with JOBS_LOCK:
-                JOBS.pop(jid, None)
+                JOBS.clear()
+        else:
+            user_job_ids = [jid for jid, info in meta.items() if info.get("username") == username]
+            for jid in user_job_ids:
+                for entry in os.listdir(DOWNLOAD_DIR):
+                    if entry.startswith(jid):
+                        fpath = os.path.join(DOWNLOAD_DIR, entry)
+                        try:
+                            reclaimed_bytes += os.path.getsize(fpath)
+                            os.remove(fpath)
+                            cleaned_count += 1
+                        except Exception:
+                            pass
+                delete_download_meta(jid)
+                with JOBS_LOCK:
+                    JOBS.pop(jid, None)
 
     return jsonify({
         "success": True,
         "cleaned_count": cleaned_count,
         "reclaimed_formatted": format_bytes(reclaimed_bytes),
     })
+
 
 
 
@@ -1831,6 +1854,18 @@ def admin_git_status():
 
 
 
+def ensure_git_safe_and_https():
+    try:
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
+        rem = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, timeout=3)
+        if rem.returncode == 0 and "git@github.com:" in rem.stdout:
+            https_url = rem.stdout.strip().replace("git@github.com:", "https://github.com/")
+            subprocess.run(["git", "remote", "set-url", "origin", https_url], capture_output=True, timeout=3)
+    except Exception:
+        pass
+
+
 @app.route("/api/admin/git-switch-branch", methods=["POST"])
 @require_admin
 def admin_git_switch_branch():
@@ -1839,6 +1874,7 @@ def admin_git_switch_branch():
     if target_branch not in ("main", "dev"):
         return jsonify({"error": "Rama inválida. Solo se permite 'main' (estable) o 'dev' (desarrollo)."}), 400
 
+    ensure_git_safe_and_https()
     try:
         subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, timeout=30, check=True)
         r = subprocess.run(["git", "checkout", target_branch], capture_output=True, text=True, timeout=15)
@@ -1855,6 +1891,7 @@ def admin_git_switch_branch():
 @app.route("/api/admin/git-update", methods=["POST"])
 @require_admin
 def admin_git_update():
+    ensure_git_safe_and_https()
     git_info = get_git_info()
     current_commit = git_info.get("commit")
     current_branch = git_info.get("branch") or "main"
@@ -1887,6 +1924,7 @@ def admin_git_update():
 @app.route("/api/admin/git-rollback", methods=["POST"])
 @require_admin
 def admin_git_rollback():
+    ensure_git_safe_and_https()
     rollback = load_rollback_state()
     prev_commit = rollback.get("previous_commit")
     if not prev_commit:
@@ -1907,8 +1945,6 @@ def admin_git_rollback():
 @app.route("/api/admin/check-updates")
 @require_admin
 def admin_check_updates():
-
-
     curr = get_ytdlp_version()
     latest = curr
     has_update = False
@@ -1927,7 +1963,6 @@ def admin_check_updates():
     })
 
 
-
 @app.route("/api/admin/config", methods=["GET", "POST"])
 @require_admin
 def admin_config():
@@ -1936,7 +1971,7 @@ def admin_config():
         data = request.get_json(force=True) or {}
         cfg = load_config()
         if "site_title" in data:
-            cfg["site_title"] = str(data["site_title"]).strip() or "🎬 Descargador Multimedia"
+            cfg["site_title"] = str(data["site_title"]).strip() or "⚡ dHtools"
         if "site_subtitle" in data:
             cfg["site_subtitle"] = str(data["site_subtitle"]).strip()
         if "default_theme" in data:
@@ -1954,35 +1989,112 @@ def admin_config():
     return jsonify({"config": load_config()})
 
 
+def validate_netscape_cookies(content: str) -> tuple:
+    """Validates if content is in Netscape cookies format and test extracts with yt-dlp."""
+    lines = [l.strip() for l in content.splitlines() if l.strip()]
+    if not lines:
+        return False, "El archivo de cookies está vacío.", 0
 
-@app.route("/api/admin/cookies", methods=["GET", "POST"])
+    valid_lines = 0
+    for line in lines:
+        if line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 7:
+            valid_lines += 1
+
+    if valid_lines == 0:
+        return False, "El archivo no tiene el formato estándar Netscape cookies (columnas separadas por tabulaciones).", 0
+
+    temp_cookie_path = os.path.join(DOWNLOAD_DIR, f"temp_cookie_test_{int(time.time())}.txt")
+    try:
+        with open(temp_cookie_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        ydl_opts = {
+            "cookiefile": temp_cookie_path,
+            "quiet": True,
+            "skip_download": True,
+            "extract_flat": True,
+            "socket_timeout": 8,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.extract_info("https://www.youtube.com/watch?v=aqz-KE-bpKQ", download=False)
+
+        return True, f"Cookies validadas y funcionales contra YouTube ({valid_lines} entradas activas).", valid_lines
+    except Exception as e:
+        return False, f"La validación contra YouTube falló con estas cookies: {e}", valid_lines
+    finally:
+        if os.path.exists(temp_cookie_path):
+            try:
+                os.remove(temp_cookie_path)
+            except Exception:
+                pass
+
+
+@app.route("/api/admin/cookies", methods=["GET", "DELETE"])
 @require_admin
 def admin_cookies():
-    if request.method == "POST":
-        data = request.get_json(force=True) or {}
-        content = data.get("content", "")
-        with open(COOKIES_FILE, "w", encoding="utf-8") as f:
-            f.write(content)
-        return jsonify({"message": "Archivo cookies.txt guardado exitosamente"})
+    if request.method == "DELETE":
+        if os.path.exists(COOKIES_FILE):
+            try:
+                os.remove(COOKIES_FILE)
+            except Exception as e:
+                return jsonify({"error": f"Error al eliminar cookies: {e}"}), 500
+        return jsonify({"success": True, "message": "Archivo cookies.txt eliminado correctamente."})
 
     has_cookies = os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0
-    content = ""
     lines = 0
     size_formatted = "0 B"
+    mtime_str = ""
     if has_cookies:
         try:
             with open(COOKIES_FILE, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-            lines = len(content.splitlines())
+                lines = len([l for l in f.readlines() if l.strip() and not l.strip().startswith("#")])
             size_formatted = format_bytes(os.path.getsize(COOKIES_FILE))
+            mtime_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(COOKIES_FILE)))
         except Exception:
             pass
     return jsonify({
         "has_cookies": has_cookies,
-        "content": content,
         "lines": lines,
         "size_formatted": size_formatted,
+        "updated_at": mtime_str,
     })
+
+
+@app.route("/api/admin/cookies/upload", methods=["POST"])
+@require_admin
+def admin_cookies_upload():
+    content = ""
+    if "file" in request.files:
+        uploaded_file = request.files["file"]
+        content = uploaded_file.read().decode("utf-8", errors="replace")
+    elif request.is_json:
+        data = request.get_json(force=True) or {}
+        content = data.get("content", "")
+
+    if not content or not content.strip():
+        return jsonify({"error": "No se recibió contenido de cookies para procesar."}), 400
+
+    is_valid, msg, valid_lines = validate_netscape_cookies(content)
+    if not is_valid:
+        return jsonify({"error": msg}), 400
+
+    try:
+        os.makedirs(os.path.dirname(COOKIES_FILE), exist_ok=True)
+        with open(COOKIES_FILE, "w", encoding="utf-8") as f:
+            f.write(content)
+        size_formatted = format_bytes(os.path.getsize(COOKIES_FILE))
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "lines": valid_lines,
+            "size_formatted": size_formatted,
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error al guardar archivo cookies.txt: {e}"}), 500
+
 
 
 @app.route("/api/admin/users", methods=["GET", "POST"])
@@ -2180,15 +2292,16 @@ def admin_update_cobalt():
 # ==================== MEDIA INFO & DOWNLOADS ====================
 
 @app.route("/api/info", methods=["POST"])
-
 def info():
     data = request.get_json(force=True)
+    raw_url = (data or {}).get("url", "").strip()
     if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
     if not validate_media_url(raw_url):
         return jsonify({"error": "La URL ingresada no es válida o contiene caracteres no permitidos"}), 400
 
     url = normalize_url(raw_url)
+
 
     platform = detect_platform(raw_url)
 
