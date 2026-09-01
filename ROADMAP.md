@@ -211,6 +211,15 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Renderizado de colecciones en "Mis Descargas" con acciones de descarga ZIP y eliminación en bloque.
   - [x] Detección automática de playlists sin necesidad de inspección previa.
 
+---
+
+## 🎯 Versión `v2.7.6` (Completado)
+- [x] **Cancelación Inmediata de Descargas y Vaciar Cola:**
+  - [x] Aborto en tiempo real de sockets y procesos de yt-dlp vía `DownloadCancelled` y `match_filter`.
+  - [x] Inclusión del trabajo activo en `cancel_all_queue` para detener descargas en curso.
+  - [x] Limpieza de temporales y preservación del estado `cancelled`.
+
+
 
 
 

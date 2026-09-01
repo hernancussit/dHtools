@@ -4,7 +4,19 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.6] - 2026-09-01
+
+### 🛑 Cancelación Inmediata de Descargas y Playlists
+- **⚡ Aborto Instantáneo en yt-dlp, Cascada y Servidor:**
+  - Implementación de `check_cancelled()`, `match_filter` y `progress_hooks` en yt-dlp para interrumpir inmediatamente las conexiones HTTP y los sockets de descarga al recibir una orden de cancelación.
+  - Corrección en `cancel_all_queue` para abortar también el trabajo activo en ejecución (`ACTIVE_WORKER_JOB`), impidiendo que continúe descargando pistas restantes en segundo plano.
+  - Limpieza automática del directorio temporal de descarga tras la cancelación evitando residuos o archivos corruptos.
+  - Protección de estado para no sobreescribir el estado `cancelled` con `error` o `finished`.
+
+---
+
 ## [2.7.5] - 2026-09-01
+
 
 ### 📁 Organización y Agrupación de Playlists
 - **📁 Agrupación Universal de Playlists de YouTube en Carpetas:**

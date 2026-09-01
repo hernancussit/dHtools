@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.5"
+APP_VERSION = "2.7.6"
+
 
 
 
@@ -65,7 +66,11 @@ PLAYER_CLIENTS_ENV = os.environ.get("PLAYER_CLIENTS", "default").strip()
 
 
 def player_client_opts(clients=None, for_download: bool = True):
-    opts = {"extractor_args": {}}
+    opts = {
+        "extractor_args": {
+            "youtubetab": {"skip": ["authcheck"]}
+        }
+    }
     if for_download:
         opts["extractor_args"]["youtubepot-bgutilhttp"] = {"base_url": [POT_PROVIDER_URL]}
 
@@ -77,6 +82,7 @@ def player_client_opts(clients=None, for_download: bool = True):
             target = [target]
         opts["extractor_args"]["youtube"] = {"player_client": target}
     return opts
+
 
 
 
@@ -323,12 +329,9 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 CLEANUP_AFTER_HOURS = float(os.environ.get("CLEANUP_AFTER_HOURS", "24"))
 CLEANUP_CHECK_INTERVAL_MINUTES = float(os.environ.get("CLEANUP_CHECK_INTERVAL_MINUTES", "30"))
 
-# job_id -> dict con status, progreso, metadatos de playlist, etc.
-JOBS = {}
-JOBS_LOCK = threading.Lock()
-
 
 def format_speed(bytes_per_sec):
+
     if not bytes_per_sec:
         return None
     for unit in ("B/s", "KB/s", "MB/s", "GB/s"):
@@ -850,7 +853,7 @@ def is_permanent_error(err_str: str) -> bool:
     ])
 
 
-def extract_with_fallback(url, ydl_opts_base, download):
+def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
     """Prueba combinaciones de clientes en orden:
     1) default (cadena inteligente de yt-dlp con Deno para JS challenges y bgutil para PO Token)
     2) web_embedded, tv_downgraded, mweb
@@ -869,18 +872,43 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
     last_exc = None
     for clients in candidates:
+        if job_id:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return None
         opts = dict(ydl_opts_base)
         opts["extractor_args"] = player_client_opts(clients, for_download=download)["extractor_args"]
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 return ydl.extract_info(url, download=download)
-
+        except (yt_dlp.utils.DownloadCancelled, yt_dlp.utils.MaxDownloadsReached):
+            return None
         except yt_dlp.utils.DownloadError as e:
             last_exc = e
+            if job_id:
+                with JOBS_LOCK:
+                    if JOBS.get(job_id, {}).get("status") == "cancelled":
+                        return None
             if is_permanent_error(str(e)):
                 break
             continue
-    raise last_exc
+        except Exception as e:
+            last_exc = e
+            if job_id:
+                with JOBS_LOCK:
+                    if JOBS.get(job_id, {}).get("status") == "cancelled":
+                        return None
+            break
+
+    if job_id:
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return None
+
+    if last_exc:
+        raise last_exc
+    return None
+
 
 
 
@@ -1117,7 +1145,8 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 "quiet": True,
                 **cookies_opts(),
             }
-            extract_with_fallback(search_query, ydl_opts, download=True)
+            extract_with_fallback(search_query, ydl_opts, download=True, job_id=job_id)
+
 
         found_files = [f for f in os.listdir(job_dir) if f.startswith("raw_audio.")]
         if not found_files:
@@ -1188,14 +1217,27 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
         threading.Thread(target=sync_to_cloud, args=(final_path, final_filename, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
-            JOBS[job_id].update({
-                "status": "error",
-                "error": str(e),
-                "finished_at": time.time(),
-            })
+            job = JOBS.get(job_id)
+            is_cancelled = (job and job.get("status") == "cancelled") or "cancelled" in str(e).lower()
+            if is_cancelled:
+                if job:
+                    job["status"] = "cancelled"
+                    job["finished_at"] = time.time()
+                append_job_log(job_id, "[!] Descarga de música cancelada por el usuario.")
+            else:
+                if job:
+                    job.update({
+                        "status": "error",
+                        "error": str(e),
+                        "finished_at": time.time(),
+                    })
+                append_job_log(job_id, f"[!] Error en motor musical: {e}")
+        if is_cancelled:
+            return
         raise
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
+
 
 
 
@@ -2114,7 +2156,18 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
     completed_ids = set()
     last_log_milestone = [-1]
 
+    def check_cancelled():
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("status") == "cancelled":
+                raise yt_dlp.utils.DownloadCancelled("Descarga cancelada por el usuario.")
+
+    def match_filter_cancel(info_dict, *args, **kwargs):
+        check_cancelled()
+        return None
+
     def hook(d):
+        check_cancelled()
         with JOBS_LOCK:
             job = JOBS.get(job_id)
             if not job:
@@ -2168,6 +2221,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
         ydl_opts = {
             "outtmpl": outtmpl,
             "progress_hooks": [hook],
+            "postprocessor_hooks": [lambda d: check_cancelled()],
+            "match_filter": match_filter_cancel,
             "quiet": True,
             "no_warnings": True,
             "noplaylist": not playlist_mode,
@@ -2220,12 +2275,24 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             ydl_opts["force_keyframes_at_cuts"] = True
 
         with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
             JOBS[job_id]["status"] = "downloading"
 
-        extract_with_fallback(url, ydl_opts, download=True)
+        extract_with_fallback(url, ydl_opts, download=True, job_id=job_id)
+
+
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("status") == "cancelled":
+                append_job_log(job_id, "[!] Proceso detenido: descarga cancelada.")
+                return
 
         files = [f for f in os.listdir(job_dir) if not f.endswith(".part") and not f.endswith(".ytdl")]
         if not files:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
             raise RuntimeError("No se generó ningún archivo")
 
         if playlist_mode or len(files) > 1:
@@ -2299,11 +2366,23 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
-            JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
-        append_job_log(job_id, f"[!] Error en yt-dlp: {e}")
+            job = JOBS.get(job_id)
+            is_cancelled = (job and job.get("status") == "cancelled") or "cancelled" in str(e).lower() or isinstance(e, yt_dlp.utils.DownloadCancelled)
+            if is_cancelled:
+                if job:
+                    job["status"] = "cancelled"
+                    job["finished_at"] = time.time()
+                append_job_log(job_id, "[!] Descarga abortada y cancelada por el usuario.")
+            else:
+                if job:
+                    job.update({"status": "error", "error": str(e), "finished_at": time.time()})
+                append_job_log(job_id, f"[!] Error en yt-dlp: {e}")
+        if is_cancelled:
+            return
         raise
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
+
 
 
 def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
@@ -2318,6 +2397,9 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
 
     # 1. First attempt: Cobalt v11 (for single video/audio, non-playlist)
     if not playlist_mode and start_time is None and end_time is None and subtitles == "none":
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
         append_job_log(job_id, "[*] [1/3] Probando extracción con Motor Cobalt Oficial...")
         try:
             run_download_cobalt(job_id, url, quality, video_title, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id)
@@ -2325,13 +2407,21 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                 if JOBS.get(job_id, {}).get("status") == "finished":
                     append_job_log(job_id, "[+] Proceso finalizado exitosamente con Cobalt.")
                     return
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
         except Exception as e:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
             err = str(e)
             attempts.append({"engine": "Cobalt v11 (API)", "status": "failed", "error": err})
             append_job_log(job_id, f"[!] Cobalt no pudo extraer el stream ({err}). Pasando a siguiente método...")
 
     # 2. Second attempt: Specialized Music Engine if Spotify/Deezer
     if platform in ("Deezer", "Spotify") and not playlist_mode:
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
         append_job_log(job_id, f"[*] [2/3] Probando Motor Musical Especializado ({platform})...")
         try:
             run_download_music(job_id, url, quality, deezer_arl, None, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id)
@@ -2339,12 +2429,20 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                 if JOBS.get(job_id, {}).get("status") == "finished":
                     append_job_log(job_id, "[+] Proceso finalizado exitosamente con Motor Musical.")
                     return
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
         except Exception as e:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
             err = str(e)
             attempts.append({"engine": f"Motor Música ({platform})", "status": "failed", "error": err})
             append_job_log(job_id, f"[!] Motor musical no pudo procesar ({err}). Pasando a yt-dlp...")
 
     # 3. Third attempt: yt-dlp with PoToken Provider and fallback clients
+    with JOBS_LOCK:
+        if JOBS.get(job_id, {}).get("status") == "cancelled":
+            return
     append_job_log(job_id, "[*] [3/3] Probando extracción completa con yt-dlp (PoToken & Multi-Cliente)...")
     try:
         run_download(
@@ -2356,20 +2454,27 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
             if JOBS.get(job_id, {}).get("status") == "finished":
                 append_job_log(job_id, "[+] Proceso finalizado exitosamente con yt-dlp.")
                 return
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
     except Exception as e:
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
         err = str(e)
         attempts.append({"engine": "yt-dlp (Extractor Principal)", "status": "failed", "error": err})
         append_job_log(job_id, f"[!] yt-dlp falló: {err}")
 
     # If all engines failed, record detailed error report
     with JOBS_LOCK:
-        JOBS[job_id].update({
-            "status": "error",
-            "error": "Todos los métodos y motores de descarga fallaron al procesar este enlace.",
-            "attempts": attempts,
-            "finished_at": time.time(),
-        })
-    append_job_log(job_id, "[!] ERROR: Se agotaron todos los métodos de descarga disponibles.")
+        if JOBS.get(job_id, {}).get("status") != "cancelled":
+            JOBS[job_id].update({
+                "status": "error",
+                "error": "Todos los métodos y motores de descarga fallaron al procesar este enlace.",
+                "attempts": attempts,
+                "finished_at": time.time(),
+            })
+            append_job_log(job_id, "[!] ERROR: Se agotaron todos los métodos de descarga disponibles.")
+
 
 
 # ==================== BACKGROUND QUEUE WORKER ====================
@@ -2461,11 +2566,12 @@ def background_queue_worker():
                 )
         except Exception as e:
             with JOBS_LOCK:
-                if job_id in JOBS:
+                if job_id in JOBS and JOBS[job_id].get("status") != "cancelled":
                     JOBS[job_id]["status"] = "error"
                     JOBS[job_id]["error"] = str(e)
                     JOBS[job_id]["finished_at"] = time.time()
         finally:
+
             with QUEUE_LOCK:
                 if job_id in QUEUE_LIST:
                     QUEUE_LIST.remove(job_id)
@@ -2584,9 +2690,10 @@ def get_queue():
     with JOBS_LOCK:
         if ACTIVE_WORKER_JOB and ACTIVE_WORKER_JOB in JOBS:
             j = JOBS[ACTIVE_WORKER_JOB]
-            if is_admin or j.get("owner") == username:
+            if j.get("status") in ("downloading", "processing", "zipping", "queued") and (is_admin or j.get("owner") == username):
                 active_job = dict(j)
                 active_job["job_id"] = ACTIVE_WORKER_JOB
+
 
         for jid in q_ids:
             if jid == ACTIVE_WORKER_JOB:
@@ -2612,7 +2719,23 @@ def get_queue():
     })
 
 
+@app.route("/api/debug-threads")
+def debug_threads():
+    import traceback
+    res = {}
+    for th in threading.enumerate():
+        frame = sys._current_frames().get(th.ident)
+        stack = traceback.format_stack(frame) if frame else []
+        res[th.name] = {
+            "daemon": th.daemon,
+            "alive": th.is_alive(),
+            "stack": stack,
+        }
+    return jsonify(res)
+
+
 @app.route("/api/queue/move", methods=["POST"])
+
 def move_queue_item():
     data = request.get_json(force=True) or {}
     job_id = data.get("job_id")
@@ -2681,8 +2804,6 @@ def cancel_all_queue():
         q_ids = list(QUEUE_LIST)
 
     for jid in q_ids:
-        if jid == ACTIVE_WORKER_JOB:
-            continue
         with JOBS_LOCK:
             job = JOBS.get(jid)
             if job and (is_admin or job.get("owner") == username):
@@ -2696,9 +2817,20 @@ def cancel_all_queue():
                 QUEUE_LIST.remove(jid)
                 cancelled_count += 1
 
-    save_queue_state()
+    if ACTIVE_WORKER_JOB:
+        with JOBS_LOCK:
+            act_job = JOBS.get(ACTIVE_WORKER_JOB)
+            if act_job and (is_admin or act_job.get("owner") == username):
+                act_job["status"] = "cancelled"
+                act_job["finished_at"] = time.time()
+                if "logs" not in act_job:
+                    act_job["logs"] = []
+                act_job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": "[!] Descarga activa abortada por vaciado de cola."})
+                cancelled_count += 1
 
+    save_queue_state()
     return jsonify({"success": True, "cancelled_count": cancelled_count})
+
 
 
 @app.route("/api/status/<job_id>")
