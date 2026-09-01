@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
-<title>{{ (config and config.site_title) or 'ytsite - Descargador Multimedia' }}</title>
+<title>{{ (config and config.site_title) or 'dHtools - Suite Multimedia' }}</title>
+
 <style>
   :root, [data-theme="cyberpunk"] {
     --bg-main: #070b14;
@@ -693,13 +694,14 @@
     <div>
       <div class="sidebar-header">
         <a href="/" class="brand-title">
-          <span>🎬</span>
-          <span>{{ (config and config.site_title) or 'ytsite' }}</span>
+          <span>⚡</span>
+          <span>{{ (config and config.site_title) or 'dHtools' }}</span>
         </a>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:0.75rem; color:var(--muted);">Multimedia Downloader</span>
+          <span style="font-size:0.75rem; color:var(--muted);">Suite Multimedia</span>
           <span class="brand-badge">v{{ version }}</span>
         </div>
+
         <div class="user-badge-box">
           <span style="font-weight:600;">👤 {{ username }}</span>
           {% if is_admin %}

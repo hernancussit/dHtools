@@ -228,6 +228,14 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Identificación de carpeta contenedora y badges en la cola en segundo plano.
   - [x] Agrupación automática en carpetas en "Mis Descargas".
 
+---
+
+## 🎯 Versión `v2.7.8` (Completado)
+- [x] **Rebranding Oficial a "dHtools":**
+  - [x] Actualización de la marca e identidad visual en la Suite Multimedia.
+  - [x] Modificación de plantillas, títulos, PWA manifest y configuración de sincronización.
+
+
 
 
 

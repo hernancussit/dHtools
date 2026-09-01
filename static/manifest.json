@@ -1,7 +1,8 @@
 {
-  "name": "ytsite - Descargador Multimedia",
-  "short_name": "ytsite",
-  "description": "Descargador multimedia avanzado para YouTube, Spotify, Deezer, TikTok, Instagram y más.",
+  "name": "dHtools - Suite Multimedia",
+  "short_name": "dHtools",
+  "description": "Descargador y extractor multimedia avanzado para YouTube, Spotify, Deezer, TikTok, Instagram y más.",
+
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

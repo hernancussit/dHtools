@@ -1,4 +1,5 @@
-const CACHE_NAME = 'ytsite-cache-v1';
+const CACHE_NAME = 'dhtools-cache-v1';
+
 const ASSETS_TO_CACHE = [
   '/',
   '/wiki',

@@ -4,7 +4,18 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.8] - 2026-09-01
+
+### ⚡ Rebranding Oficial del Proyecto a "dHtools"
+- **🏷️ Identidad de Marca Unificada:**
+  - Renombrado oficial de la plataforma a **dHtools** (Suite Multimedia & Extractor Universal).
+  - Actualización del PWA Manifest (`static/manifest.json`), títulos en plantillas HTML (`index.html`, `admin.html`, `login.html`, `wiki.html`), documentación técnica (`README.md`, `WIKI.md`), y User-Agents de sincronización.
+  - Mantenimiento íntegro de la URL de producción (`https://yt.serviciosinformaticoslt.com`) y credenciales de usuario.
+
+---
+
 ## [2.7.7] - 2026-09-01
+
 
 ### 📋 Visualización y Gestión de Playlists Ítem por Ítem en Cola y Descargas
 - **🎵 Encolado Individual de Pistas de Playlists (`/api/playlist-download`):**
