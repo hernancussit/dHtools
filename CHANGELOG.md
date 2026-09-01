@@ -4,7 +4,19 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.2.1] - 2026-09-01
+
+### 🐛 Correcciones y Mejoras
+- **Formulario Web de Inicio de Sesión (`/login`):**
+  - Implementación de interfaz gráfica web dedicada para el inicio de sesión (`templates/login.html`), eliminando diálogos emergentes de error 500 / 401 en accesos directos desde el navegador.
+  - Autenticación híbrida basada en sesiones seguras de Flask (`session`) para el navegador y compatibilidad con `HTTP Basic Auth` para llamadas automáticas a `/api/`.
+  - Redirección automática y fluida al inicio de sesión si el usuario no está autenticado, con retorno a la página solicitada tras loguearse (`?next=...`).
+  - Gestión visual de avisos de suspensión y cierre de sesión exitoso.
+
+---
+
 ## [2.2.0] - 2026-09-01
+
 
 ### ✨ Novedades y Características
 - **Cierre de Sesión (Logout):**

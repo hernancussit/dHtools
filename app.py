@@ -13,13 +13,14 @@ import hashlib
 import functools
 import ftplib
 import requests
-from flask import Flask, request, jsonify, send_file, render_template, abort, Response
+from flask import Flask, request, jsonify, send_file, render_template, abort, Response, session, redirect, url_for
 
 import yt_dlp
 from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
-APP_VERSION = "2.2.0"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
+APP_VERSION = "2.2.1"
 
 
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
@@ -120,36 +121,101 @@ def check_auth(username, password):
     return False
 
 
-def require_auth():
-    return Response(
-        "Autenticación requerida", 401,
-        {"WWW-Authenticate": 'Basic realm="Descargador de YouTube"'},
-    )
-
-
 @app.before_request
 def protect_all_routes():
-    if request.path == "/logout":
+    # Allow public endpoints without authentication
+    if (
+        request.path == "/login"
+        or request.path == "/logout"
+        or request.path.startswith("/static/")
+        or request.path in ("/manifest.json", "/sw.js")
+    ):
         return None
+
+    # 1. Check Flask Web Session
+    sess_user = session.get("username")
+    if sess_user:
+        users = load_users()
+        if sess_user in users:
+            u = dict(users[sess_user])
+            u["username"] = sess_user
+            if u.get("status") == "suspended":
+                session.clear()
+                if request.path.startswith("/api/"):
+                    return jsonify({"error": "Tu cuenta se encuentra suspendida por el administrador."}), 403
+                return redirect(url_for("login", error="Tu cuenta ha sido suspendida."))
+            request.current_user = u
+            request.current_username = sess_user
+            return None
+        elif secrets.compare_digest(sess_user, APP_USERNAME):
+            request.current_user = {"role": "admin", "username": sess_user, "status": "active"}
+            request.current_username = sess_user
+            return None
+
+    # 2. Check HTTP Basic Auth (for automated tests / API clients)
     auth = request.authorization
-    if not auth:
-        return require_auth()
-    u = check_auth(auth.username, auth.password)
-    if u == "SUSPENDED":
-        return Response("Acceso denegado: tu cuenta ha sido suspendida por el administrador.", 403)
-    if not u:
-        return require_auth()
-    request.current_user = u
-    request.current_username = auth.username
+    if auth:
+        u = check_auth(auth.username, auth.password)
+        if u == "SUSPENDED":
+            return Response("Acceso denegado: tu cuenta ha sido suspendida por el administrador.", 403)
+        if u:
+            request.current_user = u
+            request.current_username = auth.username
+            return None
+
+    # 3. Unauthenticated requests
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Autenticación requerida. Iniciá sesión en la web o enviá credenciales HTTP Basic."}), 401
+
+    next_param = request.full_path.rstrip("?") if request.path != "/" else None
+    return redirect(url_for("login", next=next_param))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        next_url = request.form.get("next") or "/"
+
+        u = check_auth(username, password)
+        if u == "SUSPENDED":
+            return render_template(
+                "login.html",
+                config=load_config(),
+                error="Tu cuenta se encuentra suspendida por el administrador.",
+                username=username,
+                next_url=next_url,
+            ), 403
+        if not u:
+            return render_template(
+                "login.html",
+                config=load_config(),
+                error="Usuario o contraseña incorrectos.",
+                username=username,
+                next_url=next_url,
+            ), 401
+
+        session["username"] = u.get("username", username)
+        session["role"] = u.get("role", "downloader")
+        return redirect(next_url if next_url.startswith("/") else "/")
+
+    if session.get("username"):
+        return redirect("/")
+
+    return render_template(
+        "login.html",
+        config=load_config(),
+        error=request.args.get("error"),
+        msg=request.args.get("msg"),
+        next_url=request.args.get("next"),
+    )
 
 
 @app.route("/logout")
 def logout():
-    return Response(
-        "Sesión cerrada. Volvé a ingresar cuando desees.",
-        401,
-        {"WWW-Authenticate": 'Basic realm="ytsite_logout"'},
-    )
+    session.clear()
+    return redirect(url_for("login", msg="logged_out"))
 
 
 def require_admin(f):
@@ -158,6 +224,7 @@ def require_admin(f):
         u = getattr(request, "current_user", None)
         if not u or u.get("role") != "admin":
             return jsonify({"error": "Acceso denegado: se requieren permisos de Administrador"}), 403
+
 
         return f(*args, **kwargs)
     return decorated
