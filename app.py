@@ -12,6 +12,7 @@ import json
 import hashlib
 import functools
 import ftplib
+import urllib.parse
 import requests
 from flask import Flask, request, jsonify, send_file, render_template, abort, Response, session, redirect, url_for
 
@@ -19,21 +20,19 @@ import yt_dlp
 from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.8"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dhtools_secret_session_key_2026_super_secure")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+APP_VERSION = "1.0.0"
 
-
-
-
-
-
-
-
-
+# Security: Brute Force & Rate Limiting Storage
+LOGIN_ATTEMPTS = {}
+LOGIN_ATTEMPTS_LOCK = threading.RLock()
+MAX_FAILED_LOGINS = 5
+LOCKOUT_DURATION_SECONDS = 900  # 15 minutes lockout
 
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
-
 
 COOKIES_FILE = os.environ.get("COOKIES_FILE", "/app/cookies.txt")
 USERS_FILE = os.environ.get("USERS_FILE", "/app/users.json")
@@ -41,6 +40,7 @@ CONFIG_FILE = os.environ.get("CONFIG_FILE", "/app/config.json")
 CLOUD_CONFIG_FILE = os.environ.get("CLOUD_CONFIG_FILE", "/app/cloud_sync.json")
 DOWNLOADS_META_FILE = os.environ.get("DOWNLOADS_META_FILE", "/app/downloads_meta.json")
 QUEUE_STATE_FILE = os.environ.get("QUEUE_STATE_FILE", "/app/queue_state.json")
+ROLLBACK_STATE_FILE = os.environ.get("ROLLBACK_STATE_FILE", "/app/rollback_state.json")
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://potprovider:4416")
 COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
@@ -52,6 +52,52 @@ BATCH_LOCK = threading.RLock()
 QUEUE_LIST = []
 QUEUE_LOCK = threading.RLock()
 ACTIVE_WORKER_JOB = None
+
+
+def get_client_ip() -> str:
+    """Extracts client IP respecting proxy headers."""
+    if request.headers.get("X-Forwarded-For"):
+        return request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    if request.headers.get("X-Real-IP"):
+        return request.headers.get("X-Real-IP").strip()
+    return request.remote_addr or "127.0.0.1"
+
+
+def validate_media_url(url: str) -> bool:
+    """Strictly validates media URLs to prevent command injection, RCE, and protocol smuggling."""
+    if not url or not isinstance(url, str):
+        return False
+    url = url.strip()
+    if len(url) > 2048:
+        return False
+    # Check for forbidden shell metacharacters / control chars
+    if any(c in url for c in [";", "&", "|", "`", "$", "\n", "\r", "\t", "<", ">"]):
+        return False
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme.lower() not in ("http", "https"):
+            return False
+        if not parsed.netloc:
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def safe_download_path(filename_or_subpath: str) -> str:
+    """Verifies that filename_or_subpath resolves strictly inside DOWNLOAD_DIR without path traversal."""
+    if not filename_or_subpath:
+        return None
+    try:
+        clean = os.path.normpath(str(filename_or_subpath)).lstrip("/\\")
+        full_path = os.path.abspath(os.path.join(DOWNLOAD_DIR, clean))
+        common = os.path.commonpath([full_path, os.path.abspath(DOWNLOAD_DIR)])
+        if common == os.path.abspath(DOWNLOAD_DIR):
+            return full_path
+    except Exception:
+        pass
+    return None
+
 
 
 
@@ -194,6 +240,23 @@ def protect_all_routes():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    ip = get_client_ip()
+
+    # Check if IP is currently locked out
+    with LOGIN_ATTEMPTS_LOCK:
+        rec = LOGIN_ATTEMPTS.get(ip)
+        if rec:
+            blocked_until = rec.get("blocked_until", 0)
+            if blocked_until > time.time():
+                wait_min = int((blocked_until - time.time()) // 60) + 1
+                return render_template(
+                    "login.html",
+                    config=load_config(),
+                    error=f"Demasiados intentos fallidos. Tu IP está bloqueada temporalmente. Esperá {wait_min} min para reintentar.",
+                    username="",
+                    next_url="/",
+                ), 429
+
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -208,14 +271,40 @@ def login():
                 username=username,
                 next_url=next_url,
             ), 403
+
         if not u:
+            with LOGIN_ATTEMPTS_LOCK:
+                rec = LOGIN_ATTEMPTS.setdefault(ip, {"count": 0, "first_fail": time.time(), "blocked_until": 0})
+                if time.time() - rec["first_fail"] > 900:
+                    rec["count"] = 1
+                    rec["first_fail"] = time.time()
+                else:
+                    rec["count"] += 1
+                count = rec["count"]
+                if count >= MAX_FAILED_LOGINS:
+                    rec["blocked_until"] = time.time() + LOCKOUT_DURATION_SECONDS
+                    return render_template(
+                        "login.html",
+                        config=load_config(),
+                        error="Has superado el límite de 5 intentos. Tu IP ha sido bloqueada temporalmente por 15 minutos.",
+                        username=username,
+                        next_url=next_url,
+                    ), 429
+
+            delay = min(2.0, 0.3 * (count ** 1.3))
+            time.sleep(delay)
+            remaining = MAX_FAILED_LOGINS - count
             return render_template(
                 "login.html",
                 config=load_config(),
-                error="Usuario o contraseña incorrectos.",
+                error=f"Usuario o contraseña incorrectos. (Intentos restantes: {remaining})",
                 username=username,
                 next_url=next_url,
             ), 401
+
+        # Successful login: clear IP record
+        with LOGIN_ATTEMPTS_LOCK:
+            LOGIN_ATTEMPTS.pop(ip, None)
 
         session["username"] = u.get("username", username)
         session["role"] = u.get("role", "downloader")
@@ -231,6 +320,7 @@ def login():
         msg=request.args.get("msg"),
         next_url=request.args.get("next"),
     )
+
 
 
 @app.route("/logout")
@@ -831,9 +921,18 @@ def parse_time_to_seconds(value):
 
 
 @app.after_request
-def add_noindex_header(response):
+def add_security_headers(response):
     response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive, nosnippet"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; "
+        "object-src 'none'; frame-ancestors 'self';"
+    )
     return response
+
 
 
 @app.route("/robots.txt")
@@ -1631,9 +1730,169 @@ def admin_test_deno():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def get_git_info() -> dict:
+    """Extracts branch, commit, and tag info from git."""
+    is_repo = False
+    branch = "main"
+    commit = "unknown"
+    commit_date = ""
+    tag = ""
+    try:
+        r = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip() == "true":
+            is_repo = True
+            br = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, timeout=3)
+            branch = br.stdout.strip() or "main"
+
+            cm = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, timeout=3)
+            commit = cm.stdout.strip() or "unknown"
+
+            cd = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=short"], capture_output=True, text=True, timeout=3)
+            commit_date = cd.stdout.strip()
+
+            tg = subprocess.run(["git", "describe", "--tags", "--always"], capture_output=True, text=True, timeout=3)
+            tag = tg.stdout.strip()
+    except Exception:
+        pass
+    return {
+        "is_repo": is_repo,
+        "branch": branch,
+        "commit": commit,
+        "commit_date": commit_date,
+        "tag": tag,
+    }
+
+
+def load_rollback_state() -> dict:
+    if os.path.exists(ROLLBACK_STATE_FILE):
+        try:
+            with open(ROLLBACK_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_rollback_state(data: dict):
+    try:
+        with open(ROLLBACK_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+@app.route("/api/admin/git-status")
+@require_admin
+def admin_git_status():
+    git_info = get_git_info()
+    rollback = load_rollback_state()
+
+    branch = git_info["branch"] or "main"
+    remote_commit = None
+    remote_date = None
+    update_available = False
+
+    try:
+        gh_url = f"https://api.github.com/repos/hernancussit/dHtools/commits/{branch}"
+        r = requests.get(gh_url, headers={"User-Agent": "dHtools"}, timeout=4)
+        if r.status_code == 200:
+            gh_data = r.json()
+            remote_commit = (gh_data.get("sha") or "")[:7]
+            remote_date = gh_data.get("commit", {}).get("committer", {}).get("date", "")[:10]
+            if remote_commit and remote_commit != git_info["commit"]:
+                update_available = True
+    except Exception:
+        pass
+
+    return jsonify({
+        "app_version": APP_VERSION,
+        "git": git_info,
+        "remote_branch": branch,
+        "remote_commit": remote_commit,
+        "remote_date": remote_date,
+        "update_available": update_available,
+        "rollback_available": bool(rollback.get("previous_commit")),
+        "rollback_info": rollback,
+    })
+
+
+@app.route("/api/admin/git-switch-branch", methods=["POST"])
+@require_admin
+def admin_git_switch_branch():
+    data = request.get_json(force=True) or {}
+    target_branch = data.get("branch", "main").strip()
+    if target_branch not in ("main", "dev"):
+        return jsonify({"error": "Rama inválida. Solo se permite 'main' (estable) o 'dev' (desarrollo)."}), 400
+
+    try:
+        subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, timeout=30, check=True)
+        r = subprocess.run(["git", "checkout", target_branch], capture_output=True, text=True, timeout=15)
+        if r.returncode != 0:
+            subprocess.run(["git", "checkout", "-B", target_branch, f"origin/{target_branch}"], capture_output=True, text=True, timeout=15, check=True)
+        subprocess.run(["git", "pull", "origin", target_branch], capture_output=True, text=True, timeout=30)
+
+        restart_process_soon(1.5)
+        return jsonify({"success": True, "message": f"Cambiado a rama '{target_branch}' con éxito. Reiniciando servicio..."})
+    except Exception as e:
+        return jsonify({"error": f"Error al cambiar de rama: {e}"}), 500
+
+
+@app.route("/api/admin/git-update", methods=["POST"])
+@require_admin
+def admin_git_update():
+    git_info = get_git_info()
+    current_commit = git_info.get("commit")
+    current_branch = git_info.get("branch") or "main"
+
+    try:
+        save_rollback_state({
+            "previous_commit": current_commit,
+            "previous_branch": current_branch,
+            "timestamp": time.time(),
+            "date": time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+        subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, timeout=30, check=True)
+        pull_res = subprocess.run(["git", "pull", "origin", current_branch], capture_output=True, text=True, timeout=45, check=True)
+
+        req_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
+        if os.path.exists(req_file):
+            subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "-r", req_file], capture_output=True, text=True, timeout=120)
+
+        restart_process_soon(1.5)
+        return jsonify({
+            "success": True,
+            "message": "Actualización completada con éxito. Reiniciando servidor...",
+            "details": pull_res.stdout.strip()
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error durante la actualización: {e}"}), 500
+
+
+@app.route("/api/admin/git-rollback", methods=["POST"])
+@require_admin
+def admin_git_rollback():
+    rollback = load_rollback_state()
+    prev_commit = rollback.get("previous_commit")
+    if not prev_commit:
+        return jsonify({"error": "No hay una versión anterior registrada para realizar rollback."}), 400
+
+    try:
+        r = subprocess.run(["git", "checkout", prev_commit], capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            return jsonify({"error": f"Git checkout falló: {r.stderr}"}), 500
+
+        save_rollback_state({})
+        restart_process_soon(1.5)
+        return jsonify({"success": True, "message": f"Rollback al commit '{prev_commit}' ejecutado con éxito. Reiniciando servidor..."})
+    except Exception as e:
+        return jsonify({"error": f"Error durante el rollback: {e}"}), 500
+
+
 @app.route("/api/admin/check-updates")
 @require_admin
 def admin_check_updates():
+
 
     curr = get_ytdlp_version()
     latest = curr
@@ -1909,11 +2168,13 @@ def admin_update_cobalt():
 
 def info():
     data = request.get_json(force=True)
-    raw_url = (data or {}).get("url", "").strip()
     if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
+    if not validate_media_url(raw_url):
+        return jsonify({"error": "La URL ingresada no es válida o contiene caracteres no permitidos"}), 400
 
     url = normalize_url(raw_url)
+
     platform = detect_platform(raw_url)
 
     if platform == "Deezer":
@@ -2614,8 +2875,11 @@ def download():
 
     if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
+    if not validate_media_url(raw_url):
+        return jsonify({"error": "La URL ingresada no es válida o contiene caracteres no permitidos"}), 400
 
     url = normalize_url(raw_url)
+
 
     job_id = uuid.uuid4().hex
     if playlist_mode and not group_id:
@@ -2693,6 +2957,9 @@ def playlist_download():
 
     if not items and not playlist_url:
         return jsonify({"error": "No se recibieron elementos de playlist para descargar"}), 400
+    if playlist_url and not validate_media_url(playlist_url):
+        return jsonify({"error": "La URL de playlist no es válida o contiene caracteres no permitidos"}), 400
+
 
     created_job_ids = []
     total_items = len(items)
@@ -3030,21 +3297,27 @@ def status(job_id):
 
 @app.route("/api/files/<job_id>")
 def files(job_id):
+    if not job_id or not re.match(r"^[a-zA-Z0-9_-]+$", str(job_id)):
+        abort(400)
+
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-    if job and job.get("status") == "finished" and job.get("filepath") and os.path.exists(job["filepath"]):
-        return send_file(job["filepath"], as_attachment=True, download_name=job.get("filename"))
+    if job and job.get("status") == "finished" and job.get("filepath"):
+        safe_path = safe_download_path(job["filepath"])
+        if safe_path and os.path.exists(safe_path) and os.path.isfile(safe_path):
+            return send_file(safe_path, as_attachment=True, download_name=job.get("filename"))
 
     # Fallback to search in DOWNLOAD_DIR
     if os.path.exists(DOWNLOAD_DIR):
         for entry in os.listdir(DOWNLOAD_DIR):
             if entry.startswith(job_id):
-                full_path = os.path.join(DOWNLOAD_DIR, entry)
-                if os.path.isfile(full_path):
+                safe_path = safe_download_path(entry)
+                if safe_path and os.path.isfile(safe_path):
                     disp_name = entry[len(job_id):].lstrip("_-") or entry
-                    return send_file(full_path, as_attachment=True, download_name=disp_name)
+                    return send_file(safe_path, as_attachment=True, download_name=disp_name)
 
     abort(404)
+
 
 
 # ==================== BATCH DOWNLOAD QUEUE API ====================
@@ -3060,8 +3333,11 @@ def batch_download():
     else:
         urls = []
 
-    if not urls:
-        return jsonify({"error": "No se enviaron URLs válidas"}), 400
+    valid_urls = [u for u in urls if validate_media_url(u)]
+    if not valid_urls:
+        return jsonify({"error": "No se enviaron URLs válidas para descargar"}), 400
+    urls = valid_urls
+
 
     quality = data.get("quality", "best")
     video_format = data.get("video_format", "mp4")

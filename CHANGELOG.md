@@ -4,6 +4,26 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.0] - 2026-09-01
+
+### 🚀 Primera Versión Pública Oficial Estable
+- **🛡️ Blindaje de Seguridad Integral:**
+  - **Protección contra Fuerza Bruta:** Bloqueo temporal automático por IP (`429 Too Many Requests`) tras 5 intentos fallidos en `/login` con *tarpit* (retraso exponencial) y registro seguro de IPs cliente.
+  - **Prevención de RCE & Command Injection:** Función de validación estricta de URLs (`validate_media_url`) que rechaza metacaracteres de shell (`;`, `&`, `|`, `` ` ``, `$`) y protocolos no seguros. Auditoría completa de `subprocess` sin `shell=True`.
+  - **Protección contra Path Traversal:** Verificación canónica de rutas (`safe_download_path`) en descargas y eliminación de archivos.
+  - **Cabeceras HTTP de Seguridad:** Inyección automática de `Content-Security-Policy`, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff` y `Referrer-Policy`.
+  - **Hardening de Cookies:** Configuración de cookies con flags `HttpOnly` y `SameSite=Lax`.
+- **🔄 Actualizador y Rollback en 1 Clic en el Panel de Administración:**
+  - Selector de canales integrado en el Panel Admin: `🟢 Estable (main)` vs `🧪 Desarrollo / Beta (dev)`.
+  - Comprobador automático de versiones y commits contra la API pública de GitHub.
+  - Actualizador en caliente: `git pull`, actualización de dependencias y reinicio seguro del contenedor.
+  - Rollback en 1 clic: Restauración inmediata al commit anterior en caso de fallos.
+- **🏷️ Rebranding y Publicación Abierta en GitHub:**
+  - Lanzamiento del repositorio público `dHtools` con ramas `main` (estable) y `dev` (desarrollo).
+  - Guía de instalación rápida y despliegue con Docker Compose en cualquier VPS.
+
+---
+
 ## [2.7.8] - 2026-09-01
 
 ### ⚡ Rebranding Oficial del Proyecto a "dHtools"
@@ -11,6 +31,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Renombrado oficial de la plataforma a **dHtools** (Suite Multimedia & Extractor Universal).
   - Actualización del PWA Manifest (`static/manifest.json`), títulos en plantillas HTML (`index.html`, `admin.html`, `login.html`, `wiki.html`), documentación técnica (`README.md`, `WIKI.md`), y User-Agents de sincronización.
   - Mantenimiento íntegro de la URL de producción (`https://yt.serviciosinformaticoslt.com`) y credenciales de usuario.
+
 
 ---
 

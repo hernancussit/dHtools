@@ -1,150 +1,94 @@
-# Descargador de YouTube (yt-dlp + Cobalt + Flask)
+# ⚡ dHtools - Suite Multimedia & Extractor Universal
 
-Sitio web privado para descargar videos y playlists de YouTube con doble motor de extracción (**yt-dlp** y **Cobalt**), empaquetado en Docker y preparado para funcionar detrás del proxy Nginx de HestiaCP con HTTPS.
+[![Release](https://img.shields.io/badge/Release-v1.0.0--stable-blue.svg)](https://github.com/hernancussit/dHtools)
+[![Python](https://img.shields.io/badge/Python-3.11+-yellow.svg)](https://python.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
----
+**dHtools** es una plataforma web autohospedable y de alto rendimiento diseñada para la descarga, conversión, recorte y sincronización en la nube de contenido multimedia desde múltiples plataformas (**YouTube, Spotify, Deezer, TikTok, Instagram, Twitter/X, Twitch, Facebook y más**).
 
-## Características Principales
-
-- **Doble motor de descarga seleccionable:**
-  - **yt-dlp:** Motor principal. Soporta videos individuales en todas las calidades (4K, 1080p, 720p, 480p), extracción de audio en MP3, **recorte de video por tiempo (trimming)** y **descarga de playlists completas en `.zip`**.
-  - **Cobalt (v11):** Motor alternativo de alta velocidad para videos y audios individuales.
-- **Búsqueda e información:** Vista previa con título, duración y miniatura antes de iniciar la descarga.
-- **Progreso en tiempo real:** Barra de porcentaje, velocidad de transferencia del servidor y conteo de videos completados.
-- **Evasión de bloqueos de YouTube:**
-  - **Deno integrado:** Resuelve los desafíos de JavaScript que YouTube exige para entregar formatos reales.
-  - **PO Token Provider unificado (`potprovider`):** Genera Proof-of-Origin Tokens en segundo plano para alimentar tanto a `yt-dlp` como a `Cobalt` (vía `POST /get_pot`).
-  - **Soporte de cookies:** Admite `cookies.txt` (formato Netscape) para videos que requieren sesión o verificación anti-bot.
-- **Seguridad y Privacidad:**
-  - Acceso restringido por HTTP Basic Auth (`APP_USERNAME` / `APP_PASSWORD`).
-  - Cabeceras `X-Robots-Tag` y `robots.txt` para evitar indexación en motores de búsqueda.
-- **Mantenimiento Automatizado:**
-  - Limpieza periódica configurable de archivos descargados en `downloads/`.
-  - Botón de actualización de `yt-dlp` en la interfaz + tarea de actualización automática en segundo plano.
+Está diseñada para ejecutarse en tu propio servidor VPS o máquina local con **Docker Compose**, ofreciendo una interfaz moderna y reactiva con gestión multiusuario, blindaje de seguridad, panel de administración completo, selector de canal de actualizaciones (`main` vs `dev`) y rollback automático en 1 clic.
 
 ---
 
-## 1. Puesta en Marcha Rápida
+## 🚀 Características Principales
 
-1. **Configurar las variables de entorno:**
-   ```bash
-   cp .env.example .env
-   nano .env
-   ```
-   *Definí tus credenciales (`APP_USERNAME` y `APP_PASSWORD`).*
+### 🎯 Extracción Multiplataforma Inteligente
+- **Motor en Cascada Automático:** Combina automáticamente **yt-dlp**, **Cobalt v11 Oficial** y el motor de streaming de audio **Deezer/Spotify** con fallback transparente.
+- **Calidades de Video Ultra HD:** Descarga en 4K (2160p), 2K (1440p), Full HD (1080p), 720p y 480p con selección de contenedor (`MP4` / `MKV`) y subtítulos incrustados.
+- **Suite de Audio Hi-Fi:** Extracción directa con carátulas en alta resolución y metadatos ID3 automáticos en calidades `128 kbps`, `192 kbps`, `256 kbps` y `320 kbps (CBR MP3)`.
+- **Playlists & Álbumes:** Detección automática y desglose de listas de reproducción con seguimiento ítem por ítem en tiempo real, priorización interactiva (⬆️/⬇️) y descarga agrupada en carpetas virtuales o archivo `.zip`.
+- **Recorte Preciso por Tiempo (Trimming):** Permite recortar fragmentos exactos de audio o video indicando tiempos de inicio y fin (`HH:MM:SS` o segundos) sin recodificación innecesaria.
+- **Cola de Descargas Asíncrona:** Procesamiento secuencial sin saturar la CPU o la memoria RAM del servidor.
 
-2. **Iniciar los contenedores con Docker Compose:**
-   ```bash
-   docker compose up -d --build
-   ```
+### 🛡️ Blindaje de Seguridad Integral
+- **Protección contra Fuerza Bruta:** Bloqueo temporal automático por IP tras 5 intentos fallidos con retraso progresivo (*tarpit*).
+- **Prevención de RCE e Inyecciones de Shell:** Sanitización estricta de URLs (`validate_media_url`) y ejecución sin `shell=True`.
+- **Protección contra Path Traversal:** Verificación canónica de rutas (`safe_download_path`) en todos los endpoints de archivo.
+- **Cabeceras HTTP de Seguridad:** Inyección de `Content-Security-Policy`, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff` y `Referrer-Policy`.
+- **Evasión de Bloqueos de YouTube:** Deno integrado para resolución de desafíos JS y microservicio `potprovider` para generación continua de Proof-of-Origin Tokens.
 
-3. **Acceder localmente:**
-   Abrí `http://localhost:5000` (o `http://IP_DEL_SERVIDOR:5000`). El navegador solicitará el usuario y contraseña definidos en `.env`.
-
----
-
-## 2. Arquitectura de Contenedores
-
-El `docker-compose.yml` levanta 3 servicios ligeros y coordinados:
-
-| Servicio | Contenedor | Función | Puerto Interno |
-|---|---|---|---|
-| `ytsite` | `yt-downloader` | Aplicación web en Flask (Gunicorn) + Deno + yt-dlp | `5000` |
-| `potprovider` | `pot-provider` | Proveedor oficial de PO Tokens (`bgutil-ytdlp-pot-provider`) | `4416` |
-| `cobalt` | `cobalt-api` | API de Cobalt v11 conectado a `potprovider` para tokens | `9000` |
+### ⚙️ Panel de Administración & Gestión
+- **Sistema de Actualizaciones en 1 Clic:** Comprobador de versiones contra GitHub y actualizador en caliente desde el panel web.
+- **Selector de Canales:** Alterná entre la rama estable (`main`) y la rama de desarrollo (`dev`) directamente desde la interfaz.
+- **Rollback Seguro:** Restauración inmediata a la versión anterior con un solo clic si algo falla.
+- **Gestión Multiusuario:** Creación de usuarios con roles `Admin` y `Downloader`, cambio de contraseñas, suspensión de cuentas y purga selectiva de descargas por usuario.
+- **Sincronización en la Nube (Cloud Sync):** Exportación automática a Nextcloud/ownCloud vía **WebDAV**, canales/grupos de **Telegram Bot** y servidores **FTP**.
+- **Monitoreo en Tiempo Real:** Métricas en vivo del uso de CPU, RAM del proyecto vs VPS total y espacio en disco con purga automática configurable.
 
 ---
 
-## 3. Publicación con HestiaCP (Puerto 443 / SSL)
+## 📦 Puesta en Marcha Rápida (Docker Compose)
 
-1. **Crear el dominio en HestiaCP:**
-   - Panel de HestiaCP → **Web** → **Add Web Domain** (ej. `yt.tudominio.com`).
-   - Editá el dominio → Pestaña **SSL** → Tildá **Let's Encrypt Support** y guardá.
+### 1. Clonar el repositorio
+```bash
+git clone https://github.com/hernancussit/dHtools.git
+cd dHtools
+```
 
-2. **Instalar la plantilla de proxy inverso:**
-   Copiá los templates incluidos en `hestiacp-templates/` al directorio de plantillas de Nginx en tu servidor:
+### 2. Configurar variables de entorno
+```bash
+cp .env.example .env
+nano .env
+```
+*Definí tus credenciales de acceso (`APP_USERNAME` y `APP_PASSWORD`) y tu clave secreta de sesión.*
+
+### 3. Iniciar los contenedores
+```bash
+docker compose up -d --build
+```
+
+La aplicación estará lista en `http://localhost:5000` (o `http://TU_IP_VPS:5000`).
+
+---
+
+## 🌐 Publicación con Dominio & SSL (Nginx / HestiaCP / Cloudflare)
+
+Si utilizas **HestiaCP** u otro panel con Nginx:
+
+1. Añade el dominio o subdominio en tu panel con certificado SSL Let's Encrypt.
+2. Copia las plantillas incluidas en `hestiacp-templates/` al directorio de plantillas de Nginx:
    ```bash
    cp hestiacp-templates/ytsite-proxy.tpl  /usr/local/hestia/data/templates/web/nginx/
    cp hestiacp-templates/ytsite-proxy.stpl /usr/local/hestia/data/templates/web/nginx/
    ```
-
-3. **Asignar la plantilla al dominio:**
-   - En HestiaCP → **Web** → **Edit** (del dominio) → en **Web Template** seleccioná `ytsite-proxy` → **Save**.
-   - Verificá la configuración de Nginx:
-     ```bash
-     nginx -t && systemctl reload nginx
-     ```
+3. Asigna la plantilla `ytsite-proxy` al dominio y recarga Nginx:
+   ```bash
+   systemctl reload nginx
+   ```
 
 ---
 
-## 4. Gestión de Sesión y Cookies (Anti-Bot)
+## 🌿 Canales de Actualización
 
-Si YouTube exige iniciar sesión o resolver captchas en tu VPS (*"Sign in to confirm you're not a bot"*):
-
-1. **Exportar cookies:**
-   - Usá una extensión de navegador como *"Get cookies.txt LOCALLY"* en Chrome o Firefox.
-   - Entrá a YouTube en modo incógnito con una cuenta secundaria y exportá el archivo `cookies.txt` en formato Netscape.
-2. **Subir las cookies al proyecto:**
-   - Guardá el archivo en `/var/ytsite/cookies.txt`.
-   - Reiniciá el contenedor si cambiaste volúmenes:
-     ```bash
-     docker compose restart ytsite
-     ```
-   *Nota: `cookies.txt` está montado en modo lectura/escritura para que yt-dlp pueda refrescar las cookies automáticamente.*
+| Canal | Rama Git | Descripción |
+|---|---|---|
+| **🟢 Estable** | `main` | Versiones probadas y listas para producción en cualquier VPS. |
+| **🧪 Desarrollo** | `dev` | Nuevas funciones experimentales y mejoras previas al lanzamiento. |
 
 ---
 
-## 5. Recorte de Video y Opciones de Audio
+## 📄 Licencia
 
-- **Recorte de Video (Trim):**
-  - Exclusivo del motor `yt-dlp` en videos individuales.
-  - Podés especificar los campos `Desde` y `Hasta` en formato `HH:MM:SS`, `MM:SS` o segundos (`90`).
-  - Utiliza `download_ranges` de yt-dlp para descargar y cortar directamente en los keyframes sin procesar el video entero.
-- **Formatos de Audio:**
-  - Extrae y convierte a MP3 con FFmpeg al bitrate elegido (128, 192, 256 o 320 kbps).
+Este proyecto está bajo la Licencia MIT.
 
----
-
-## 6. Limpieza Automática de Descargas
-
-Los archivos descargados se guardan temporalmente en `downloads/`. Un hilo en segundo plano borra automáticamente los archivos que superen el tiempo límite:
-
-```env
-CLEANUP_AFTER_HOURS=24
-CLEANUP_CHECK_INTERVAL_MINUTES=30
-```
-
-- `CLEANUP_AFTER_HOURS`: Cantidad de horas que se conserva un archivo antes de eliminarse (por defecto 24h). Poné `0` para desactivar la limpieza automática.
-- `CLEANUP_CHECK_INTERVAL_MINUTES`: Intervalo de revisión del directorio (por defecto 30 min).
-
----
-
-## 7. Actualización de Motores
-
-- **yt-dlp:**
-  - Desde el botón **⟳ Actualizar yt-dlp** en la cabecera del sitio web.
-  - O automáticamente en segundo plano según `AUTO_UPDATE_YTDLP=true` y `AUTO_UPDATE_INTERVAL_HOURS=24`.
-- **Cobalt:**
-  - Para actualizar la imagen de Cobalt a la última versión disponible:
-    ```bash
-    docker compose pull cobalt && docker compose up -d cobalt
-    ```
-
----
-
-## 8. Diagnóstico y Comandos Útiles
-
-- **Ver estado de los contenedores:**
-  ```bash
-  docker compose ps
-  ```
-- **Ver registros en tiempo real:**
-  ```bash
-  docker compose logs -f ytsite
-  docker compose logs -f potprovider
-  docker compose logs -f cobalt
-  ```
-- **Probar extracción manual dentro del contenedor:**
-  ```bash
-  docker exec yt-downloader yt-dlp -F "https://www.youtube.com/watch?v=VIDEO_ID" --cookies /app/cookies.txt
-  ```
