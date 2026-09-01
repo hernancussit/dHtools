@@ -850,6 +850,10 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
             search_query = f"{artist} - {title}"
             with JOBS_LOCK:
                 JOBS[job_id].update({
+                    "status": "downloading",
+                    "current_title": f"Buscando y descargando audio ({display_name})...",
+                    "file_percent": 30,
+                })
             ydl_opts = {
                 "outtmpl": os.path.join(job_dir, "raw_audio.%(ext)s"),
                 "format": "ba/b",
@@ -860,6 +864,7 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 **cookies_opts(),
             }
             extract_with_fallback(f"ytsearch1:{search_query}", ydl_opts, download=True)
+
 
         actual_audio = None
         for f in os.listdir(job_dir):
