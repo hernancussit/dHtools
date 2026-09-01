@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.3.1"
+
 
 
 
@@ -1589,6 +1590,26 @@ def info():
         })
 
 
+
+
+def is_audio_quality(quality: str) -> bool:
+    if not quality:
+        return False
+    q = str(quality).lower()
+    return q.startswith("audio_") or q in (
+        "flac", "m4a", "opus", "wav", "mp3", "aac", "alac", "vorbis"
+    )
+
+
+QUALITY_FORMAT_MAP = {
+    "best": "bestvideo+bestaudio/best",
+    "2160p": "bestvideo[height<=2160]+bestaudio/best[height<=2160]/best",
+    "1440p": "bestvideo[height<=1440]+bestaudio/best[height<=1440]/best",
+    "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+    "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+    "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
+    "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]/best",
+}
 
 
 COBALT_QUALITY_MAP = {

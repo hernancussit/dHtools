@@ -4,7 +4,17 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.3.1] - 2026-09-01
+
+### 🐛 Correcciones (Fix)
+- **Corrección de Mapeo de Calidades de Video en yt-dlp:**
+  - Definición explícita de `QUALITY_FORMAT_MAP` e `is_audio_quality` en `app.py`.
+  - Se solucionó el error `name 'QUALITY_FORMAT_MAP' is not defined` al solicitar descargas de videos individuales o playlists en resoluciones como 720p, 1080p, 1440p, 2160p y 480p/360p.
+
+---
+
 ## [2.3.0] - 2026-09-01
+
 
 ### ✨ Novedades y Mejoras de Interfaz
 - **Barra Lateral Fija en Panel de Administración (Sidebar Layout):**
