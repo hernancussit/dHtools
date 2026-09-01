@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.4"
+APP_VERSION = "2.7.5"
+
 
 
 
@@ -919,7 +920,19 @@ def detect_platform(url: str) -> str:
     return "Web"
 
 
+def is_playlist_url(url: str) -> bool:
+    url_l = (url or "").lower()
+    if "youtube.com/playlist" in url_l or "list=" in url_l:
+        return True
+    if "spotify.com/playlist" in url_l or "spotify.com/album" in url_l:
+        return True
+    if "deezer.com/playlist" in url_l or "deezer.com/album" in url_l:
+        return True
+    return False
+
+
 def get_deezer_info(url: str):
+
     try:
         track_m = re.search(r"deezer\.com/(?:[a-zA-Z-]+/)?track/(\d+)", url)
         if track_m:
@@ -1252,57 +1265,82 @@ def recent_downloads():
             if entry == ".gitkeep":
                 continue
             entry_path = os.path.join(DOWNLOAD_DIR, entry)
-            if os.path.isfile(entry_path):
-                try:
-                    stat = os.stat(entry_path)
+            if not os.path.isfile(entry_path):
+                continue
+            try:
+                stat = os.stat(entry_path)
+
+                matched_jid = None
+                item_meta = None
+                clean_name = entry
+
+                # 1. Match against registered meta items
+                for jid, info in meta.items():
+                    if entry.startswith(f"{jid}_"):
+                        matched_jid = jid
+                        item_meta = info
+                        clean_name = entry[len(jid) + 1:]
+                        break
+                    elif entry == jid or entry == f"{jid}.zip":
+                        matched_jid = jid
+                        item_meta = info
+                        clean_name = info.get("filename", entry)
+                        break
+
+                # 2. Fallback prefix split
+                if not matched_jid:
                     parts = entry.split("_", 1)
-                    job_id = parts[0].replace(".zip", "")
+                    matched_jid = parts[0].replace(".zip", "")
                     clean_name = parts[1] if len(parts) > 1 else entry
+                    item_meta = meta.get(matched_jid, {})
 
-                    item_meta = meta.get(job_id, {})
-                    item_owner = item_meta.get("username")
-                    if not item_owner:
-                        with JOBS_LOCK:
-                            job = JOBS.get(job_id)
-                            if job:
-                                item_owner = job.get("owner")
-                    if not item_owner:
-                        item_owner = "admin"
+                folder_name = (item_meta or {}).get("folder_name")
+                group_id = (item_meta or {}).get("group_id")
 
-                    if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
-                        continue
-
-                    folder_name = item_meta.get("folder_name")
-                    group_id = item_meta.get("group_id")
-
-                    item_obj = {
-                        "job_id": job_id,
-                        "filename": clean_name,
-                        "size_bytes": stat.st_size,
-                        "size_formatted": format_bytes(stat.st_size),
-                        "mtime": stat.st_mtime,
-                        "owner": item_owner,
-                        "download_url": f"/api/files/{job_id}",
-                    }
-
-                    if folder_name and group_id:
-                        if group_id not in folders:
-                            folders[group_id] = {
-                                "group_id": group_id,
-                                "folder_name": folder_name,
-                                "owner": item_owner,
-                                "items": [],
-                                "total_bytes": 0,
-                                "mtime": stat.st_mtime,
-                            }
-                        folders[group_id]["items"].append(item_obj)
-                        folders[group_id]["total_bytes"] += stat.st_size
-                        if stat.st_mtime > folders[group_id]["mtime"]:
-                            folders[group_id]["mtime"] = stat.st_mtime
-                    else:
-                        standalone_items.append(item_obj)
-                except OSError:
+                # If entry is an auto-generated whole-folder zip, skip duplicate display
+                if entry.startswith("folder_") and entry.endswith(".zip"):
                     continue
+
+                item_owner = (item_meta or {}).get("username")
+                if not item_owner:
+                    with JOBS_LOCK:
+                        job = JOBS.get(matched_jid)
+                        if job:
+                            item_owner = job.get("owner")
+                if not item_owner:
+                    item_owner = "admin"
+
+                if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
+                    continue
+
+                item_obj = {
+                    "job_id": matched_jid,
+                    "filename": clean_name,
+                    "size_bytes": stat.st_size,
+                    "size_formatted": format_bytes(stat.st_size),
+                    "mtime": stat.st_mtime,
+                    "owner": item_owner,
+                    "download_url": f"/api/files/{matched_jid}",
+                }
+
+                if folder_name and group_id:
+                    if group_id not in folders:
+                        folders[group_id] = {
+                            "group_id": group_id,
+                            "folder_name": folder_name,
+                            "owner": item_owner,
+                            "items": [],
+                            "total_bytes": 0,
+                            "mtime": stat.st_mtime,
+                        }
+                    folders[group_id]["items"].append(item_obj)
+                    folders[group_id]["total_bytes"] += stat.st_size
+                    if stat.st_mtime > folders[group_id]["mtime"]:
+                        folders[group_id]["mtime"] = stat.st_mtime
+                else:
+                    standalone_items.append(item_obj)
+            except OSError:
+                continue
 
     standalone_items.sort(key=lambda x: x["mtime"], reverse=True)
     folder_list = list(folders.values())
@@ -1319,6 +1357,7 @@ def recent_downloads():
         "is_admin": is_admin,
         "user": username,
     })
+
 
 
 @app.route("/api/my-downloads/folder/<group_id>", methods=["DELETE"])
@@ -2189,21 +2228,37 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
         if not files:
             raise RuntimeError("No se generó ningún archivo")
 
-        if playlist_mode and playlist_delivery == "individual":
+        if playlist_mode or len(files) > 1:
             individual_files = []
-            f_group_name = folder_name or f"Playlist {job_id[:8]}"
-            f_group_id = group_id or job_id
-            for f in files:
-                fname = f"{job_id}_{f}"
+            f_group_name = folder_name or JOBS.get(job_id, {}).get("current_title") or f"Playlist {job_id[:8]}"
+            f_group_id = group_id or f"pl_{job_id}"
+            
+            for idx, f in enumerate(files, start=1):
+                item_jid = f"{job_id}_{idx}"
+                fname = f"{item_jid}_{f}"
                 fpath = os.path.join(DOWNLOAD_DIR, fname)
                 shutil.move(os.path.join(job_dir, f), fpath)
                 fsize = os.path.getsize(fpath) if os.path.exists(fpath) else 0
-                item_jid = f"{job_id}_{len(individual_files)+1}"
                 record_download_meta(item_jid, f, owner, fsize, folder_name=f_group_name, group_id=f_group_id)
                 individual_files.append({"name": f, "path": fpath, "size": fsize, "job_id": item_jid})
             
-            final_path = individual_files[0]["path"] if individual_files else None
-            final_name = f"{len(files)} archivos descargados individualmente"
+            zip_filename = f"{safe_filename(f_group_name)}.zip"
+            zip_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{zip_filename}")
+            if playlist_delivery == "zip":
+                with JOBS_LOCK:
+                    JOBS[job_id]["status"] = "zipping"
+                    JOBS[job_id]["current_title"] = "Generando archivo ZIP de la playlist..."
+                append_job_log(job_id, "[*] Comprimiendo elementos en archivo ZIP...")
+                with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for item in individual_files:
+                        if os.path.exists(item["path"]):
+                            zf.write(item["path"], arcname=item["name"])
+                final_path = zip_path
+                final_name = zip_filename
+            else:
+                final_path = individual_files[0]["path"] if individual_files else None
+                final_name = f"{len(files)} archivos descargados en la carpeta '{f_group_name}'"
+
             with JOBS_LOCK:
                 JOBS[job_id].update({
                     "status": "finished",
@@ -2214,36 +2269,13 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     "finished_at": time.time(),
                     "speed": None,
                     "owner": owner,
-                    "delivery": "individual",
+                    "delivery": playlist_delivery,
+                    "folder_name": f_group_name,
+                    "group_id": f_group_id,
                 })
-            append_job_log(job_id, f"[+] Se procesaron {len(files)} archivos individualmente.")
-        elif playlist_mode:
-            with JOBS_LOCK:
-                JOBS[job_id]["status"] = "zipping"
-                JOBS[job_id]["current_title"] = "Comprimiendo playlist en ZIP..."
-            append_job_log(job_id, "[*] Comprimiendo elementos en archivo ZIP...")
-            zip_filename = f"playlist_{job_id[:8]}.zip"
-            zip_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{zip_filename}")
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                for f in files:
-                    zf.write(os.path.join(job_dir, f), f)
-            final_path = zip_path
-            final_name = zip_filename
-            with JOBS_LOCK:
-                JOBS[job_id].update({
-                    "status": "finished",
-                    "percent": 100,
-                    "filepath": final_path,
-                    "filename": final_name,
-                    "finished_at": time.time(),
-                    "speed": None,
-                    "owner": owner,
-                    "delivery": "zip",
-                })
-            if os.path.exists(final_path):
-                record_download_meta(job_id, final_name, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
-            append_job_log(job_id, f"[+] Archivo ZIP generado: {final_name}")
+            append_job_log(job_id, f"[+] Se descargaron {len(files)} archivos en la carpeta '{f_group_name}'.")
         else:
+
             final_filename = f"{job_id}_{files[0]}"
             final_path = os.path.join(DOWNLOAD_DIR, final_filename)
             shutil.move(os.path.join(job_dir, files[0]), final_path)
@@ -2454,6 +2486,8 @@ def download():
     video_format = (data or {}).get("video_format", "mp4")
     subtitles = (data or {}).get("subtitles", "none")
     playlist_mode = bool((data or {}).get("playlist", False))
+    if not playlist_mode and is_playlist_url(raw_url):
+        playlist_mode = True
     total_count = int((data or {}).get("total_count") or 0)
     start_raw = (data or {}).get("start_time")
     end_raw = (data or {}).get("end_time")
@@ -2473,8 +2507,13 @@ def download():
 
     url = normalize_url(raw_url)
 
+    job_id = uuid.uuid4().hex
+    if playlist_mode and not group_id:
+        group_id = f"pl_{int(time.time())}_{job_id[:6]}"
+
     if engine == "cobalt" and playlist_mode:
         return jsonify({"error": "Cobalt no soporta descargar playlists completas todavía, usá yt-dlp para eso"}), 400
+
 
     start_time = end_time = None
     if not playlist_mode:

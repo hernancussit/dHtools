@@ -4,7 +4,19 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.5] - 2026-09-01
+
+### 📁 Organización y Agrupación de Playlists
+- **📁 Agrupación Universal de Playlists de YouTube en Carpetas:**
+  - Registro de metadatos de carpeta (`folder_name` y `group_id`) para todos los elementos descargados pertenecientes a playlists de YouTube (tanto en entrega individual como en archivo ZIP).
+  - En la sección "Mis Descargas", las playlists aparecen organizadas como tarjetas de Carpeta desplegables con conteo de canciones/videos, tamaño total formateado, botón de descarga completa en ZIP (`📦 Bajar ZIP`) y eliminación de carpeta completa en un solo clic.
+  - Detección automática de enlaces de listas de reproducción (`is_playlist_url`) en todos los modos de descarga.
+  - Emparejamiento preciso de archivos y metadatos en `/api/recent-downloads` mediante prefijo de trabajo.
+
+---
+
 ## [2.7.4] - 2026-09-01
+
 
 ### 🐛 Corrección de Cerrojos Reentrantes
 - **🔒 Migración a `threading.RLock` en todos los cerrojos del servidor:**

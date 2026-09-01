@@ -203,6 +203,15 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Corrección de auto-bloqueo recursivo (*self-deadlock*) en hooks de progreso `append_job_log`.
   - [x] Eliminación de cuelgues durante descargas activas y consultas de estado en vivo.
 
+---
+
+## 🎯 Versión `v2.7.5` (Completado)
+- [x] **Agrupación Universal de Playlists de YouTube en Carpetas:**
+  - [x] Guardado de metadatos de carpeta (`folder_name` y `group_id`) en descargas individuales y ZIP.
+  - [x] Renderizado de colecciones en "Mis Descargas" con acciones de descarga ZIP y eliminación en bloque.
+  - [x] Detección automática de playlists sin necesidad de inspección previa.
+
+
 
 
 
