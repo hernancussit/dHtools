@@ -1392,8 +1392,13 @@ document.getElementById('btnAdvDeliveryIndividual')?.addEventListener('click', (
 // ==================== URL INSPECTION & PLAYLIST EXPLORERS ====================
 async function inspectUrl(url, mode = 'quick') {
   if (!url) return;
-  appendUserConsole(`Inspeccionando enlace: ${url}`);
+  appendUserConsole(`[*] Inspeccionando enlace: ${url}`);
   
+  const btnQuick = document.getElementById('btnInspectQuick');
+  const btnAdv = document.getElementById('btnInspectAdv');
+  if (btnQuick) { btnQuick.disabled = true; btnQuick.textContent = '⏳ Buscando...'; }
+  if (btnAdv) { btnAdv.disabled = true; btnAdv.textContent = '⏳ Buscando...'; }
+
   if (url.includes('deezer.com') && document.getElementById('advDeezerBox')) {
     document.getElementById('advDeezerBox').style.display = 'block';
   }
@@ -1407,12 +1412,13 @@ async function inspectUrl(url, mode = 'quick') {
     const data = await res.json();
     if (data.error) {
       appendUserConsole(`[!] Error al inspeccionar enlace: ${data.error}`);
-      showToast('No se pudo inspeccionar el enlace', 'error');
+      showToast(data.error, 'error');
       return;
     }
 
     if (data.type === 'playlist') {
       appendUserConsole(`[+] Playlist/Álbum detectado: '${data.title}' con ${data.count || (data.items || []).length} elementos.`);
+      showToast(`Playlist detectada: ${data.title}`, 'info', 3000);
       
       // Update Quick Mode Playlist Explorer
       document.getElementById('quickPlaylistExplorer').style.display = 'block';
@@ -1452,8 +1458,13 @@ async function inspectUrl(url, mode = 'quick') {
     }
   } catch (e) {
     appendUserConsole(`[!] Error de red al inspeccionar: ${e.message}`);
+    showToast('Error de conexión al inspeccionar', 'error');
+  } finally {
+    if (btnQuick) { btnQuick.disabled = false; btnQuick.textContent = '🔍 Inspeccionar'; }
+    if (btnAdv) { btnAdv.disabled = false; btnAdv.textContent = '🔍 Inspeccionar'; }
   }
 }
+
 
 function renderPlaylistItems(items, target = 'quick') {
   const containerId = target === 'quick' ? 'quickPlaylistItemsList' : 'advPlaylistItemsList';

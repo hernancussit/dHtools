@@ -173,6 +173,15 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Generación de archivo `.ZIP` bajo demanda para descargar toda la carpeta en un solo clic.
   - [x] Eliminación completa de carpeta y archivos individuales desde la interfaz.
 
+---
+
+## 🎯 Versión `v2.7.1` (Completado)
+- [x] **Corrección y Resiliencia en Inspección de Playlists (`/api/info`):**
+  - [x] Manejo seguro de `NoneType` en resultados de extracción.
+  - [x] Aborto rápido ante errores permanentes (playlist inexistente/privada) para evitar bloqueos por intentos de clientes fallback.
+  - [x] Indicador de carga (`⏳ Buscando...`) en la interfaz web.
+
+
 
 
 

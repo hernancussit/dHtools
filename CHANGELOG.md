@@ -4,7 +4,19 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.1] - 2026-09-01
+
+### 🐛 Correcciones y Rendimiento
+- **⚡ Optimización y Corrección en Inspección de Playlists (`/api/info`):**
+  - Corrección de excepción `TypeError (NoneType is not iterable)` cuando una playlist no existe o no devuelve entradas válidas.
+  - Implementación de `is_permanent_error()` en `extract_with_fallback` para abortar inmediatamente ante playlists/videos inexistentes o privados, evitando retardos acumulados de clientes fallback.
+  - Adición de `socket_timeout: 10s` y `playlistend: 300` para proteger contra congelamientos en enlaces pesados o caídos.
+  - Indicador visual interactivo de carga (`⏳ Buscando...`) en los botones de inspección de la interfaz.
+
+---
+
 ## [2.7.0] - 2026-09-01
+
 
 ### ✨ Novedades y Gestión de Descargas
 - **⏳ Sistema de Cola en Segundo Plano y Persistencia Server-Side:**

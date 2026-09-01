@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.0"
+APP_VERSION = "2.7.1"
+
 
 
 
@@ -829,6 +830,21 @@ def robots_txt():
     return Response("User-agent: *\nDisallow: /\n", mimetype="text/plain")
 
 
+def is_permanent_error(err_str: str) -> bool:
+    err_lower = str(err_str).lower()
+    return any(p in err_lower for p in [
+        "playlist does not exist",
+        "video is unavailable",
+        "this video is private",
+        "private video",
+        "drm protection",
+        "copyright",
+        "account has been terminated",
+        "confirm your age",
+        "sign in if you've been granted access",
+    ])
+
+
 def extract_with_fallback(url, ydl_opts_base, download):
     """Prueba combinaciones de clientes en orden:
     1) default (cadena inteligente de yt-dlp con Deno para JS challenges y bgutil para PO Token)
@@ -841,6 +857,9 @@ def extract_with_fallback(url, ydl_opts_base, download):
         ["web_embedded", "tv_downgraded", "mweb"],
         ["tv"],
         ["web"],
+    ] if download else [
+        ["default"],
+        ["web_embedded", "tv_downgraded", "mweb"],
     ]
 
     last_exc = None
@@ -852,8 +871,11 @@ def extract_with_fallback(url, ydl_opts_base, download):
                 return ydl.extract_info(url, download=download)
         except yt_dlp.utils.DownloadError as e:
             last_exc = e
+            if is_permanent_error(str(e)):
+                break
             continue
     raise last_exc
+
 
 
 def normalize_url(url: str) -> str:
@@ -1819,15 +1841,26 @@ def info():
         "extract_flat": "in_playlist",
         "noplaylist": False,
         "ignore_no_formats_error": True,
+        "socket_timeout": 10,
+        "playlistend": 300,
+        "ignoreerrors": True,
         **cookies_opts(),
     }
     try:
         result = extract_with_fallback(url, ydl_opts, download=False)
     except Exception as e:
-        return jsonify({"error": f"No se pudo leer la URL: {e}"}), 400
+        err_msg = str(e)
+        if "playlist does not exist" in err_msg.lower():
+            return jsonify({"error": "La playlist no existe o fue eliminada de YouTube."}), 400
+        elif "private" in err_msg.lower():
+            return jsonify({"error": "El video o la playlist es privada."}), 400
+        return jsonify({"error": f"No se pudo inspeccionar el enlace: {err_msg}"}), 400
+
+    if not result or not isinstance(result, dict):
+        return jsonify({"error": "No se pudo obtener información del enlace (la playlist o video no existe o es privado)."}), 400
 
     if "entries" in result:
-        entries = [e for e in result["entries"] if e]
+        entries = [e for e in (result.get("entries") or []) if e]
         items = []
         for idx, e in enumerate(entries[:300]):
             vid_id = e.get("id") or ""
@@ -1862,6 +1895,7 @@ def info():
             "platform": platform,
             "thumbnail": thumbs[-1]["url"] if thumbs else result.get("thumbnail"),
         })
+
 
 
 
