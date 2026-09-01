@@ -91,14 +91,20 @@ def safe_download_path(filename_or_subpath: str) -> str:
     if not filename_or_subpath:
         return None
     try:
-        clean = os.path.normpath(str(filename_or_subpath)).lstrip("/\\")
-        full_path = os.path.abspath(os.path.join(DOWNLOAD_DIR, clean))
-        common = os.path.commonpath([full_path, os.path.abspath(DOWNLOAD_DIR)])
-        if common == os.path.abspath(DOWNLOAD_DIR):
+        raw = str(filename_or_subpath).strip()
+        abs_download_dir = os.path.abspath(DOWNLOAD_DIR)
+        if os.path.isabs(raw):
+            full_path = os.path.abspath(raw)
+        else:
+            clean = os.path.normpath(raw).lstrip("/\\")
+            full_path = os.path.abspath(os.path.join(abs_download_dir, clean))
+
+        if os.path.commonpath([full_path, abs_download_dir]) == abs_download_dir:
             return full_path
     except Exception:
         pass
     return None
+
 
 
 
@@ -1546,25 +1552,55 @@ def folder_download_zip(group_id):
     }
 
     if not matching_jids:
+        with JOBS_LOCK:
+            matching_jids = {
+                jid: job for jid, job in JOBS.items()
+                if job.get("group_id") == group_id and (is_admin or job.get("owner") == username)
+            }
+
+    if not matching_jids:
         abort(404)
 
     folder_name = next(iter(matching_jids.values())).get("folder_name", f"folder_{group_id[:8]}")
-    safe_f_name = safe_filename(folder_name)
+    safe_f_name = safe_filename(folder_name) or f"coleccion_{group_id[:8]}"
     zip_path = os.path.join(DOWNLOAD_DIR, f"folder_{group_id}.zip")
 
-    files_added = 0
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+    # If already generated and valid, return immediately
+    if os.path.exists(zip_path) and os.path.getsize(zip_path) > 100:
+        return send_file(
+            zip_path,
+            as_attachment=True,
+            download_name=f"{safe_f_name}.zip",
+            mimetype="application/zip",
+        )
+
+    # Collect unique individual files
+    files_to_zip = []
+    if os.path.exists(DOWNLOAD_DIR):
         for jid in matching_jids:
             for entry in os.listdir(DOWNLOAD_DIR):
-                if entry.startswith(jid) and entry != f"folder_{group_id}.zip":
+                if entry.startswith(jid) and not entry.lower().endswith(".zip"):
                     fpath = os.path.join(DOWNLOAD_DIR, entry)
-                    disp_name = entry[len(jid):].lstrip("_-") or entry
                     if os.path.isfile(fpath):
-                        zf.write(fpath, arcname=disp_name)
-                        files_added += 1
+                        disp_name = entry[len(jid):].lstrip("_-") or entry
+                        files_to_zip.append((fpath, disp_name))
 
-    if files_added == 0:
+    if not files_to_zip:
+        # Check if a pre-existing zip for this group is in DOWNLOAD_DIR
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if group_id in entry and entry.lower().endswith(".zip"):
+                return send_file(
+                    os.path.join(DOWNLOAD_DIR, entry),
+                    as_attachment=True,
+                    download_name=f"{safe_f_name}.zip",
+                    mimetype="application/zip",
+                )
         abort(404)
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fpath, arcname in files_to_zip:
+            if os.path.exists(fpath):
+                zf.write(fpath, arcname=arcname)
 
     return send_file(
         zip_path,
@@ -1572,6 +1608,7 @@ def folder_download_zip(group_id):
         download_name=f"{safe_f_name}.zip",
         mimetype="application/zip",
     )
+
 
 
 @app.route("/api/my-downloads/<job_id>", methods=["DELETE"])
@@ -3454,13 +3491,24 @@ def files(job_id):
 
     with JOBS_LOCK:
         job = JOBS.get(job_id)
+
     if job and job.get("status") == "finished" and job.get("filepath"):
         safe_path = safe_download_path(job["filepath"])
-        if safe_path and os.path.exists(safe_path) and os.path.isfile(safe_path):
-            return send_file(safe_path, as_attachment=True, download_name=job.get("filename"))
+        if safe_path and os.path.isfile(safe_path):
+            dl_name = job.get("filename") or os.path.basename(safe_path)
+            return send_file(safe_path, as_attachment=True, download_name=dl_name)
 
-    # Fallback to search in DOWNLOAD_DIR
+    # If this is a group/playlist or batch job, search for the pre-generated zip first!
     if os.path.exists(DOWNLOAD_DIR):
+        # 1. Priority 1: Look for .zip matching job_id
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry.startswith(job_id) and entry.lower().endswith(".zip"):
+                safe_path = safe_download_path(entry)
+                if safe_path and os.path.isfile(safe_path):
+                    disp_name = entry[len(job_id):].lstrip("_-") or entry
+                    return send_file(safe_path, as_attachment=True, download_name=disp_name)
+
+        # 2. Priority 2: Look for any single file starting with job_id
         for entry in os.listdir(DOWNLOAD_DIR):
             if entry.startswith(job_id):
                 safe_path = safe_download_path(entry)
@@ -3469,6 +3517,7 @@ def files(job_id):
                     return send_file(safe_path, as_attachment=True, download_name=disp_name)
 
     abort(404)
+
 
 
 
