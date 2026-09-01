@@ -20,7 +20,7 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.7.2"
 
 
 
@@ -39,13 +39,14 @@ POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://potprovider:4416")
 COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
 
+JOBS = {}
+JOBS_LOCK = threading.Lock()
 BATCH_JOBS = {}
 BATCH_LOCK = threading.Lock()
 QUEUE_LIST = []
 QUEUE_LOCK = threading.Lock()
 ACTIVE_WORKER_JOB = None
 
-BATCH_LOCK = threading.Lock()
 
 
 
@@ -2337,15 +2338,19 @@ def background_queue_worker():
     while True:
         job_id = None
         with QUEUE_LOCK:
-            for jid in list(QUEUE_LIST):
-                with JOBS_LOCK:
-                    j = JOBS.get(jid)
-                    if j and j.get("status") == "queued":
-                        job_id = jid
-                        break
-                    elif j and j.get("status") in ("finished", "error", "cancelled"):
-                        if jid in QUEUE_LIST:
-                            QUEUE_LIST.remove(jid)
+            current_queue = list(QUEUE_LIST)
+
+        for jid in current_queue:
+            with JOBS_LOCK:
+                j = JOBS.get(jid)
+                status = j.get("status") if j else None
+            if status == "queued":
+                job_id = jid
+                break
+            elif status in ("finished", "error", "cancelled", None):
+                with QUEUE_LOCK:
+                    if jid in QUEUE_LIST:
+                        QUEUE_LIST.remove(jid)
 
         if not job_id:
             ACTIVE_WORKER_JOB = None
@@ -2353,37 +2358,43 @@ def background_queue_worker():
             continue
 
         ACTIVE_WORKER_JOB = job_id
+        job_copy = None
         with JOBS_LOCK:
             job = JOBS.get(job_id)
-            if not job or job.get("status") == "cancelled":
-                with QUEUE_LOCK:
-                    if job_id in QUEUE_LIST:
-                        QUEUE_LIST.remove(job_id)
-                ACTIVE_WORKER_JOB = None
-                continue
-            job["status"] = "downloading"
-            job["started_at"] = time.time()
+            if job and job.get("status") != "cancelled":
+                job["status"] = "downloading"
+                job["started_at"] = time.time()
+                job_copy = dict(job)
+
+        if not job_copy:
+            with QUEUE_LOCK:
+                if job_id in QUEUE_LIST:
+                    QUEUE_LIST.remove(job_id)
+            ACTIVE_WORKER_JOB = None
+            continue
 
         save_queue_state()
 
         try:
-            engine = job.get("engine", "auto")
-            url = job.get("url")
-            quality = job.get("quality", "best")
-            playlist_mode = job.get("playlist", False)
-            total_count = job.get("total_count", 0)
-            start_time = job.get("start_time")
-            end_time = job.get("end_time")
-            video_format = job.get("video_format", "mp4")
-            subtitles = job.get("subtitles", "none")
-            owner = job.get("owner", "admin")
-            user_cloud_sync = job.get("user_cloud_sync")
-            selected_indexes = job.get("selected_indexes")
-            playlist_delivery = job.get("playlist_delivery", "zip")
-            video_title = job.get("video_title", "")
-            deezer_arl = job.get("deezer_arl", "")
-            folder_name = job.get("folder_name")
-            group_id = job.get("group_id")
+            engine = job_copy.get("engine", "auto")
+            url = job_copy.get("url")
+            quality = job_copy.get("quality", "best")
+            playlist_mode = job_copy.get("playlist", False)
+            total_count = job_copy.get("total_count", 0)
+            start_time = job_copy.get("start_time")
+            end_time = job_copy.get("end_time")
+            video_format = job_copy.get("video_format", "mp4")
+            subtitles = job_copy.get("subtitles", "none")
+            owner = job_copy.get("owner", "admin")
+
+            user_cloud_sync = job_copy.get("user_cloud_sync")
+            selected_indexes = job_copy.get("selected_indexes")
+            playlist_delivery = job_copy.get("playlist_delivery", "zip")
+            video_title = job_copy.get("video_title", "")
+            deezer_arl = job_copy.get("deezer_arl", "")
+            folder_name = job_copy.get("folder_name")
+            group_id = job_copy.get("group_id")
+
 
             if engine in ("auto", "cascade"):
                 run_download_cascade(

@@ -1539,7 +1539,33 @@ document.getElementById('advUrlInput')?.addEventListener('paste', (e) => {
   setTimeout(() => inspectUrl(document.getElementById('advUrlInput').value.trim(), 'adv'), 200);
 });
 
-// ==================== SUBMIT DOWNLOADS ====================
+// ==================== API HELPERS & SUBMIT DOWNLOADS ====================
+async function safeApiPost(url, payload) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    if (!res.ok) {
+      if (res.status === 401) {
+        window.location.href = '/login?msg=session_expired';
+        throw new Error('Sesión expirada. Redirigiendo al inicio de sesión...');
+      }
+      throw new Error(`Error del servidor (${res.status}). Intenta nuevamente.`);
+    }
+    throw new Error('Respuesta inesperada del servidor.');
+  }
+  if (!res.ok || data.error) {
+    throw new Error(data.error || `Error en la solicitud (${res.status})`);
+  }
+  return data;
+}
+
 // 1. Quick Mode Download (Cascada Inteligente Automática)
 document.getElementById('btnQuickDownload')?.addEventListener('click', async () => {
   const url = document.getElementById('quickUrlInput').value.trim();
@@ -1569,25 +1595,19 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   startProgressBanner('Encolando descarga en segundo plano...');
 
   try {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url,
-        quality: quickPreset,
-        video_format: 'mp4',
-        subtitles: 'none',
-        playlist: isPlaylist,
-        selected_indexes,
-        playlist_delivery: quickDelivery,
-        engine: 'auto',
-        folder_name: isPlaylist ? playlistTitle : null,
-        group_id: isPlaylist ? 'pl_' + Date.now() : null,
-        user_cloud_sync: userCloudCfg
-      })
+    const data = await safeApiPost('/api/download', {
+      url,
+      quality: quickPreset,
+      video_format: 'mp4',
+      subtitles: 'none',
+      playlist: isPlaylist,
+      selected_indexes,
+      playlist_delivery: quickDelivery,
+      engine: 'auto',
+      folder_name: isPlaylist ? playlistTitle : null,
+      group_id: isPlaylist ? 'pl_' + Date.now() : null,
+      user_cloud_sync: userCloudCfg
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
     showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
     fetchQueueState();
     pollSingleJob(data.job_id, () => { btn.disabled = false; });
@@ -1648,28 +1668,22 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
   startProgressBanner('Encolando descarga avanzada...');
 
   try {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url,
-        quality,
-        video_format: videoFormat,
-        start_time: startTime,
-        end_time: endTime,
-        subtitles,
-        playlist: isPlaylist,
-        selected_indexes,
-        playlist_delivery: advDelivery,
-        engine: advEngine,
-        deezer_arl: deezerArl,
-        folder_name: isPlaylist ? playlistTitle : null,
-        group_id: isPlaylist ? 'pl_' + Date.now() : null,
-        user_cloud_sync: userCloudCfg
-      })
+    const data = await safeApiPost('/api/download', {
+      url,
+      quality,
+      video_format: videoFormat,
+      start_time: startTime,
+      end_time: endTime,
+      subtitles,
+      playlist: isPlaylist,
+      selected_indexes,
+      playlist_delivery: advDelivery,
+      engine: advEngine,
+      deezer_arl: deezerArl,
+      folder_name: isPlaylist ? playlistTitle : null,
+      group_id: isPlaylist ? 'pl_' + Date.now() : null,
+      user_cloud_sync: userCloudCfg
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
     showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
     fetchQueueState();
     pollSingleJob(data.job_id, () => { btn.disabled = false; });
@@ -1696,19 +1710,13 @@ document.getElementById('btnBatchDownload')?.addEventListener('click', async () 
   appendUserConsole(`[*] [Lote] Encolando lote de descargas múltiples (${quality})...`);
 
   try {
-    const res = await fetch('/api/batch-download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        urls: urlsRaw,
-        quality,
-        video_format: 'mp4',
-        engine,
-        user_cloud_sync: userCloudCfg
-      })
+    const data = await safeApiPost('/api/batch-download', {
+      urls: urlsRaw,
+      quality,
+      video_format: 'mp4',
+      engine,
+      user_cloud_sync: userCloudCfg
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
     showToast(`¡Se agregaron ${data.total || 0} descargas a la cola en segundo plano!`, 'success');
     fetchQueueState();
     pollBatchJob(data.batch_id, () => { btn.disabled = false; });
@@ -1718,6 +1726,7 @@ document.getElementById('btnBatchDownload')?.addEventListener('click', async () 
     btn.disabled = false;
   }
 });
+
 
 // Progress Monitor Helpers
 function startProgressBanner(text) {

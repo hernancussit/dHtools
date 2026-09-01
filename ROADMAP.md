@@ -181,6 +181,15 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Aborto rápido ante errores permanentes (playlist inexistente/privada) para evitar bloqueos por intentos de clientes fallback.
   - [x] Indicador de carga (`⏳ Buscando...`) en la interfaz web.
 
+---
+
+## 🎯 Versión `v2.7.2` (Completado)
+- [x] **Corrección de Concurrencia y Prevención de Bloqueos Mutuos (Deadlock):**
+  - [x] Restauración de variables globales `JOBS` y `JOBS_LOCK`.
+  - [x] Desacoplamiento total de bloqueos de hilos en `background_queue_worker`.
+  - [x] Manejador `safeApiPost` en frontend para procesar respuestas de error HTTP de forma transparente sin errores de parseo JSON.
+
+
 
 
 

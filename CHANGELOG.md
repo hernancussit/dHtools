@@ -4,7 +4,18 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.2] - 2026-09-01
+
+### 🐛 Correcciones Críticas de Concurrencia
+- **🔒 Corrección de Bloqueo Mutuo (Deadlock) y Definición Global de `JOBS_LOCK`:**
+  - Restauración de `JOBS` y `JOBS_LOCK` a nivel de módulo en `app.py`.
+  - Desacoplamiento total de bloqueos (`QUEUE_LOCK` y `JOBS_LOCK`) en el bucle del worker en segundo plano `background_queue_worker` para evitar inversión de jerarquía de locks y timeouts 504/524.
+  - Implementación del helper `safeApiPost` en el cliente JavaScript para manejo robusto de respuestas no JSON y estados de error.
+
+---
+
 ## [2.7.1] - 2026-09-01
+
 
 ### 🐛 Correcciones y Rendimiento
 - **⚡ Optimización y Corrección en Inspección de Playlists (`/api/info`):**
