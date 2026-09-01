@@ -103,12 +103,14 @@ def check_auth(username, password):
         return False
     users = load_users()
     if username in users:
-        u = users[username]
+        u = dict(users[username])
+        u["username"] = username
         if verify_password(password, u.get("password_hash", "")) or (username == APP_USERNAME and secrets.compare_digest(password, APP_PASSWORD)):
             return u
     if secrets.compare_digest(username, APP_USERNAME) and secrets.compare_digest(password, APP_PASSWORD):
         return {"role": "admin", "username": username}
     return False
+
 
 
 def require_auth():
@@ -1028,8 +1030,9 @@ def recent_downloads():
                     if not item_owner:
                         item_owner = "admin"
 
-                    if not show_all and item_owner != username:
+                    if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
                         continue
+
 
                     items.append({
                         "job_id": job_id,
