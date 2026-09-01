@@ -289,9 +289,21 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
 
 
+APP_VERSION = "1.0.0"
+
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=APP_VERSION)
+
+
+@app.route("/api/version")
+def api_version():
+    return jsonify({
+        "app_version": APP_VERSION,
+        "ytdlp_version": get_ytdlp_version(),
+    })
+
 
 
 @app.route("/api/info", methods=["POST"])

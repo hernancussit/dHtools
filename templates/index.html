@@ -200,8 +200,12 @@
     <a id="downloadLink" href="#">Guardar archivo</a>
     <div class="error" id="errorText"></div>
 
-    <footer>Usá esta herramienta solo con contenido que tengas derecho a descargar.</footer>
+    <footer style="margin-top:20px; font-size:0.75rem; color:var(--muted); text-align:center; border-top:1px solid #334155; padding-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <span>Usá esta herramienta solo con contenido que tengas derecho a descargar.</span>
+      <span style="background:#0f172a; padding:2px 8px; border-radius:12px; border:1px solid #334155;">Versión: <strong style="color:var(--text);">v{{ version or '1.0.0' }}</strong></span>
+    </footer>
   </div>
+
 
 <script>
 const urlInput = document.getElementById('urlInput');
