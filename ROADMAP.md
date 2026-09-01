@@ -46,20 +46,19 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-### 📌 Versión 1.3.0 — Panel de Control y Configuración Web Integral (`/admin`)
+## 🎯 Versión `v1.3.0` (Completado)
 *Panel centralizado con interfaz visual para administrar todos los componentes del sistema sin tocar la terminal:*
 
-- [ ] **Centro de Motores, APIs y Servicios:**
-  - **Monitoreo de Componentes:** Diagnóstico en vivo de los microservicios (`yt-downloader`, `pot-provider`, `cobalt-api`, motor Deno y FFmpeg).
-  - **Actualizador de Motores:** Botones de 1 clic para actualizar `yt-dlp` a la última versión o refrescar la imagen de `Cobalt`.
-  - **Gestor de APIs y Credenciales:** Interfaz para cargar, validar y renovar tokens (ARL de Deezer, Spotify API credentials, `cookies.txt` de YouTube).
-- [ ] **Gestión de Usuarios (Administración Manual):**
-  - Creación, edición, cambio de contraseñas y desactivación de usuarios autorizados desde la web.
-  - Roles de usuario: `Administrador` (acceso a configuración y herramientas) vs `Descargador` (solo interfaz de descargas).
-  - *Arquitectura lista para admitir registro público o sistema de invitaciones en versiones futuras.*
-- [ ] **Gestión Dinámica de Parámetros:**
-  - Configuración de retención de descargas (`CLEANUP_AFTER_HOURS`), umbrales de alerta de disco y motor predeterminado.
-  - Visor de logs y diagnósticos del sistema en tiempo real.
+- [x] **Centro de Motores, APIs y Servicios:**
+  - [x] **Monitoreo de Componentes:** Diagnóstico en vivo de los microservicios (`yt-downloader`, `pot-provider`, `cobalt-api`, motor Deno y FFmpeg).
+  - [x] **Actualizador de Motores:** Botón para actualizar `yt-dlp` a la última versión con reinicio automático.
+  - [x] **Gestor de Cookies:** Interfaz web para visualizar y cargar `cookies.txt` de YouTube sin SSH.
+- [x] **Gestión de Usuarios (Administración Manual):**
+  - [x] Creación, edición de contraseñas y eliminación de usuarios autorizados desde la web.
+  - [x] Roles de usuario: `admin` (acceso a configuración y herramientas) vs `downloader` (solo interfaz de descargas).
+- [x] **Gestión Dinámica de Parámetros:**
+  - [x] Configuración de retención de descargas (`CLEANUP_AFTER_HOURS`), umbrales de alerta de disco y motor predeterminado persistidos en `config.json`.
+
 
 ---
 

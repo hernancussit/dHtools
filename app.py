@@ -8,6 +8,9 @@ import secrets
 import threading
 import subprocess
 import zipfile
+import json
+import hashlib
+import functools
 import requests
 from flask import Flask, request, jsonify, send_file, render_template, abort, Response
 
@@ -20,38 +23,56 @@ APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
 
 COOKIES_FILE = os.environ.get("COOKIES_FILE", "/app/cookies.txt")
+USERS_FILE = os.environ.get("USERS_FILE", "/app/users.json")
+CONFIG_FILE = os.environ.get("CONFIG_FILE", "/app/config.json")
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://potprovider:4416")
 COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
+START_TIME = time.time()
 
 
-def cookies_opts():
-    if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
-        return {"cookiefile": COOKIES_FILE}
-    return {}
+def hash_password(password: str) -> str:
+    salt = "ytsite_salt_2026"
+    return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
 
 
-PLAYER_CLIENTS_ENV = os.environ.get("PLAYER_CLIENTS", "default").strip()
+def verify_password(password: str, hashed: str) -> bool:
+    return secrets.compare_digest(hash_password(password), hashed)
 
 
-def player_client_opts(clients=None):
-    opts = {
-        "extractor_args": {
-            "youtubepot-bgutilhttp": {"base_url": [POT_PROVIDER_URL]},
+def load_users() -> dict:
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    initial_users = {
+        APP_USERNAME: {
+            "password_hash": hash_password(APP_PASSWORD),
+            "role": "admin",
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
     }
-    target = clients
-    if target is None and PLAYER_CLIENTS_ENV and PLAYER_CLIENTS_ENV != "default":
-        target = PLAYER_CLIENTS_ENV.split(",")
-    if target and target != ["default"] and target != "default":
-        if isinstance(target, str):
-            target = [target]
-        opts["extractor_args"]["youtube"] = {"player_client": target}
-    return opts
+    save_users(initial_users)
+    return initial_users
 
+
+def save_users(users: dict):
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=2, ensure_ascii=False)
 
 
 def check_auth(username, password):
-    return secrets.compare_digest(username, APP_USERNAME) and secrets.compare_digest(password, APP_PASSWORD)
+    if not username or not password:
+        return False
+    users = load_users()
+    if username in users:
+        u = users[username]
+        if verify_password(password, u.get("password_hash", "")) or (username == APP_USERNAME and secrets.compare_digest(password, APP_PASSWORD)):
+            return u
+    if secrets.compare_digest(username, APP_USERNAME) and secrets.compare_digest(password, APP_PASSWORD):
+        return {"role": "admin", "username": username}
+    return False
 
 
 def require_auth():
@@ -64,8 +85,24 @@ def require_auth():
 @app.before_request
 def protect_all_routes():
     auth = request.authorization
-    if not auth or not check_auth(auth.username, auth.password):
+    if not auth:
         return require_auth()
+    u = check_auth(auth.username, auth.password)
+    if not u:
+        return require_auth()
+    request.current_user = u
+    request.current_username = auth.username
+
+
+def require_admin(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        u = getattr(request, "current_user", None)
+        if not u or u.get("role") != "admin":
+            return jsonify({"error": "Acceso denegado: se requieren permisos de Administrador"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
 
 
 def get_ytdlp_version():
@@ -164,6 +201,27 @@ def format_speed(bytes_per_sec):
 
 DISK_EMERGENCY_THRESHOLD_PERCENT = float(os.environ.get("DISK_EMERGENCY_THRESHOLD_PERCENT", "85"))
 DISK_EMERGENCY_MIN_FREE_GB = float(os.environ.get("DISK_EMERGENCY_MIN_FREE_GB", "2"))
+
+
+def load_config() -> dict:
+    default_cfg = {
+        "cleanup_after_hours": CLEANUP_AFTER_HOURS,
+        "disk_emergency_threshold": DISK_EMERGENCY_THRESHOLD_PERCENT,
+        "default_engine": "ytdlp",
+    }
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                default_cfg.update(cfg)
+        except Exception:
+            pass
+    return default_cfg
+
+
+def save_config(cfg: dict):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
 def format_bytes(bytes_val: int) -> str:
@@ -391,7 +449,7 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
 
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 
 
 def normalize_url(url: str) -> str:
@@ -727,7 +785,161 @@ def recent_downloads():
     return jsonify({"downloads": items[:20]})
 
 
+# ==================== ADMIN PANEL & API ====================
+
+@app.route("/admin")
+@require_admin
+def admin_panel():
+    return render_template("admin.html", version=APP_VERSION)
+
+
+@app.route("/api/admin/services-status")
+@require_admin
+def admin_services_status():
+    pot_ok = False
+    pot_lat = 0
+    try:
+        t0 = time.time()
+        requests.get(POT_PROVIDER_URL, timeout=3)
+        pot_lat = round((time.time() - t0) * 1000)
+        pot_ok = True
+    except Exception:
+        pass
+
+    cobalt_ok = False
+    cobalt_lat = 0
+    try:
+        t0 = time.time()
+        requests.get(COBALT_URL, timeout=3)
+        cobalt_lat = round((time.time() - t0) * 1000)
+        cobalt_ok = True
+    except Exception:
+        pass
+
+    deno_installed = False
+    deno_ver = ""
+    try:
+        dr = subprocess.run(["deno", "--version"], capture_output=True, text=True, timeout=3)
+        if dr.returncode == 0:
+            deno_installed = True
+            deno_ver = dr.stdout.splitlines()[0]
+    except Exception:
+        pass
+
+    uptime_s = round(time.time() - START_TIME)
+    return jsonify({
+        "app": {"version": APP_VERSION, "uptime_seconds": uptime_s},
+        "potprovider": {"online": pot_ok, "latency_ms": pot_lat},
+        "cobalt": {"online": cobalt_ok, "latency_ms": cobalt_lat},
+        "deno": {"installed": deno_installed, "version": deno_ver},
+        "disk": get_disk_status(),
+    })
+
+
+@app.route("/api/admin/config", methods=["GET", "POST"])
+@require_admin
+def admin_config():
+    global CLEANUP_AFTER_HOURS, DISK_EMERGENCY_THRESHOLD_PERCENT
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        cfg = load_config()
+        if "cleanup_after_hours" in data:
+            cfg["cleanup_after_hours"] = float(data["cleanup_after_hours"])
+            CLEANUP_AFTER_HOURS = cfg["cleanup_after_hours"]
+        if "disk_emergency_threshold" in data:
+            cfg["disk_emergency_threshold"] = float(data["disk_emergency_threshold"])
+            DISK_EMERGENCY_THRESHOLD_PERCENT = cfg["disk_emergency_threshold"]
+        if "default_engine" in data:
+            cfg["default_engine"] = str(data["default_engine"])
+        save_config(cfg)
+        return jsonify({"message": "Configuración guardada exitosamente", "config": cfg})
+    return jsonify({"config": load_config()})
+
+
+@app.route("/api/admin/cookies", methods=["GET", "POST"])
+@require_admin
+def admin_cookies():
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        content = data.get("content", "")
+        with open(COOKIES_FILE, "w", encoding="utf-8") as f:
+            f.write(content)
+        return jsonify({"message": "Archivo cookies.txt guardado exitosamente"})
+
+    has_cookies = os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0
+    content = ""
+    lines = 0
+    size_formatted = "0 B"
+    if has_cookies:
+        try:
+            with open(COOKIES_FILE, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            lines = len(content.splitlines())
+            size_formatted = format_bytes(os.path.getsize(COOKIES_FILE))
+        except Exception:
+            pass
+    return jsonify({
+        "has_cookies": has_cookies,
+        "content": content,
+        "lines": lines,
+        "size_formatted": size_formatted,
+    })
+
+
+@app.route("/api/admin/users", methods=["GET", "POST"])
+@require_admin
+def admin_users():
+    users = load_users()
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        username = data.get("username", "").strip()
+        password = data.get("password", "")
+        role = data.get("role", "downloader")
+        if not username or not password:
+            return jsonify({"error": "Falta usuario o contraseña"}), 400
+        if username in users:
+            return jsonify({"error": f"El usuario '{username}' ya existe"}), 400
+        users[username] = {
+            "password_hash": hash_password(password),
+            "role": role,
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        save_users(users)
+        return jsonify({"message": f"Usuario '{username}' creado exitosamente"})
+
+    user_list = [
+        {"username": u, "role": d.get("role", "downloader"), "created_at": d.get("created_at", "Inicial")}
+        for u, d in users.items()
+    ]
+    return jsonify({"users": user_list})
+
+
+@app.route("/api/admin/users/<username>", methods=["PUT", "DELETE"])
+@require_admin
+def admin_user_detail(username):
+    users = load_users()
+    if username not in users:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    if request.method == "DELETE":
+        if username == APP_USERNAME or (len([u for u, d in users.items() if d.get("role") == "admin"]) <= 1 and users[username].get("role") == "admin"):
+            return jsonify({"error": "No se puede eliminar el administrador principal"}), 400
+        del users[username]
+        save_users(users)
+        return jsonify({"message": f"Usuario '{username}' eliminado exitosamente"})
+    if request.method == "PUT":
+        data = request.get_json(force=True) or {}
+        if "password" in data and data["password"]:
+            users[username]["password_hash"] = hash_password(data["password"])
+        if "role" in data and data["role"]:
+            users[username]["role"] = data["role"]
+        save_users(users)
+        return jsonify({"message": f"Usuario '{username}' actualizado exitosamente"})
+
+
+# ==================== MEDIA INFO & DOWNLOADS ====================
+
 @app.route("/api/info", methods=["POST"])
+
 def info():
     data = request.get_json(force=True)
     raw_url = (data or {}).get("url", "").strip()

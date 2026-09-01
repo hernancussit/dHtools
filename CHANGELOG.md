@@ -6,6 +6,27 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ---
 
+## [1.3.0] - 2026-09-01
+
+### ✨ Novedades y Características
+- **Panel de Control y Administración Web (`/admin`):**
+  - Interfaz gráfica moderna, oscura y responsiva para gestionar todo el sistema sin terminal.
+- **Diagnóstico y Salud de Microservicios en Vivo:**
+  - Monitoreo en tiempo real de `yt-downloader` (Flask App), `pot-provider` (bgutil en `:4416`), `cobalt-api` (Cobalt en `:9000`), motor `Deno` y `FFmpeg`.
+  - Visualización del uso del disco con barra de progreso interactiva.
+- **Centro de Actualización de Motores:**
+  - Botón de actualización de `yt-dlp` a demanda con visualizador de logs en tiempo real y auto-reinicio.
+  - Botón de diagnóstico de conectividad y extracción para probar los motores en vivo.
+- **Gestión Dinámica de Configuración y Cookies:**
+  - Modificación de retención de descargas (`CLEANUP_AFTER_HOURS`), umbrales de alerta de disco y motor predeterminado persistidos en `config.json`.
+  - Editor y visor de `cookies.txt` de YouTube directamente desde la web (sin SSH/SCP).
+- **Gestión de Usuarios con Roles:**
+  - Almacenamiento seguro en `users.json` con contraseñas cifradas (SHA-256 + Salt).
+  - Creación, modificación de claves, asignación de roles (`admin` vs `downloader`) y eliminación de usuarios autorizados.
+  - Protección con `@require_admin` para acceso exclusivo a herramientas de configuración.
+
+---
+
 ## [1.2.0] - 2026-09-01
 
 ### ✨ Novedades y Características
@@ -57,9 +78,3 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Protección de acceso mediante HTTP Basic Auth (`APP_USERNAME` / `APP_PASSWORD`).
   - Cabeceras `X-Robots-Tag` y `robots.txt` para prevenir indexación en motores de búsqueda.
   - Exclusión estricta de credenciales (`.env`) y sesiones (`cookies.txt`) mediante `.gitignore`.
-- **Automatización y Mantenimiento:**
-  - Limpieza automática periódica de descargas expiradas en `downloads/`.
-  - Botón de actualización de `yt-dlp` a demanda en la interfaz y actualización automática en segundo plano.
-- **Infraestructura y Producción:**
-  - Plantillas de Nginx optimizadas para **HestiaCP** con soporte SSL de Let's Encrypt (`hestiacp-templates/`).
-  - Despliegue empaquetado con Docker Compose.
