@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.6.0"
+
 
 
 
@@ -1759,8 +1760,6 @@ CONTENT_TYPE_EXT = {
     "audio/ogg": ".ogg",
     "audio/webm": ".webm",
 }
-
-
 COBALT_AUDIO_BITRATES = {
     "audio_128": "128",
     "audio_192": "256",
@@ -1769,9 +1768,21 @@ COBALT_AUDIO_BITRATES = {
 }
 
 
+def append_job_log(job_id: str, message: str):
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job:
+            if "logs" not in job:
+                job["logs"] = []
+            job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": message})
+            if len(job["logs"]) > 150:
+                job["logs"] = job["logs"][-150:]
+
+
 def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin", user_cloud_sync: dict = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
+    append_job_log(job_id, f"[*] [Cobalt v11] Solicitando stream para: {url}")
 
     try:
         payload = {"url": url, "downloadMode": "auto"}
@@ -1812,6 +1823,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
         with JOBS_LOCK:
             JOBS[job_id]["status"] = "downloading"
 
+        append_job_log(job_id, "[*] [Cobalt v11] Descargando stream directo a disco...")
         with requests.get(stream_url, stream=True, timeout=300) as r:
             r.raise_for_status()
             total = int(r.headers.get("Content-Length") or 0)
@@ -1841,7 +1853,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                         last_update = now
                         last_downloaded = downloaded
 
-        final_name = os.path.basename(out_path)
+        final_name = base_name + ext
         final_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{final_name}")
         shutil.move(out_path, final_path)
 
@@ -1858,10 +1870,13 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
             job_snap = dict(JOBS[job_id])
         if os.path.exists(final_path):
             record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+        append_job_log(job_id, f"[+] Archivo completado: {final_name}")
         threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
+        append_job_log(job_id, f"[!] Error en Cobalt: {e}")
+        raise
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
 
@@ -1872,8 +1887,10 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                   selected_indexes: list = None, playlist_delivery: str = "zip"):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
+    append_job_log(job_id, f"[*] [yt-dlp] Iniciando proceso de descarga ({quality})...")
 
     completed_ids = set()
+    last_log_milestone = [-1]
 
     def hook(d):
         with JOBS_LOCK:
@@ -1911,6 +1928,12 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             total_for_pct = job.get("total_count") or 1
             file_fraction = (job.get("file_percent") or 0) / 100
             job["percent"] = min(100, int((job["completed_count"] + file_fraction) / total_for_pct * 100))
+
+            # Periodic user-friendly console logging
+            milestone = job["percent"] // 20
+            if milestone > last_log_milestone[0] and job["percent"] > 0:
+                last_log_milestone[0] = milestone
+                append_job_log(job_id, f"[+] Progreso: {job['percent']}% - Velocidad: {job.get('speed') or 'estable'}")
 
     try:
         outtmpl = os.path.join(job_dir, "%(playlist_index&{:02d} - |)s%(title).100B.%(ext)s")
@@ -2003,10 +2026,12 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     "owner": owner,
                     "delivery": "individual",
                 })
+            append_job_log(job_id, f"[+] Se procesaron {len(files)} archivos individualmente.")
         elif playlist_mode:
             with JOBS_LOCK:
                 JOBS[job_id]["status"] = "zipping"
                 JOBS[job_id]["current_title"] = "Comprimiendo playlist en ZIP..."
+            append_job_log(job_id, "[*] Comprimiendo elementos en archivo ZIP...")
             zip_filename = f"playlist_{job_id[:8]}.zip"
             zip_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{zip_filename}")
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -2027,6 +2052,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 })
             if os.path.exists(final_path):
                 record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+            append_job_log(job_id, f"[+] Archivo ZIP generado: {final_name}")
         else:
             final_filename = f"{job_id}_{files[0]}"
             final_path = os.path.join(DOWNLOAD_DIR, final_filename)
@@ -2044,6 +2070,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 })
             if os.path.exists(final_path):
                 record_download_meta(job_id, final_name, owner, os.path.getsize(final_path))
+            append_job_log(job_id, f"[+] Archivo descargado: {final_name}")
 
         job_snap = dict(JOBS[job_id])
         if final_path and os.path.exists(final_path):
@@ -2051,8 +2078,74 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
     except Exception as e:
         with JOBS_LOCK:
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
+        append_job_log(job_id, f"[!] Error en yt-dlp: {e}")
+        raise
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
+
+
+def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
+                         start_time=None, end_time=None, video_format="mp4", subtitles="none",
+                         owner: str = "admin", user_cloud_sync: dict = None,
+                         selected_indexes: list = None, playlist_delivery: str = "zip",
+                         video_title: str = "", deezer_arl: str = ""):
+    attempts = []
+    platform = detect_platform(url)
+    append_job_log(job_id, f"[*] [Cascada Inteligente] Analizando contenido ({platform})...")
+
+    # 1. First attempt: Cobalt v11 (for single video/audio, non-playlist)
+    if not playlist_mode and start_time is None and end_time is None and subtitles == "none":
+        append_job_log(job_id, "[*] [1/3] Probando extracción con Motor Cobalt Oficial...")
+        try:
+            run_download_cobalt(job_id, url, quality, video_title, owner, user_cloud_sync)
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "finished":
+                    append_job_log(job_id, "[+] Proceso finalizado exitosamente con Cobalt.")
+                    return
+        except Exception as e:
+            err = str(e)
+            attempts.append({"engine": "Cobalt v11 (API)", "status": "failed", "error": err})
+            append_job_log(job_id, f"[!] Cobalt no pudo extraer el stream ({err}). Pasando a siguiente método...")
+
+    # 2. Second attempt: Specialized Music Engine if Spotify/Deezer
+    if platform in ("Deezer", "Spotify") and not playlist_mode:
+        append_job_log(job_id, f"[*] [2/3] Probando Motor Musical Especializado ({platform})...")
+        try:
+            run_download_music(job_id, url, quality, deezer_arl, None, owner, user_cloud_sync)
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "finished":
+                    append_job_log(job_id, "[+] Proceso finalizado exitosamente con Motor Musical.")
+                    return
+        except Exception as e:
+            err = str(e)
+            attempts.append({"engine": f"Motor Música ({platform})", "status": "failed", "error": err})
+            append_job_log(job_id, f"[!] Motor musical no pudo procesar ({err}). Pasando a yt-dlp...")
+
+    # 3. Third attempt: yt-dlp with PoToken Provider and fallback clients
+    append_job_log(job_id, "[*] [3/3] Probando extracción completa con yt-dlp (PoToken & Multi-Cliente)...")
+    try:
+        run_download(
+            job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+            video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery
+        )
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "finished":
+                append_job_log(job_id, "[+] Proceso finalizado exitosamente con yt-dlp.")
+                return
+    except Exception as e:
+        err = str(e)
+        attempts.append({"engine": "yt-dlp (Extractor Principal)", "status": "failed", "error": err})
+        append_job_log(job_id, f"[!] yt-dlp falló: {err}")
+
+    # If all engines failed, record detailed error report
+    with JOBS_LOCK:
+        JOBS[job_id].update({
+            "status": "error",
+            "error": "Todos los métodos y motores de descarga fallaron al procesar este enlace.",
+            "attempts": attempts,
+            "finished_at": time.time(),
+        })
+    append_job_log(job_id, "[!] ERROR: Se agotaron todos los métodos de descarga disponibles.")
 
 
 @app.route("/api/download", methods=["POST"])
@@ -2066,7 +2159,7 @@ def download():
     total_count = int((data or {}).get("total_count") or 0)
     start_raw = (data or {}).get("start_time")
     end_raw = (data or {}).get("end_time")
-    engine = (data or {}).get("engine", "ytdlp")
+    engine = (data or {}).get("engine", "auto")
     video_title = (data or {}).get("video_title", "")
     user_cloud_sync = (data or {}).get("user_cloud_sync")
     selected_indexes = (data or {}).get("selected_indexes") or []
@@ -2108,29 +2201,35 @@ def download():
             "speed": None,
             "eta_seconds": None,
             "owner": owner,
+            "logs": [{"time": time.strftime("%H:%M:%S"), "text": "[*] Solicitud recibida y encolada."}],
+            "attempts": [],
         }
 
     deezer_arl = (data or {}).get("deezer_arl", "").strip()
     platform = detect_platform(raw_url)
 
-    if platform in ("Deezer", "Spotify") and not playlist_mode:
+    if engine in ("auto", "cascade"):
+        thread = threading.Thread(
+            target=run_download_cascade,
+            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                  video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery, video_title, deezer_arl),
+            daemon=True,
+        )
+    elif platform in ("Deezer", "Spotify") and not playlist_mode:
         thread = threading.Thread(
             target=run_download_music,
             args=(job_id, raw_url, quality, deezer_arl, None, owner, user_cloud_sync),
             daemon=True,
         )
-        thread.start()
-
-        return jsonify({"job_id": job_id})
-
-    if engine == "cobalt":
+    elif engine == "cobalt":
         thread = threading.Thread(
             target=run_download_cobalt, args=(job_id, url, quality, video_title, owner, user_cloud_sync), daemon=True
         )
     else:
         thread = threading.Thread(
             target=run_download,
-            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time, video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery),
+            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                  video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery),
             daemon=True,
         )
     thread.start()
@@ -2138,10 +2237,8 @@ def download():
     return jsonify({"job_id": job_id})
 
 
-
-
-
 @app.route("/api/status/<job_id>")
+
 def status(job_id):
     with JOBS_LOCK:
         job = JOBS.get(job_id)

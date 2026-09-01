@@ -902,11 +902,64 @@
           </div>
         </div>
 
+        <!-- PLAYLIST EXPLORER IN ADVANCED MODE -->
+        <div class="playlist-explorer" id="advPlaylistExplorer" style="display:none; margin-top:14px;">
+
+          <div class="playlist-header-actions">
+            <div>
+              <strong id="advPlaylistTitle">Playlist / Álbum detectado</strong>
+              <div style="font-size:0.75rem; color:var(--muted);" id="advPlaylistCountLabel">0 elementos</div>
+            </div>
+            
+            <div class="playlist-delivery-toggle">
+              <button class="delivery-btn active" id="btnAdvDeliveryZip" data-delivery="zip">📦 Empaquetar en ZIP</button>
+              <button class="delivery-btn" id="btnAdvDeliveryIndividual" data-delivery="individual">🚀 Descargas Individuales</button>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:0.75rem;">
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary btn-sm" id="btnAdvSelectAllItems" style="font-size:0.72rem; padding:3px 8px;">☑️ Todos</button>
+              <button class="btn btn-secondary btn-sm" id="btnAdvDeselectAllItems" style="font-size:0.72rem; padding:3px 8px;">⬜ Ninguno</button>
+            </div>
+            <span id="advSelectedCountText" style="color:var(--accent-blue); font-weight:600;">(Todos seleccionados)</span>
+          </div>
+
+          <div class="playlist-items-list" id="advPlaylistItemsList"></div>
+        </div>
+
         <button id="btnAdvDownload" class="btn btn-primary btn-block" style="margin-top:16px; padding:12px;">
           <span>⬇️ Iniciar Descarga Avanzada</span>
         </button>
+
+        <!-- USER ACTIVITY CONSOLE (INFORMATIVE & PRIVATE) -->
+        <div style="margin-top:18px; background:#060b14; border:1px solid #1e293b; border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-family:monospace; font-weight:700; font-size:0.82rem; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+              📟 Consola de Actividad & Registro en Tiempo Real
+            </span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span class="status-badge status-online" style="font-size:0.68rem; padding:2px 6px;"><span class="badge-dot" style="background:#10b981;"></span> Informativo</span>
+              <button id="btnClearUserConsole" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:2px 8px;">🧹 Limpiar</button>
+            </div>
+          </div>
+          <div id="userActivityConsole" style="background:#020617; border:1px solid #0f172a; border-radius:8px; padding:10px; font-family:monospace; font-size:0.78rem; color:#a5f3fc; height:160px; overflow-y:auto; white-space:pre-wrap; line-height:1.5;">[Listo] Esperando operaciones...</div>
+        </div>
+
+        <!-- CASCADE ERROR BREAKDOWN CARD -->
+        <div id="cascadeErrorCard" style="display:none; margin-top:14px; background:rgba(239, 68, 68, 0.08); border:1px solid var(--danger); border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong style="color:#fca5a5; font-size:0.9rem;">⚠️ Fallo de Motores en Cascada</strong>
+            <button id="btnCloseCascadeError" class="btn btn-secondary btn-sm" style="padding:1px 6px; font-size:0.72rem;">✕</button>
+          </div>
+          <div style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
+            Se intentaron todos los métodos de descarga disponibles y todos reportaron errores:
+          </div>
+          <div id="cascadeErrorList" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
       </div>
     </div>
+
 
     <!-- ==================== TAB 3: DESCARGAS EN LOTE (BATCH) ==================== -->
     <div id="tab-batch" class="tab-pane">
@@ -1109,9 +1162,37 @@ setupAccordion('advDeezerHeader', 'advDeezerBody', 'advDeezerIcon');
 setupAccordion('advCloudHeader', 'advCloudBody', 'advCloudIcon');
 
 // ==================== MODO FÁCIL (PRESET PILLS & PASTE) ====================
+// ==================== MODO FÁCIL & AVANZADO (PRESETS, DELIVERY & PLAYLISTS) ====================
 let quickPreset = '720p';
 let quickDelivery = 'zip';
+let advDelivery = 'zip';
 let inspectedPlaylistItems = [];
+let lastRenderedLogCount = 0;
+
+// User Console Helper
+function appendUserConsole(text, time = null) {
+  const consoleEl = document.getElementById('userActivityConsole');
+  if (!consoleEl) return;
+  const stamp = time || new Date().toLocaleTimeString();
+  if (consoleEl.textContent.trim() === '[Listo] Esperando operaciones...' || consoleEl.textContent.trim() === '[Consola limpia] Esperando operaciones...') {
+    consoleEl.textContent = '';
+  }
+  consoleEl.textContent += `[${stamp}] ${text}\n`;
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+document.getElementById('btnClearUserConsole')?.addEventListener('click', () => {
+  const consoleEl = document.getElementById('userActivityConsole');
+  if (consoleEl) {
+    consoleEl.textContent = '[Consola limpia] Esperando operaciones...';
+    lastRenderedLogCount = 0;
+  }
+});
+
+document.getElementById('btnCloseCascadeError')?.addEventListener('click', () => {
+  const c = document.getElementById('cascadeErrorCard');
+  if (c) c.style.display = 'none';
+});
 
 document.querySelectorAll('.preset-pill').forEach(pill => {
   pill.addEventListener('click', () => {
@@ -1133,22 +1214,34 @@ document.getElementById('btnPasteQuick')?.addEventListener('click', async () => 
   }
 });
 
+// Quick delivery toggles
 document.getElementById('btnDeliveryZip')?.addEventListener('click', () => {
   quickDelivery = 'zip';
   document.getElementById('btnDeliveryZip').classList.add('active');
   document.getElementById('btnDeliveryIndividual').classList.remove('active');
 });
-
 document.getElementById('btnDeliveryIndividual')?.addEventListener('click', () => {
   quickDelivery = 'individual';
   document.getElementById('btnDeliveryIndividual').classList.add('active');
   document.getElementById('btnDeliveryZip').classList.remove('active');
 });
 
-// ==================== URL INSPECTION & PLAYLIST EXPLORER ====================
+// Adv delivery toggles
+document.getElementById('btnAdvDeliveryZip')?.addEventListener('click', () => {
+  advDelivery = 'zip';
+  document.getElementById('btnAdvDeliveryZip').classList.add('active');
+  document.getElementById('btnAdvDeliveryIndividual').classList.remove('active');
+});
+document.getElementById('btnAdvDeliveryIndividual')?.addEventListener('click', () => {
+  advDelivery = 'individual';
+  document.getElementById('btnAdvDeliveryIndividual').classList.add('active');
+  document.getElementById('btnAdvDeliveryZip').classList.remove('active');
+});
+
+// ==================== URL INSPECTION & PLAYLIST EXPLORERS ====================
 async function inspectUrl(url, mode = 'quick') {
   if (!url) return;
-  const isQuick = (mode === 'quick');
+  appendUserConsole(`Inspeccionando enlace: ${url}`);
   
   if (url.includes('deezer.com') && document.getElementById('advDeezerBox')) {
     document.getElementById('advDeezerBox').style.display = 'block';
@@ -1161,20 +1254,38 @@ async function inspectUrl(url, mode = 'quick') {
       body: JSON.stringify({ url })
     });
     const data = await res.json();
-    if (data.error) return;
+    if (data.error) {
+      appendUserConsole(`[!] Error al inspeccionar enlace: ${data.error}`);
+      showToast('No se pudo inspeccionar el enlace', 'error');
+      return;
+    }
 
     if (data.type === 'playlist') {
-      // PLAYLIST / ALBUM DETECTED
+      appendUserConsole(`[+] Playlist/Álbum detectado: '${data.title}' con ${data.count || (data.items || []).length} elementos.`);
+      
+      // Update Quick Mode Playlist Explorer
       document.getElementById('quickPlaylistExplorer').style.display = 'block';
       document.getElementById('quickPlaylistTitle').textContent = data.title || 'Playlist / Álbum';
       document.getElementById('quickPlaylistCountLabel').textContent = `${data.count || (data.items || []).length} elementos`;
       document.getElementById('quickPreviewCard').style.display = 'none';
 
+      // Update Advanced Mode Playlist Explorer
+      const advExp = document.getElementById('advPlaylistExplorer');
+      if (advExp) {
+        advExp.style.display = 'block';
+        document.getElementById('advPlaylistTitle').textContent = data.title || 'Playlist / Álbum';
+        document.getElementById('advPlaylistCountLabel').textContent = `${data.count || (data.items || []).length} elementos`;
+      }
+
       inspectedPlaylistItems = data.items || [];
-      renderPlaylistItems(inspectedPlaylistItems);
+      renderPlaylistItems(inspectedPlaylistItems, 'quick');
+      renderPlaylistItems(inspectedPlaylistItems, 'adv');
     } else {
-      // SINGLE VIDEO / TRACK
+      appendUserConsole(`[+] Video/Pista detectada: '${data.title}' (${data.platform || 'Web'})`);
       document.getElementById('quickPlaylistExplorer').style.display = 'none';
+      const advExp = document.getElementById('advPlaylistExplorer');
+      if (advExp) advExp.style.display = 'none';
+
       const previewCard = document.getElementById('quickPreviewCard');
       document.getElementById('quickPreviewTitle').textContent = data.title || 'Contenido detectado';
       document.getElementById('quickPreviewPlatform').textContent = data.platform || 'Web';
@@ -1188,19 +1299,25 @@ async function inspectUrl(url, mode = 'quick') {
       }
       previewCard.style.display = 'block';
     }
-  } catch (e) {}
+  } catch (e) {
+    appendUserConsole(`[!] Error de red al inspeccionar: ${e.message}`);
+  }
 }
 
-function renderPlaylistItems(items) {
-  const container = document.getElementById('quickPlaylistItemsList');
+function renderPlaylistItems(items, target = 'quick') {
+  const containerId = target === 'quick' ? 'quickPlaylistItemsList' : 'advPlaylistItemsList';
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
   if (!items || !items.length) {
     container.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); padding:8px;">Lista de elementos no disponible. Se descargará la lista completa.</div>';
     return;
   }
 
+  const chkClass = target === 'quick' ? 'chk-quick-item' : 'chk-adv-item';
   container.innerHTML = items.map(item => `
     <label class="playlist-item-row">
-      <input type="checkbox" class="chk-playlist-item" value="${item.index}" checked>
+      <input type="checkbox" class="${chkClass}" value="${item.index}" checked>
       ${item.thumbnail ? `<img src="${item.thumbnail}" class="playlist-item-thumb">` : ''}
       <span style="color:var(--muted); font-weight:700; width:22px;">#${item.index}</span>
       <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.title}">${item.title}</span>
@@ -1208,29 +1325,42 @@ function renderPlaylistItems(items) {
     </label>
   `).join('');
 
-  updateSelectedCount();
+  updateSelectedCount(target);
 
-  container.querySelectorAll('.chk-playlist-item').forEach(chk => {
-    chk.addEventListener('change', updateSelectedCount);
+  container.querySelectorAll(`.${chkClass}`).forEach(chk => {
+    chk.addEventListener('change', () => updateSelectedCount(target));
   });
 }
 
-function updateSelectedCount() {
-  const checked = document.querySelectorAll('.chk-playlist-item:checked');
-  const total = document.querySelectorAll('.chk-playlist-item').length;
-  const lbl = document.getElementById('quickSelectedCountText');
+function updateSelectedCount(target = 'quick') {
+  const chkClass = target === 'quick' ? '.chk-quick-item' : '.chk-adv-item';
+  const lblId = target === 'quick' ? 'quickSelectedCountText' : 'advSelectedCountText';
+  const checked = document.querySelectorAll(`${chkClass}:checked`);
+  const total = document.querySelectorAll(chkClass).length;
+  const lbl = document.getElementById(lblId);
   if (lbl) {
     lbl.textContent = `(${checked.length} de ${total} seleccionados)`;
   }
 }
 
+// Quick Mode selection buttons
 document.getElementById('btnSelectAllItems')?.addEventListener('click', () => {
-  document.querySelectorAll('.chk-playlist-item').forEach(c => c.checked = true);
-  updateSelectedCount();
+  document.querySelectorAll('.chk-quick-item').forEach(c => c.checked = true);
+  updateSelectedCount('quick');
 });
 document.getElementById('btnDeselectAllItems')?.addEventListener('click', () => {
-  document.querySelectorAll('.chk-playlist-item').forEach(c => c.checked = false);
-  updateSelectedCount();
+  document.querySelectorAll('.chk-quick-item').forEach(c => c.checked = false);
+  updateSelectedCount('quick');
+});
+
+// Adv Mode selection buttons
+document.getElementById('btnAdvSelectAllItems')?.addEventListener('click', () => {
+  document.querySelectorAll('.chk-adv-item').forEach(c => c.checked = true);
+  updateSelectedCount('adv');
+});
+document.getElementById('btnAdvDeselectAllItems')?.addEventListener('click', () => {
+  document.querySelectorAll('.chk-adv-item').forEach(c => c.checked = false);
+  updateSelectedCount('adv');
 });
 
 document.getElementById('btnInspectQuick')?.addEventListener('click', () => {
@@ -1243,9 +1373,12 @@ document.getElementById('quickUrlInput')?.addEventListener('paste', (e) => {
 document.getElementById('btnInspectAdv')?.addEventListener('click', () => {
   inspectUrl(document.getElementById('advUrlInput').value.trim(), 'adv');
 });
+document.getElementById('advUrlInput')?.addEventListener('paste', (e) => {
+  setTimeout(() => inspectUrl(document.getElementById('advUrlInput').value.trim(), 'adv'), 200);
+});
 
 // ==================== SUBMIT DOWNLOADS ====================
-// 1. Quick Mode Download
+// 1. Quick Mode Download (Cascada Inteligente Automática)
 document.getElementById('btnQuickDownload')?.addEventListener('click', async () => {
   const url = document.getElementById('quickUrlInput').value.trim();
   if (!url) {
@@ -1257,7 +1390,7 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   
   let selected_indexes = [];
   if (isPlaylist) {
-    document.querySelectorAll('.chk-playlist-item:checked').forEach(c => {
+    document.querySelectorAll('.chk-quick-item:checked').forEach(c => {
       selected_indexes.push(parseInt(c.value));
     });
     if (selected_indexes.length === 0) {
@@ -1268,8 +1401,9 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
 
   const btn = document.getElementById('btnQuickDownload');
   btn.disabled = true;
-
-  startProgressBanner('Encolando descarga rápida...');
+  lastRenderedLogCount = 0;
+  appendUserConsole(`[*] [Modo Fácil] Solicitando descarga para '${url}' (${quickPreset})...`);
+  startProgressBanner('Encolando descarga rápida con motores en cascada...');
 
   try {
     const res = await fetch('/api/download', {
@@ -1283,7 +1417,7 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
         playlist: isPlaylist,
         selected_indexes,
         playlist_delivery: quickDelivery,
-        engine: 'ytdlp',
+        engine: 'auto',
         user_cloud_sync: userCloudCfg
       })
     });
@@ -1292,6 +1426,7 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
     pollSingleJob(data.job_id, () => { btn.disabled = false; });
   } catch (e) {
     showToast(e.message, 'error');
+    appendUserConsole(`[!] Error al iniciar descarga: ${e.message}`);
     btn.disabled = false;
     stopProgressBanner();
   }
@@ -1324,9 +1459,24 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
   const subtitles = document.getElementById('advSubtitles').value;
   const deezerArl = advDeezerArl ? advDeezerArl.value.trim() : '';
 
+  const advExp = document.getElementById('advPlaylistExplorer');
+  const isPlaylist = advExp && advExp.style.display !== 'none';
+  
+  let selected_indexes = [];
+  if (isPlaylist) {
+    document.querySelectorAll('.chk-adv-item:checked').forEach(c => {
+      selected_indexes.push(parseInt(c.value));
+    });
+    if (selected_indexes.length === 0) {
+      showToast('Seleccioná al menos un elemento de la lista', 'error');
+      return;
+    }
+  }
+
   const btn = document.getElementById('btnAdvDownload');
   btn.disabled = true;
-
+  lastRenderedLogCount = 0;
+  appendUserConsole(`[*] [Modo Avanzado] Solicitando extracción (${quality}, motor: ${advEngine})...`);
   startProgressBanner('Iniciando descarga avanzada...');
 
   try {
@@ -1340,6 +1490,9 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
         start_time: startTime,
         end_time: endTime,
         subtitles,
+        playlist: isPlaylist,
+        selected_indexes,
+        playlist_delivery: advDelivery,
         engine: advEngine,
         deezer_arl: deezerArl,
         user_cloud_sync: userCloudCfg
@@ -1350,6 +1503,7 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
     pollSingleJob(data.job_id, () => { btn.disabled = false; });
   } catch (e) {
     showToast(e.message, 'error');
+    appendUserConsole(`[!] Error al iniciar descarga avanzada: ${e.message}`);
     btn.disabled = false;
     stopProgressBanner();
   }
@@ -1367,6 +1521,7 @@ document.getElementById('btnBatchDownload')?.addEventListener('click', async () 
   const userCloudCfg = saveUserCloudSettings();
   const quality = document.getElementById('batchQualitySelect').value;
   const engine = document.getElementById('batchEngineSelect').value;
+  appendUserConsole(`[*] [Lote] Procesando cola de descargas múltiples (${quality})...`);
 
   try {
     const res = await fetch('/api/batch-download', {
@@ -1385,6 +1540,7 @@ document.getElementById('btnBatchDownload')?.addEventListener('click', async () 
     pollBatchJob(data.batch_id, () => { btn.disabled = false; });
   } catch (e) {
     showToast(e.message, 'error');
+    appendUserConsole(`[!] Error en lote: ${e.message}`);
     btn.disabled = false;
   }
 });
@@ -1409,6 +1565,17 @@ function pollSingleJob(jobId, onFinish) {
       const res = await fetch(`/api/status/${jobId}`);
       const data = await res.json();
       
+      // Update activity console with incoming job logs
+      if (data.logs && Array.isArray(data.logs)) {
+        if (data.logs.length > lastRenderedLogCount) {
+          for (let i = lastRenderedLogCount; i < data.logs.length; i++) {
+            const entry = data.logs[i];
+            appendUserConsole(entry.text, entry.time);
+          }
+          lastRenderedLogCount = data.logs.length;
+        }
+      }
+
       const pct = data.percent || 0;
       document.getElementById('singleBarFill').style.width = pct + '%';
       document.getElementById('currentTitleLabel').textContent = data.current_title || 'Descargando...';
@@ -1432,6 +1599,21 @@ function pollSingleJob(jobId, onFinish) {
         clearInterval(interval);
         if (onFinish) onFinish();
         showToast('Error en la descarga: ' + (data.error || 'Desconocido'), 'error');
+        
+        // Render cascade breakdown if multiple engines were tried
+        if (data.attempts && data.attempts.length > 0) {
+          const errCard = document.getElementById('cascadeErrorCard');
+          const errList = document.getElementById('cascadeErrorList');
+          if (errCard && errList) {
+            errList.innerHTML = data.attempts.map(att => `
+              <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(239,68,68,0.3); border-radius:6px; padding:6px 10px; font-size:0.78rem;">
+                <div style="color:#f87171; font-weight:700;">🔴 ${att.engine}</div>
+                <div style="color:var(--text); font-family:monospace; margin-top:2px; word-break:break-word;">${att.error}</div>
+              </div>
+            `).join('');
+            errCard.style.display = 'block';
+          }
+        }
       }
     } catch (e) {
       clearInterval(interval);
@@ -1441,6 +1623,7 @@ function pollSingleJob(jobId, onFinish) {
 }
 
 function pollBatchJob(batchId, onFinish) {
+
   const card = document.getElementById('batchProgressCard');
   const list = document.getElementById('batchQueueList');
   const stats = document.getElementById('batchQueueStats');

@@ -148,6 +148,18 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Selector de elementos por checkboxes con acciones masivas (Todos / Ninguno).
   - [x] Soporte para entrega en archivo `.ZIP` o **Descargas Individuales Progresivas**.
 
+---
+
+## 🎯 Versión `v2.6.0` (Completado)
+- [x] **Explorador y Selector de Playlists en Modo Avanzado:**
+  - [x] Despliegue de elementos con casillas de verificación, acciones masivas (Todos/Ninguno) y toggle de ZIP vs Individuales.
+- [x] **Estrategia de Descarga en Cascada Multimotor (Modo Fácil):**
+  - [x] Ejecución secuencial de Cobalt v11 -> Motor Musical -> yt-dlp con PoToken.
+  - [x] Tarjeta de diagnóstico de fallos con reporte detallado de cada motor evaluado.
+- [x] **Consola de Actividad del Usuario en Modo Avanzado:**
+  - [x] Panel de terminal informativo en tiempo real (`#userActivityConsole`), lectura segura y botón de limpieza.
+
+
 
 
 

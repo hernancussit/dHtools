@@ -4,7 +4,23 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.6.0] - 2026-09-01
+
+### ✨ Novedades y Resiliencia
+- **🔄 Descargas en Cascada Automática y Diagnóstico Detallado (Modo Fácil):**
+  - El Modo Fácil ejecuta una estrategia de cascada inteligente probando todos los motores en secuencia (`Cobalt v11 Oficial` -> `Motor Musical Especializado` -> `yt-dlp PoToken / Multi-Cliente`).
+  - En caso de fallo global, se genera y presenta una tarjeta de diagnóstico exhaustiva con el desglose de cada motor probado y la causa exacta del error.
+- **📟 Consola de Actividad y Progreso en Tiempo Real (Modo Avanzado):**
+  - Bloque de terminal visual informativo en tiempo real (`#userActivityConsole`) que muestra el avance paso a paso, análisis de URL, velocidad de descarga y operaciones FFmpeg.
+  - Registro estrictamente privado y acotado a la actividad del usuario autenticado, sin capacidades de ejecución ni exposición de datos sensibles del VPS.
+  - Botón interactivo "🧹 Limpiar" para vaciar el historial de la consola.
+- **📦 Explorador y Selector de Playlists en Modo Avanzado:**
+  - Integración completa del explorador interactivo de listas y álbumes dentro del Modo Avanzado con casillas de selección, acciones masivas (Todos/Ninguno) y conmutador de entrega (ZIP vs Descargas Individuales Progresivas).
+
+---
+
 ## [2.5.0] - 2026-09-01
+
 
 ### ✨ Novedades y Mejoras de Interfaz
 - **Barra Lateral Fija en Portal de Descargas (Sidebar Layout):**
