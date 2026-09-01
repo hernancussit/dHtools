@@ -4,6 +4,26 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.1.0] - 2026-09-01
+
+### 🚀 Lanzamiento Estable v1.1.0
+- **📦 Entrega Perfeccionada de Archivos ZIP en Playlists:**
+  - Corrección de rutas absolutas en `safe_download_path` para entrega directa de archivos `.zip` desde el monitor y la cola.
+  - Optimización de `/api/my-downloads/folder-zip/<group_id>` con compresión bajo demanda sin duplicar zips existentes.
+- **🔍 Compatibilidad Total con URLs de Listas de Reproducción:**
+  - Soporte de delimitadores estándar (`&list=...`, `&t=...`) en `validate_media_url` manteniendo el blindaje contra inyección de comandos.
+- **🍪 Gestor Seguro de Cookies en Panel Admin:**
+  - Protección de privacidad eliminando el volcado de texto plano en pantalla y API.
+  - Subida y validación obligatoria contra YouTube antes de aplicar cambios en `cookies.txt`.
+- **🌐 Plantillas de Proxy Inverso HestiaCP / Nginx Oficiales:**
+  - Inclusión de `hestiacp-templates/dhtools-proxy.tpl` y `dhtools-proxy.stpl`.
+- **🌿 Selector de Rama Git y Actualizador en Vivo:**
+  - Soporte completo para alternar entre ramas `main` y `dev` con autenticación SSH en contenedores Docker.
+- **🎨 Corrección Visual de Branding:**
+  - Unificación de cabecera lateral con ícono único `⚡ dHtools`.
+
+---
+
 ## [1.0.0] - 2026-09-01
 
 ### 🚀 Primera Versión Pública Oficial Estable
