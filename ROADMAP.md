@@ -1,6 +1,6 @@
 # 🗺️ Mapa de Ruta y Futuras Funcionalidades (Roadmap)
 
-Este documento centraliza la planificación de nuevas características, mejoras y ampliaciones del proyecto, organizado por versiones e hitos.
+Este documento centraliza la planificación de nuevas características, mejoras y ampliaciones del proyecto, organizado por versiones e hitos de desarrollo.
 
 ---
 
@@ -20,10 +20,10 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ## 🚀 Próximas Versiones Planificadas
 
-### 📌 Versión 1.1.0 — Gestión de Disco, Limpieza de Emergencia y Nuevas Redes
+### 📌 Versión 1.1.0 — Gestión de Disco, Limpieza de Emergencia y Redes Sociales
 - [ ] **Limpieza de Descargas a Demanda y Protección de Espacio en Disco:**
   - **Botón "Limpiar descargas ahora":** Permite al administrador forzar el borrado inmediato de archivos finalizados o temporales huérfanos.
-  - **Limpieza de emergencia automática:** Monitoreo del almacenamiento del VPS (si el disco supera el 85% de uso o queda menos de 2 GB disponibles, se purgan automáticamente las descargas más antiguas).
+  - **Limpieza de emergencia automática:** Monitoreo del almacenamiento del VPS (si el disco supera el 85% de uso o quedan menos de 2 GB disponibles, se purgan automáticamente las descargas más antiguas para evitar saturar el servidor).
 - [ ] **Soporte de Plataformas de Video y Redes Sociales:**
   - **YouTube Shorts:** Detección automática y descarga optimizada en formato vertical.
   - **Instagram:** Descarga de Reels y publicaciones de video.
@@ -46,16 +46,20 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-### 📌 Versión 1.3.0 — Panel de Administración y Actualización de Motores
-- [ ] **Panel de Control para Administrador (`/admin`):**
-  - Acceso restringido para gestión del servidor y diagnóstico.
-  - **Actualizador de Motores:**
-    - Botón para actualizar `yt-dlp` a la última versión.
-    - Botón para actualizar/recargar la imagen de `Cobalt`.
-    - Indicadores de salud de `potprovider`, `Cobalt` y espacio libre en disco.
-- [ ] **Panel de Configuración Dinámica (Settings UI):**
-  - Modificar tiempos de retención de descargas y umbrales de disco sin tocar `.env` por terminal.
-  - Cargar o renovar cookies de YouTube (`cookies.txt`) y ARL de Deezer directamente desde la web.
+### 📌 Versión 1.3.0 — Panel de Control y Configuración Web Integral (`/admin`)
+*Panel centralizado con interfaz visual para administrar todos los componentes del sistema sin tocar la terminal:*
+
+- [ ] **Centro de Motores, APIs y Servicios:**
+  - **Monitoreo de Componentes:** Diagnóstico en vivo de los microservicios (`yt-downloader`, `pot-provider`, `cobalt-api`, motor Deno y FFmpeg).
+  - **Actualizador de Motores:** Botones de 1 clic para actualizar `yt-dlp` a la última versión o refrescar la imagen de `Cobalt`.
+  - **Gestor de APIs y Credenciales:** Interfaz para cargar, validar y renovar tokens (ARL de Deezer, Spotify API credentials, `cookies.txt` de YouTube).
+- [ ] **Gestión de Usuarios (Administración Manual):**
+  - Creación, edición, cambio de contraseñas y desactivación de usuarios autorizados desde la web.
+  - Roles de usuario: `Administrador` (acceso a configuración y herramientas) vs `Descargador` (solo interfaz de descargas).
+  - *Arquitectura lista para admitir registro público o sistema de invitaciones en versiones futuras.*
+- [ ] **Gestión Dinámica de Parámetros:**
+  - Configuración de retención de descargas (`CLEANUP_AFTER_HOURS`), umbrales de alerta de disco y motor predeterminado.
+  - Visor de logs y diagnósticos del sistema en tiempo real.
 
 ---
 
@@ -69,11 +73,10 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-### 📌 Versión 2.0.0 — Multi-Usuario, Cola de Descargas y Cloud Sync
-- [ ] **Sistema Multi-Usuario con Roles:**
-  - Usuarios individuales con contraseña propia (Admin / Usuario estándar).
-  - Límites de cuota por usuario.
+### 📌 Versión 2.0.0 — Cola de Descargas y Cloud Sync
 - [ ] **Cola de Descargas Simultáneas:**
   - Posibilidad de pegar múltiples enlaces a la vez y ver el progreso en paralelo.
 - [ ] **Sincronización en la Nube:**
   - Enviar descargas directamente a Google Drive, Nextcloud, Dropbox o FTP sin pasar por el dispositivo local.
+- [ ] **Sistema de Registro Abierto / Invitaciones (Opcional):**
+  - Registro de usuarios con confirmación o invitaciones privadas con cuotas de descarga.
