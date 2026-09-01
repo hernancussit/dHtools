@@ -69,10 +69,10 @@ Si utilizas **HestiaCP** u otro panel con Nginx:
 1. Añade el dominio o subdominio en tu panel con certificado SSL Let's Encrypt.
 2. Copia las plantillas incluidas en `hestiacp-templates/` al directorio de plantillas de Nginx:
    ```bash
-   cp hestiacp-templates/ytsite-proxy.tpl  /usr/local/hestia/data/templates/web/nginx/
-   cp hestiacp-templates/ytsite-proxy.stpl /usr/local/hestia/data/templates/web/nginx/
+   cp hestiacp-templates/dhtools-proxy.tpl  /usr/local/hestia/data/templates/web/nginx/
+   cp hestiacp-templates/dhtools-proxy.stpl /usr/local/hestia/data/templates/web/nginx/
    ```
-3. Asigna la plantilla `ytsite-proxy` al dominio y recarga Nginx:
+3. Asigna la plantilla `dhtools-proxy` al dominio y recarga Nginx:
    ```bash
    systemctl reload nginx
    ```
