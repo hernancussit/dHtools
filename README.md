@@ -62,20 +62,39 @@ La aplicación estará lista en `http://localhost:5000` (o `http://TU_IP_VPS:500
 
 ---
 
-## 🌐 Publicación con Dominio & SSL (Nginx / HestiaCP / Cloudflare)
+## 🌐 Publicación con Dominio & SSL (Proxy Inverso)
 
-Si utilizas **HestiaCP** u otro panel con Nginx:
+Para publicar **dHtools** bajo tu propio dominio con HTTPS, dispones de configuraciones listas en la carpeta [`proxy-configs/`](proxy-configs/):
 
-1. Añade el dominio o subdominio en tu panel con certificado SSL Let's Encrypt.
-2. Copia las plantillas incluidas en `hestiacp-templates/` al directorio de plantillas de Nginx:
-   ```bash
-   cp hestiacp-templates/dhtools-proxy.tpl  /usr/local/hestia/data/templates/web/nginx/
-   cp hestiacp-templates/dhtools-proxy.stpl /usr/local/hestia/data/templates/web/nginx/
-   ```
-3. Asigna la plantilla `dhtools-proxy` al dominio y recarga Nginx:
-   ```bash
-   systemctl reload nginx
-   ```
+### 1. 🐧 Nginx Universal (Cualquier Servidor Linux / CloudPanel / aaPanel)
+Utiliza la plantilla [`proxy-configs/nginx-universal.conf`](proxy-configs/nginx-universal.conf) en tu bloque de servidor:
+```bash
+sudo cp proxy-configs/nginx-universal.conf /etc/nginx/sites-available/dhtools.conf
+# Edita tu dominio y certificados en el archivo y luego recarga:
+sudo systemctl reload nginx
+```
+
+### 2. 🛡️ HestiaCP
+Copia las plantillas oficiales de HestiaCP y aplícalas a tu dominio:
+```bash
+cp proxy-configs/hestiacp/dhtools-proxy.tpl  /usr/local/hestia/data/templates/web/nginx/
+cp proxy-configs/hestiacp/dhtools-proxy.stpl /usr/local/hestia/data/templates/web/nginx/
+systemctl reload nginx
+```
+*Luego selecciona la plantilla `dhtools-proxy` desde la configuración web del dominio en el panel de HestiaCP.*
+
+### 3. 💼 cPanel / WHM (Apache mod_proxy)
+Copia las reglas de [`proxy-configs/cpanel-apache.conf`](proxy-configs/cpanel-apache.conf) en el archivo `.htaccess` de la raíz web de tu dominio.
+
+### 4. 🚀 Caddy Server
+Añade a tu `Caddyfile` (configuración de [`proxy-configs/caddy-Caddyfile`](proxy-configs/caddy-Caddyfile)):
+```caddy
+tu-dominio.com {
+    reverse_proxy 127.0.0.1:5000
+}
+```
+
+*Consulta la guía detallada en [`proxy-configs/README.md`](proxy-configs/README.md).*
 
 ---
 
