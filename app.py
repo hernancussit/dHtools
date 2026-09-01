@@ -23,7 +23,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dhtools_secret_session_key_2026_super_secure")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 # Security: Brute Force & Rate Limiting Storage
 LOGIN_ATTEMPTS = {}
