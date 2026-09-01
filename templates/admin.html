@@ -567,6 +567,7 @@
             <div style="font-weight:600; margin-bottom:4px;">Prueba Global de Extracción</div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad con YouTube, Deezer y microservicios.</div>
             <button id="btnTestEngines" class="btn btn-secondary" style="width:100%;">🧪 Ejecutar Test de Diagnóstico</button>
+          </div>
         </div>
 
         <!-- dHtools Git & System Updates Card -->
@@ -615,7 +616,6 @@
       </div>
     </div>
 
-
     <!-- TAB 3: SETTINGS & COOKIES -->
     <div id="tab-settings" class="tab-pane">
       <div class="card">
@@ -624,7 +624,7 @@
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
             <div class="form-group">
               <label>Título del Sitio</label>
-              <input type="text" id="cfgSiteTitle" value="🎬 Descargador Multimedia">
+              <input type="text" id="cfgSiteTitle" value="⚡ dHtools">
             </div>
 
             <div class="form-group">
@@ -666,21 +666,38 @@
         </form>
       </div>
 
+      <!-- Gestor Seguro de Cookies -->
       <div class="card">
         <div class="card-title">
-          <span>Gestor Web de Cookies (YouTube)</span>
-          <span id="cookiesStatusBadge" style="font-size:0.78rem; color:var(--muted);"></span>
+          <span>🍪 Gestor Seguro de Cookies (YouTube Anti-Bot)</span>
+          <span id="cookiesStatusBadge" class="brand-badge" style="font-size:0.78rem;"></span>
         </div>
         <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
-          Podés ver o pegar el contenido de tu archivo <code>cookies.txt</code> (formato Netscape) para actualizar la sesión de YouTube sin usar SSH/SCP.
+          Para evitar bloqueos y verificaciones de YouTube, podés cargar un archivo <code>cookies.txt</code> (formato Netscape).
+          Por seguridad y privacidad, el contenido del archivo no se muestra en pantalla. Al subir un nuevo archivo, se validará automáticamente contra YouTube antes de activarlo.
         </p>
-        <textarea id="cookiesTextarea" placeholder="# Netscape HTTP Cookie File..."></textarea>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
-          <span style="font-size:0.78rem; color:var(--muted);" id="cookiesMeta"></span>
-          <button id="btnSaveCookies" class="btn btn-primary">💾 Guardar Cookies</button>
+
+        <div id="cookiesCurrentInfo" style="background:#090e1a; padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:14px; font-size:0.82rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <strong id="cookiesStatusText">Verificando estado de cookies...</strong>
+              <div id="cookiesMeta" style="color:var(--muted); font-size:0.75rem; margin-top:2px;"></div>
+            </div>
+            <button id="btnDeleteCookies" class="btn btn-danger btn-sm" style="display:none;">🗑️ Eliminar Cookies Actuales</button>
+          </div>
+        </div>
+
+        <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
+          <div style="font-weight:600; font-size:0.9rem; margin-bottom:8px;">Subir y Validar Nuevo Archivo cookies.txt</div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <input type="file" id="cookiesFileInput" accept=".txt" style="font-size:0.82rem; background:var(--bg-input); padding:6px 10px; border-radius:6px; border:1px solid var(--border); flex:1; min-width:200px;">
+            <button id="btnUploadValidateCookies" class="btn btn-primary btn-sm" style="min-width:180px;">🚀 Validar y Guardar</button>
+          </div>
+          <div id="cookiesUploadNotice" style="display:none; margin-top:12px; padding:10px 14px; border-radius:8px; font-size:0.82rem;"></div>
         </div>
       </div>
     </div>
+
 
     <!-- TAB 4: CLOUD SYNC -->
     <div id="tab-cloud" class="tab-pane">
@@ -1291,7 +1308,7 @@ async function loadConfigAndCookies() {
     const res = await fetch('/api/admin/config');
     const data = await res.json();
     if (data.config) {
-      document.getElementById('cfgSiteTitle').value = data.config.site_title || '';
+      document.getElementById('cfgSiteTitle').value = data.config.site_title || '⚡ dHtools';
       document.getElementById('cfgSiteSubtitle').value = data.config.site_subtitle || '';
       document.getElementById('cfgDefaultTheme').value = data.config.default_theme || 'cyberpunk';
       document.getElementById('cfgCleanupHours').value = data.config.cleanup_after_hours || 24;
@@ -1306,15 +1323,28 @@ async function loadConfigAndCookies() {
     const res = await fetch('/api/admin/cookies');
     const data = await res.json();
     const badge = document.getElementById('cookiesStatusBadge');
+    const text = document.getElementById('cookiesStatusText');
+    const meta = document.getElementById('cookiesMeta');
+    const btnDelete = document.getElementById('btnDeleteCookies');
+
     if (data.has_cookies) {
-      badge.textContent = `✅ Archivo cargado (${data.lines} líneas, ${data.size_formatted})`;
-      badge.style.color = 'var(--success)';
-      document.getElementById('cookiesTextarea').value = data.content;
-      document.getElementById('cookiesMeta').textContent = `Tamaño: ${data.size_formatted} | Líneas: ${data.lines}`;
+      if (badge) {
+        badge.className = 'status-badge status-online';
+        badge.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Cookies Activas';
+      }
+      if (text) text.innerHTML = `✅ Archivo cookies.txt instalado y protegido (${data.lines} entradas, ${data.size_formatted})`;
+      if (meta) meta.textContent = `Última actualización: ${data.updated_at || 'Reciente'}. El contenido está resguardado por seguridad.`;
+      if (btnDelete) btnDelete.style.display = 'inline-block';
     } else {
-      badge.textContent = '⚠️ Sin cookies.txt configurado';
-      badge.style.color = 'var(--warning)';
-      document.getElementById('cookiesMeta').textContent = 'No hay cookies cargadas actualmente.';
+      if (badge) {
+        badge.className = 'status-badge';
+        badge.style.background = 'rgba(245, 158, 11, 0.2)';
+        badge.style.color = 'var(--warning)';
+        badge.textContent = 'Sin cookies';
+      }
+      if (text) text.innerHTML = '⚠️ No hay archivo cookies.txt instalado.';
+      if (meta) meta.textContent = 'Podés subir un archivo Netscape cookies.txt para desbloquear videos restringidos.';
+      if (btnDelete) btnDelete.style.display = 'none';
     }
   } catch (e) {
     console.error(e);
@@ -1345,21 +1375,72 @@ document.getElementById('formSettings').addEventListener('submit', async (e) => 
   }
 });
 
-document.getElementById('btnSaveCookies').addEventListener('click', async () => {
-  const content = document.getElementById('cookiesTextarea').value;
+document.getElementById('btnUploadValidateCookies')?.addEventListener('click', async () => {
+  const fileInput = document.getElementById('cookiesFileInput');
+  const notice = document.getElementById('cookiesUploadNotice');
+  const btn = document.getElementById('btnUploadValidateCookies');
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showToast('Por favor seleccioná un archivo .txt con formato Netscape cookies.', 'error');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+
+  if (notice) {
+    notice.style.display = 'block';
+    notice.style.background = 'var(--bg-input)';
+    notice.style.border = '1px solid var(--border)';
+    notice.style.color = 'var(--text)';
+    notice.textContent = '⏳ Validando cookies contra YouTube... Por favor aguardá.';
+  }
+  btn.disabled = true;
+
   try {
-    const res = await fetch('/api/admin/cookies', {
+    const res = await fetch('/api/admin/cookies/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content })
+      body: formData,
     });
     const data = await res.json();
-    showToast(data.message || 'Cookies guardadas exitosamente.', 'success');
+    if (!res.ok || data.error) throw new Error(data.error || 'Error al validar cookies');
+
+    if (notice) {
+      notice.style.background = 'rgba(16, 185, 129, 0.15)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--success)';
+      notice.innerHTML = `✅ <strong>${data.message}</strong> (${data.lines} entradas activas, ${data.size_formatted}).`;
+    }
+    showToast('Cookies validadas y activadas exitosamente.', 'success');
+    fileInput.value = '';
     loadConfigAndCookies();
   } catch (e) {
-    showToast('Error al guardar cookies: ' + e.message, 'error');
+    if (notice) {
+      notice.style.background = 'rgba(239, 68, 68, 0.15)';
+      notice.style.border = '1px solid var(--danger)';
+      notice.style.color = 'var(--danger)';
+      notice.textContent = `❌ ${e.message}`;
+    }
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
   }
 });
+
+document.getElementById('btnDeleteCookies')?.addEventListener('click', async () => {
+  if (!confirm('¿Eliminar el archivo cookies.txt actual del servidor?')) return;
+  try {
+    const res = await fetch('/api/admin/cookies', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast('Archivo cookies.txt eliminado.', 'success');
+    loadConfigAndCookies();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+});
+
 
 // 4. Cloud Sync
 async function loadCloudSyncConfig() {
