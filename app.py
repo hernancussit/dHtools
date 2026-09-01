@@ -20,7 +20,8 @@ from yt_dlp.utils import download_range_func
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ytsite_secret_session_key_2026_super_secure")
-APP_VERSION = "2.7.6"
+APP_VERSION = "2.7.7"
+
 
 
 
@@ -2668,6 +2669,188 @@ def download():
     enqueue_job(job_id, job_spec)
 
     return jsonify({"job_id": job_id, "status": "queued"})
+
+
+@app.route("/api/playlist-download", methods=["POST"])
+def playlist_download():
+    data = request.get_json(force=True) or {}
+    items = data.get("items") or []
+    playlist_url = data.get("playlist_url") or ""
+    quality = data.get("quality", "best")
+    video_format = data.get("video_format", "mp4")
+    subtitles = data.get("subtitles", "none")
+    engine = data.get("engine", "auto")
+    folder_name = data.get("folder_name") or "Playlist"
+    group_id = data.get("group_id") or f"pl_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    playlist_delivery = data.get("playlist_delivery", "individual")
+    user_cloud_sync = data.get("user_cloud_sync")
+
+    user = getattr(request, "current_user", {}) or {}
+    owner = user.get("username", "admin")
+
+    if not items and not playlist_url:
+        return jsonify({"error": "No se recibieron elementos de playlist para descargar"}), 400
+
+    created_job_ids = []
+    total_items = len(items)
+
+    if playlist_delivery == "individual" and items:
+        for idx, item in enumerate(items):
+            item_url = item.get("url") or (f"https://www.youtube.com/watch?v={item.get('id')}" if item.get('id') else playlist_url)
+            item_title = item.get("title") or f"Pista {idx + 1}"
+            item_thumb = item.get("thumbnail") or ""
+            item_idx = item.get("index") or (idx + 1)
+            
+            jid = uuid.uuid4().hex
+            job_spec = {
+                "status": "queued",
+                "percent": 0,
+                "file_percent": 0,
+                "completed_count": 0,
+                "total_count": total_items,
+                "current_index": item_idx,
+                "current_title": item_title,
+                "speed": None,
+                "eta_seconds": None,
+                "owner": owner,
+                "url": normalize_url(item_url),
+                "quality": quality,
+                "video_format": video_format,
+                "subtitles": subtitles,
+                "playlist": False,
+                "selected_indexes": [],
+                "playlist_delivery": "individual",
+                "engine": engine,
+                "video_title": item_title,
+                "thumbnail": item_thumb,
+                "deezer_arl": data.get("deezer_arl", "").strip(),
+                "folder_name": folder_name,
+                "group_id": group_id,
+                "item_index": item_idx,
+                "user_cloud_sync": user_cloud_sync,
+                "created_at": time.time(),
+                "logs": [{"time": time.strftime("%H:%M:%S"), "text": f"[*] Pista #{item_idx} '{item_title}' encolada en segundo plano."}],
+                "attempts": [],
+            }
+            enqueue_job(jid, job_spec)
+            created_job_ids.append(jid)
+    else:
+        # Monolithic / ZIP playlist download as 1 master job
+        jid = uuid.uuid4().hex
+        selected_indexes = data.get("selected_indexes") or []
+        job_spec = {
+            "status": "queued",
+            "percent": 0,
+            "completed_count": 0,
+            "total_count": len(selected_indexes) if selected_indexes else total_items,
+            "current_index": None,
+            "current_title": folder_name,
+            "file_percent": 0,
+            "speed": None,
+            "eta_seconds": None,
+            "owner": owner,
+            "url": normalize_url(playlist_url or (items[0].get("url") if items else "")),
+            "quality": quality,
+            "video_format": video_format,
+            "subtitles": subtitles,
+            "playlist": True,
+            "selected_indexes": selected_indexes,
+            "playlist_delivery": playlist_delivery,
+            "engine": engine,
+            "video_title": folder_name,
+            "deezer_arl": data.get("deezer_arl", "").strip(),
+            "folder_name": folder_name,
+            "group_id": group_id,
+            "user_cloud_sync": user_cloud_sync,
+            "created_at": time.time(),
+            "logs": [{"time": time.strftime("%H:%M:%S"), "text": f"[*] Playlist '{folder_name}' encolada para empaquetado ZIP."}],
+            "attempts": [],
+        }
+        enqueue_job(jid, job_spec)
+        created_job_ids.append(jid)
+
+    return jsonify({
+        "success": True,
+        "group_id": group_id,
+        "job_ids": created_job_ids,
+        "total": len(created_job_ids),
+        "folder_name": folder_name,
+    })
+
+
+@app.route("/api/playlist-status/<group_id>")
+def playlist_status(group_id):
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    with JOBS_LOCK:
+        items = []
+        completed_count = 0
+        error_count = 0
+        cancelled_count = 0
+        running_job = None
+        folder_title = None
+
+        for jid, j in JOBS.items():
+            if j.get("group_id") == group_id:
+                if is_admin or j.get("owner") == username:
+                    item = dict(j)
+                    item["job_id"] = jid
+                    items.append(item)
+                    if not folder_title and j.get("folder_name"):
+                        folder_title = j.get("folder_name")
+                    if j.get("status") == "finished":
+                        completed_count += 1
+                    elif j.get("status") == "error":
+                        error_count += 1
+                    elif j.get("status") == "cancelled":
+                        cancelled_count += 1
+                    elif j.get("status") in ("downloading", "processing", "zipping"):
+                        running_job = item
+
+    items.sort(key=lambda x: x.get("item_index", 0))
+    total_count = len(items)
+    all_finished = total_count > 0 and (completed_count + error_count + cancelled_count >= total_count)
+    overall_percent = int((completed_count / total_count * 100)) if total_count > 0 else 0
+
+    return jsonify({
+        "group_id": group_id,
+        "folder_name": folder_title or "Playlist",
+        "total_count": total_count,
+        "completed_count": completed_count,
+        "error_count": error_count,
+        "cancelled_count": cancelled_count,
+        "all_finished": all_finished,
+        "overall_percent": overall_percent,
+        "active_item": running_job,
+        "items": items,
+    })
+
+
+@app.route("/api/playlist-cancel/<group_id>", methods=["POST"])
+def playlist_cancel(group_id):
+    global QUEUE_LIST
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
+    cancelled_count = 0
+    with QUEUE_LOCK:
+        with JOBS_LOCK:
+            for jid, j in list(JOBS.items()):
+                if j.get("group_id") == group_id and (is_admin or j.get("owner") == username):
+                    if j.get("status") in ("queued", "downloading", "processing"):
+                        j["status"] = "cancelled"
+                        j["finished_at"] = time.time()
+                        if "logs" not in j:
+                            j["logs"] = []
+                        j["logs"].append({"time": time.strftime("%H:%M:%S"), "text": "[!] Cancelado por usuario."})
+                        cancelled_count += 1
+            QUEUE_LIST = [jid for jid in QUEUE_LIST if JOBS.get(jid, {}).get("group_id") != group_id or JOBS.get(jid, {}).get("status") not in ("cancelled", "error")]
+    save_queue_state()
+    return jsonify({"success": True, "cancelled_count": cancelled_count, "group_id": group_id})
+
 
 
 

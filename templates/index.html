@@ -786,6 +786,43 @@
       </div>
     </div>
 
+    <!-- PLAYLIST PROGRESS & ITEM-BY-ITEM QUEUE MONITOR -->
+    <div id="playlistProgressCard" style="display:none; margin-bottom:18px; background:var(--bg-card); border-radius:12px; padding:16px; border:1px solid var(--border-highlight); box-shadow:var(--card-shadow);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg, rgba(14,165,233,0.2), rgba(239,68,68,0.2)); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">📁</div>
+          <div>
+            <strong id="playlistProgressTitle" style="font-size:0.95rem; color:var(--text);">Playlist detectada</strong>
+            <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;" id="playlistProgressStats">0 de 0 completados</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span id="playlistOverallBadge" class="brand-badge" style="background:rgba(56,189,248,0.15); color:var(--accent-blue); font-weight:700;">0%</span>
+          <button id="btnCancelPlaylistQueue" class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:3px 8px;">🛑 Cancelar Todo</button>
+        </div>
+      </div>
+
+      <!-- GLOBAL PLAYLIST PROGRESS BAR -->
+      <div class="bar-bg" style="margin-bottom:12px; height:8px;">
+        <div class="bar-fill" id="playlistOverallBar" style="width:0%;"></div>
+      </div>
+
+      <!-- ITEM-BY-ITEM QUEUE LIST -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.75rem; color:var(--muted);">
+        <span>🎵 Elementos de la lista en cola</span>
+        <span id="playlistActiveTrackLabel" style="color:#38bdf8; font-weight:600;"></span>
+      </div>
+      <div id="playlistQueueItemsList" style="display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; padding-right:4px;">
+        <!-- Populated dynamically with each song/video -->
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:0.78rem;">
+        <a id="btnPlaylistZipDownload" href="#" class="btn btn-primary btn-sm" style="display:none; font-size:0.78rem;">📦 Descargar Todo en ZIP</a>
+        <button onclick="document.querySelector('[data-tab=tab-history]').click()" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">📂 Abrir en "Mis Descargas"</button>
+      </div>
+    </div>
+
+
     <!-- ==================== TAB 1: MODO FÁCIL (RÁPIDO) ==================== -->
     <div id="tab-quick" class="tab-pane active">
       <div class="card">
@@ -1578,9 +1615,13 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   const playlistTitle = document.getElementById('quickPlaylistTitle')?.textContent || '';
   
   let selected_indexes = [];
+  let selected_items = [];
   if (isPlaylist) {
     document.querySelectorAll('.chk-quick-item:checked').forEach(c => {
-      selected_indexes.push(parseInt(c.value));
+      const idx = parseInt(c.value);
+      selected_indexes.push(idx);
+      const found = (inspectedPlaylistItems || []).find(it => it.index === idx);
+      if (found) selected_items.push(found);
     });
     if (selected_indexes.length === 0) {
       showToast('Seleccioná al menos un elemento de la lista', 'error');
@@ -1591,31 +1632,58 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   const btn = document.getElementById('btnQuickDownload');
   btn.disabled = true;
   lastRenderedLogCount = 0;
-  appendUserConsole(`[*] [Modo Fácil] Encolando descarga para '${url}' (${quickPreset})...`);
-  startProgressBanner('Encolando descarga en segundo plano...');
 
-  try {
-    const data = await safeApiPost('/api/download', {
-      url,
-      quality: quickPreset,
-      video_format: 'mp4',
-      subtitles: 'none',
-      playlist: isPlaylist,
-      selected_indexes,
-      playlist_delivery: quickDelivery,
-      engine: 'auto',
-      folder_name: isPlaylist ? playlistTitle : null,
-      group_id: isPlaylist ? 'pl_' + Date.now() : null,
-      user_cloud_sync: userCloudCfg
-    });
-    showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
-    fetchQueueState();
-    pollSingleJob(data.job_id, () => { btn.disabled = false; });
-  } catch (e) {
-    showToast(e.message, 'error');
-    appendUserConsole(`[!] Error al iniciar descarga: ${e.message}`);
-    btn.disabled = false;
-    stopProgressBanner();
+  if (isPlaylist && quickDelivery === 'individual' && selected_items.length > 0) {
+    const groupId = 'pl_' + Date.now();
+    appendUserConsole(`[*] [Modo Fácil] Encolando playlist '${playlistTitle}' (${selected_items.length} pistas individuales)...`);
+    try {
+      const data = await safeApiPost('/api/playlist-download', {
+        items: selected_items,
+        playlist_url: url,
+        quality: quickPreset,
+        video_format: 'mp4',
+        subtitles: 'none',
+        playlist_delivery: 'individual',
+        engine: 'auto',
+        folder_name: playlistTitle,
+        group_id: groupId,
+        user_cloud_sync: userCloudCfg
+      });
+      showToast(`¡Se encolaron ${data.total || selected_items.length} canciones de la playlist!`, 'success');
+      fetchQueueState();
+      pollPlaylistGroup(groupId, () => { btn.disabled = false; });
+    } catch (e) {
+      showToast(e.message, 'error');
+      appendUserConsole(`[!] Error al encolar playlist: ${e.message}`);
+      btn.disabled = false;
+    }
+  } else {
+    appendUserConsole(`[*] [Modo Fácil] Encolando descarga para '${url}' (${quickPreset})...`);
+    startProgressBanner('Encolando descarga en segundo plano...');
+
+    try {
+      const data = await safeApiPost('/api/download', {
+        url,
+        quality: quickPreset,
+        video_format: 'mp4',
+        subtitles: 'none',
+        playlist: isPlaylist,
+        selected_indexes,
+        playlist_delivery: quickDelivery,
+        engine: 'auto',
+        folder_name: isPlaylist ? playlistTitle : null,
+        group_id: isPlaylist ? 'pl_' + Date.now() : null,
+        user_cloud_sync: userCloudCfg
+      });
+      showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
+      fetchQueueState();
+      pollSingleJob(data.job_id, () => { btn.disabled = false; });
+    } catch (e) {
+      showToast(e.message, 'error');
+      appendUserConsole(`[!] Error al iniciar descarga: ${e.message}`);
+      btn.disabled = false;
+      stopProgressBanner();
+    }
   }
 });
 
@@ -1651,9 +1719,13 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
   const playlistTitle = document.getElementById('advPlaylistTitle')?.textContent || '';
   
   let selected_indexes = [];
+  let selected_items = [];
   if (isPlaylist) {
     document.querySelectorAll('.chk-adv-item:checked').forEach(c => {
-      selected_indexes.push(parseInt(c.value));
+      const idx = parseInt(c.value);
+      selected_indexes.push(idx);
+      const found = (inspectedPlaylistItems || []).find(it => it.index === idx);
+      if (found) selected_items.push(found);
     });
     if (selected_indexes.length === 0) {
       showToast('Seleccioná al menos un elemento de la lista', 'error');
@@ -1664,36 +1736,67 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
   const btn = document.getElementById('btnAdvDownload');
   btn.disabled = true;
   lastRenderedLogCount = 0;
-  appendUserConsole(`[*] [Modo Avanzado] Encolando extracción (${quality}, motor: ${advEngine})...`);
-  startProgressBanner('Encolando descarga avanzada...');
 
-  try {
-    const data = await safeApiPost('/api/download', {
-      url,
-      quality,
-      video_format: videoFormat,
-      start_time: startTime,
-      end_time: endTime,
-      subtitles,
-      playlist: isPlaylist,
-      selected_indexes,
-      playlist_delivery: advDelivery,
-      engine: advEngine,
-      deezer_arl: deezerArl,
-      folder_name: isPlaylist ? playlistTitle : null,
-      group_id: isPlaylist ? 'pl_' + Date.now() : null,
-      user_cloud_sync: userCloudCfg
-    });
-    showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
-    fetchQueueState();
-    pollSingleJob(data.job_id, () => { btn.disabled = false; });
-  } catch (e) {
-    showToast(e.message, 'error');
-    appendUserConsole(`[!] Error al iniciar descarga avanzada: ${e.message}`);
-    btn.disabled = false;
-    stopProgressBanner();
+  if (isPlaylist && advDelivery === 'individual' && selected_items.length > 0) {
+    const groupId = 'pl_' + Date.now();
+    appendUserConsole(`[*] [Modo Avanzado] Encolando playlist '${playlistTitle}' (${selected_items.length} pistas individuales, motor: ${advEngine})...`);
+    try {
+      const data = await safeApiPost('/api/playlist-download', {
+        items: selected_items,
+        playlist_url: url,
+        quality,
+        video_format: videoFormat,
+        start_time: startTime,
+        end_time: endTime,
+        subtitles,
+        playlist_delivery: 'individual',
+        engine: advEngine,
+        deezer_arl: deezerArl,
+        folder_name: playlistTitle,
+        group_id: groupId,
+        user_cloud_sync: userCloudCfg
+      });
+      showToast(`¡Se encolaron ${data.total || selected_items.length} canciones de la playlist!`, 'success');
+      fetchQueueState();
+      pollPlaylistGroup(groupId, () => { btn.disabled = false; });
+    } catch (e) {
+      showToast(e.message, 'error');
+      appendUserConsole(`[!] Error al encolar playlist: ${e.message}`);
+      btn.disabled = false;
+    }
+  } else {
+    appendUserConsole(`[*] [Modo Avanzado] Encolando extracción (${quality}, motor: ${advEngine})...`);
+    startProgressBanner('Encolando descarga avanzada...');
+
+    try {
+      const data = await safeApiPost('/api/download', {
+        url,
+        quality,
+        video_format: videoFormat,
+        start_time: startTime,
+        end_time: endTime,
+        subtitles,
+        playlist: isPlaylist,
+        selected_indexes,
+        playlist_delivery: advDelivery,
+        engine: advEngine,
+        deezer_arl: deezerArl,
+        folder_name: isPlaylist ? playlistTitle : null,
+        group_id: isPlaylist ? 'pl_' + Date.now() : null,
+        user_cloud_sync: userCloudCfg
+      });
+      showToast('¡Descarga agregada a la cola en segundo plano!', 'success');
+      fetchQueueState();
+      pollSingleJob(data.job_id, () => { btn.disabled = false; });
+    } catch (e) {
+      showToast(e.message, 'error');
+      appendUserConsole(`[!] Error al iniciar descarga avanzada: ${e.message}`);
+      btn.disabled = false;
+      stopProgressBanner();
+    }
   }
 });
+
 
 // 3. Batch Mode Download
 document.getElementById('btnBatchDownload')?.addEventListener('click', async () => {
@@ -1842,6 +1945,93 @@ function pollBatchJob(batchId, onFinish) {
   }, 1500);
 }
 
+let activePlaylistInterval = null;
+
+function pollPlaylistGroup(groupId, onFinish) {
+  const card = document.getElementById('playlistProgressCard');
+  const title = document.getElementById('playlistProgressTitle');
+  const stats = document.getElementById('playlistProgressStats');
+  const bar = document.getElementById('playlistOverallBar');
+  const badge = document.getElementById('playlistOverallBadge');
+  const list = document.getElementById('playlistQueueItemsList');
+  const btnCancelAll = document.getElementById('btnCancelPlaylistQueue');
+  const activeTrackLbl = document.getElementById('playlistActiveTrackLabel');
+
+  card.style.display = 'block';
+  btnCancelAll.onclick = async () => {
+    try {
+      await safeApiPost(`/api/playlist-cancel/${groupId}`, {});
+      showToast('Se cancelaron los elementos restantes de la playlist', 'info');
+      fetchQueueState();
+    } catch (e) {}
+  };
+
+  if (activePlaylistInterval) clearInterval(activePlaylistInterval);
+
+  activePlaylistInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/playlist-status/${groupId}`);
+      const data = await res.json();
+      
+      title.textContent = data.folder_name || 'Playlist';
+      stats.textContent = `${data.completed_count || 0} de ${data.total_count || 0} completados (${data.error_count || 0} errores, ${data.cancelled_count || 0} cancelados)`;
+      const pct = data.overall_percent || 0;
+      bar.style.width = pct + '%';
+      badge.textContent = pct + '%';
+
+      if (data.active_item) {
+        activeTrackLbl.textContent = `Descargando: ${data.active_item.current_title || data.active_item.video_title || ''}`;
+      } else {
+        activeTrackLbl.textContent = '';
+      }
+
+      // Render Item-By-Item Queue Status
+      list.innerHTML = (data.items || []).map(it => {
+        let statusBadge = '';
+        if (it.status === 'finished') {
+          statusBadge = '<span class="status-badge status-online" style="font-size:0.7rem; padding:2px 6px;">✅ Listo</span>';
+        } else if (it.status === 'downloading' || it.status === 'processing') {
+          statusBadge = `<span class="status-badge" style="background:rgba(56,189,248,0.2); color:#38bdf8; font-size:0.7rem; padding:2px 6px;">⬇️ ${it.file_percent || it.percent || 0}%</span>`;
+        } else if (it.status === 'cancelled') {
+          statusBadge = '<span class="status-badge" style="background:rgba(148,163,184,0.2); color:var(--muted); font-size:0.7rem; padding:2px 6px;">🚫 Cancelado</span>';
+        } else if (it.status === 'error') {
+          statusBadge = '<span class="status-badge status-offline" style="font-size:0.7rem; padding:2px 6px;">❌ Error</span>';
+        } else {
+          statusBadge = '<span class="status-badge" style="background:rgba(255,255,255,0.06); color:var(--muted); font-size:0.7rem; padding:2px 6px;">⏳ En cola</span>';
+        }
+
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); border:1px solid ${it.status === 'downloading' ? 'var(--accent-blue)' : 'var(--border)'}; border-radius:8px; padding:6px 10px; font-size:0.8rem; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; overflow:hidden; flex:1;">
+              <span style="color:var(--muted); font-weight:700; width:22px; flex-shrink:0;">#${it.item_index || 1}</span>
+              ${it.thumbnail ? `<img src="${it.thumbnail}" style="width:28px; height:28px; border-radius:4px; object-fit:cover; flex-shrink:0;">` : ''}
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;" title="${it.video_title || it.url}">${it.video_title || it.url}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              ${statusBadge}
+              ${it.status === 'queued' ? `<button class="btn btn-danger btn-sm" style="padding:1px 6px; font-size:0.68rem;" onclick="cancelQueueItem('${it.job_id}')" title="Quitar de la cola">✕</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      fetchQueueState();
+
+      if (data.all_finished) {
+        clearInterval(activePlaylistInterval);
+        activePlaylistInterval = null;
+        if (onFinish) onFinish();
+        showToast(`¡Playlist '${data.folder_name}' completada con éxito!`, 'success');
+        loadRecentDownloads();
+      }
+    } catch (e) {
+      clearInterval(activePlaylistInterval);
+      activePlaylistInterval = null;
+      if (onFinish) onFinish();
+    }
+  }, 1000);
+}
+
 // ==================== BACKGROUND QUEUE MANAGER ====================
 async function fetchQueueState() {
   try {
@@ -1892,18 +2082,20 @@ function renderQueueState(data) {
         <div class="queue-item-row">
           <div style="display:flex; align-items:center; gap:10px; overflow:hidden; flex:1;">
             <span class="queue-badge-pos">#${idx + 1}</span>
-            <div style="overflow:hidden;">
+            ${item.thumbnail ? `<img src="${item.thumbnail}" style="width:36px; height:36px; border-radius:6px; object-fit:cover; flex-shrink:0;">` : ''}
+            <div style="overflow:hidden; flex:1;">
               <div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.video_title || item.url}">
-                ${item.video_title || item.url}
+                ${item.item_index ? `<span style="color:var(--accent-blue); margin-right:4px;">[#${item.item_index}]</span>` : ''}${item.video_title || item.url}
               </div>
-              <div style="font-size:0.75rem; color:var(--muted); display:flex; gap:8px; margin-top:2px;">
+              <div style="font-size:0.75rem; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:2px; flex-wrap:wrap;">
+                ${item.folder_name ? `<span class="brand-badge" style="font-size:0.65rem; background:rgba(236,72,153,0.15); color:#f472b6;">📁 ${item.folder_name}</span>` : ''}
                 <span class="brand-badge" style="font-size:0.65rem;">${item.quality || 'Auto'}</span>
                 <span class="brand-badge" style="font-size:0.65rem; background:rgba(255,255,255,0.05);">${item.engine || 'auto'}</span>
                 <span>👤 ${item.owner || 'admin'}</span>
               </div>
             </div>
           </div>
-          <div style="display:flex; gap:4px;">
+          <div style="display:flex; gap:4px; align-items:center;">
             <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'up')" title="Subir prioridad" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
             <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'down')" title="Bajar prioridad" ${idx === queue.length - 1 ? 'disabled' : ''}>⬇️</button>
             <button class="btn btn-danger btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="cancelQueueItem('${item.job_id}')" title="Quitar de la cola">🗑️</button>
@@ -1912,6 +2104,7 @@ function renderQueueState(data) {
       `).join('');
     }
   }
+
 
   // Completed History
   const compList = document.getElementById('queueCompletedList');

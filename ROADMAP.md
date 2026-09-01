@@ -219,6 +219,16 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - [x] Inclusión del trabajo activo en `cancel_all_queue` para detener descargas en curso.
   - [x] Limpieza de temporales y preservación del estado `cancelled`.
 
+---
+
+## 🎯 Versión `v2.7.7` (Completado)
+- [x] **Cola y Sección de Descargas Ítem por Ítem para Playlists:**
+  - [x] Endpoint `/api/playlist-download` para encolar pistas individuales con metadatos.
+  - [x] Componente `playlistProgressCard` con monitoreo en vivo de cada pista.
+  - [x] Identificación de carpeta contenedora y badges en la cola en segundo plano.
+  - [x] Agrupación automática en carpetas en "Mis Descargas".
+
+
 
 
 

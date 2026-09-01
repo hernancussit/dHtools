@@ -4,7 +4,23 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.7.7] - 2026-09-01
+
+### 📋 Visualización y Gestión de Playlists Ítem por Ítem en Cola y Descargas
+- **🎵 Encolado Individual de Pistas de Playlists (`/api/playlist-download`):**
+  - Al descargar playlists en modo individual, cada video/pista seleccionado se encola como un elemento independiente con su propio índice, título, miniatura, progreso y estado en tiempo real.
+- **📊 Monitor de Progreso Ítem por Ítem en la Sección de Descargas:**
+  - Nueva tarjeta visual `playlistProgressCard` que muestra la lista completa de pistas de la playlist en curso con badges en vivo (`⏳ En cola`, `⬇️ Descargando`, `✅ Listo`, `❌ Error`, `🚫 Cancelado`) y porcentaje general.
+  - Botón de cancelación selectiva por ítem y cancelación global de la playlist en 1 solo clic.
+- **🏷️ Identificación de Playlists en la Cola en Segundo Plano:**
+  - Cada trabajo en la pestaña "Cola en Segundo Plano" muestra la etiqueta de su carpeta contenedora (`📁 [Nombre Playlist]`), número de orden (`[#1]`, `[#2]`), controles de prioridad (⬆️/⬇️) y botón para quitar de la cola.
+- **📁 Agrupación y Persistencia Automática:**
+  - Todas las pistas individuales descargadas se agrupan automáticamente bajo la tarjeta de su playlist en "Mis Descargas".
+
+---
+
 ## [2.7.6] - 2026-09-01
+
 
 ### 🛑 Cancelación Inmediata de Descargas y Playlists
 - **⚡ Aborto Instantáneo en yt-dlp, Cascada y Servidor:**
