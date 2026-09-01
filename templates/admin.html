@@ -567,13 +567,54 @@
             <div style="font-weight:600; margin-bottom:4px;">Prueba Global de Extracción</div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:12px;">Verifica la conectividad con YouTube, Deezer y microservicios.</div>
             <button id="btnTestEngines" class="btn btn-secondary" style="width:100%;">🧪 Ejecutar Test de Diagnóstico</button>
-          </div>
         </div>
 
+        <!-- dHtools Git & System Updates Card -->
+        <div style="margin-top:20px; background:#0d1527; padding:18px; border-radius:10px; border:1px solid var(--border-highlight); box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.3rem;">🌿</span>
+              <div>
+                <strong style="font-size:0.95rem; color:var(--text);">Sistema & Actualizaciones de dHtools</strong>
+                <div style="font-size:0.75rem; color:var(--muted);">Gestión de versiones, cambio de canal (Estable vs Dev) y Rollback automático.</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:0.75rem; color:var(--muted); margin:0;">Canal / Rama:</label>
+              <select id="gitBranchSelector" style="padding:4px 8px; font-size:0.78rem; border-radius:6px; background:var(--bg-card); color:var(--text); border:1px solid var(--border);">
+                <option value="main">🟢 Estable (main)</option>
+                <option value="dev">🧪 Desarrollo / Beta (dev)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:14px; background:#090e1a; padding:12px; border-radius:8px; border:1px solid var(--border); font-size:0.8rem;">
+            <div>
+              <span style="color:var(--muted);">Versión Instalada:</span>
+              <strong id="gitAppVersion" style="color:var(--accent-blue); margin-left:4px;">v1.0.0</strong>
+            </div>
+            <div>
+              <span style="color:var(--muted);">Commit Activo:</span>
+              <code id="gitCurrentCommit" style="color:#f472b6; margin-left:4px;">-</code>
+            </div>
+            <div>
+              <span style="color:var(--muted);">Estado Remoto:</span>
+              <span id="gitStatusBadge" class="brand-badge" style="margin-left:4px; font-size:0.7rem;">Consultando...</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btnCheckGitUpdate" class="btn btn-secondary btn-sm" style="flex:1; min-width:140px;">🔍 Buscar Actualizaciones</button>
+            <button id="btnApplyGitUpdate" class="btn btn-primary btn-sm" style="flex:1; min-width:140px;" disabled>🚀 Actualizar Ahora</button>
+            <button id="btnGitRollback" class="btn btn-danger btn-sm" style="flex:1; min-width:140px; display:none;">⏪ Rollback (Restaurar)</button>
+          </div>
+          <div id="gitUpdateNotice" style="display:none; margin-top:12px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
+        </div>
 
         <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0b1220; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
       </div>
     </div>
+
 
     <!-- TAB 3: SETTINGS & COOKIES -->
     <div id="tab-settings" class="tab-pane">
@@ -1127,7 +1168,124 @@ document.getElementById('btnTestEngines').addEventListener('click', async () => 
   }
 });
 
+// Git & System Updates
+async function loadGitStatus() {
+  const versionEl = document.getElementById('gitAppVersion');
+  const commitEl = document.getElementById('gitCurrentCommit');
+  const badgeEl = document.getElementById('gitStatusBadge');
+  const selector = document.getElementById('gitBranchSelector');
+  const btnUpdate = document.getElementById('btnApplyGitUpdate');
+  const btnRollback = document.getElementById('btnGitRollback');
+
+  try {
+    const res = await fetch('/api/admin/git-status');
+    const data = await res.json();
+    if (versionEl) versionEl.textContent = `v${data.app_version || '1.0.0'}`;
+    if (commitEl) commitEl.textContent = `${data.git?.branch || 'main'} @ ${data.git?.commit || '-'}`;
+    if (selector && data.git?.branch) selector.value = data.git.branch;
+
+    if (data.update_available) {
+      badgeEl.className = 'status-badge';
+      badgeEl.style.background = 'rgba(245, 158, 11, 0.2)';
+      badgeEl.style.color = 'var(--warning)';
+      badgeEl.innerHTML = `⚠️ Actualización disponible (${data.remote_commit})`;
+      if (btnUpdate) btnUpdate.disabled = false;
+    } else {
+      badgeEl.className = 'status-badge status-online';
+      badgeEl.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Al día';
+      if (btnUpdate) btnUpdate.disabled = true;
+    }
+
+    if (btnRollback) {
+      if (data.rollback_available) {
+        btnRollback.style.display = 'inline-flex';
+        btnRollback.title = `Rollback al commit anterior: ${data.rollback_info?.previous_commit || ''}`;
+      } else {
+        btnRollback.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    if (badgeEl) badgeEl.textContent = 'Error de conexión';
+  }
+}
+
+document.getElementById('gitBranchSelector')?.addEventListener('change', async (e) => {
+  const targetBranch = e.target.value;
+  if (!confirm(`¿Cambiar el canal del servidor a la rama "${targetBranch}"? El servicio se reiniciará automáticamente.`)) {
+    loadGitStatus();
+    return;
+  }
+  showToast(`Cambiando a rama ${targetBranch}...`, 'info');
+  try {
+    const res = await fetch('/api/admin/git-switch-branch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ branch: targetBranch })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message, 'success');
+    setTimeout(() => { window.location.reload(); }, 4000);
+  } catch (e) {
+    showToast('Error al cambiar de rama: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnCheckGitUpdate')?.addEventListener('click', async () => {
+  showToast('Comprobando actualizaciones en GitHub...', 'info');
+  await loadGitStatus();
+  showToast('Estado de Git actualizado.', 'success');
+});
+
+document.getElementById('btnApplyGitUpdate')?.addEventListener('click', async () => {
+  if (!confirm('¿Deseas descargar e instalar la última versión ahora? El servidor se reiniciará en 2 segundos.')) return;
+  const notice = document.getElementById('gitUpdateNotice');
+  if (notice) {
+    notice.style.display = 'block';
+    notice.style.background = 'var(--bg-input)';
+    notice.style.border = '1px solid var(--border)';
+    notice.style.color = 'var(--text)';
+    notice.textContent = '⏳ Descargando actualización desde GitHub...';
+  }
+  try {
+    const res = await fetch('/api/admin/git-update', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (notice) {
+      notice.style.background = 'rgba(16, 185, 129, 0.15)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--success)';
+      notice.textContent = data.message;
+    }
+    showToast(data.message, 'success');
+    setTimeout(() => { window.location.reload(); }, 4000);
+  } catch (e) {
+    if (notice) {
+      notice.style.background = 'rgba(239, 68, 68, 0.15)';
+      notice.style.border = '1px solid var(--danger)';
+      notice.style.color = 'var(--danger)';
+      notice.textContent = 'Error: ' + e.message;
+    }
+    showToast('Error al actualizar: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnGitRollback')?.addEventListener('click', async () => {
+  if (!confirm('¿CONFIRMAS RESTAURAR EL ESTADO ANTERIOR (ROLLBACK)? Se restaurará el commit previo y se reiniciará el contenedor.')) return;
+  showToast('Ejecutando Rollback...', 'info');
+  try {
+    const res = await fetch('/api/admin/git-rollback', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message, 'success');
+    setTimeout(() => { window.location.reload(); }, 4000);
+  } catch (e) {
+    showToast('Error al ejecutar rollback: ' + e.message, 'error');
+  }
+});
+
 // 3. Settings & Cookies
+
 async function loadConfigAndCookies() {
   try {
     const res = await fetch('/api/admin/config');
@@ -1472,6 +1630,7 @@ document.getElementById('logoutBtn')?.addEventListener('click', () => {
 document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadServicesStatus();
   loadEnginesInfo();
+  loadGitStatus();
   loadConfigAndCookies();
   loadCloudSyncConfig();
   loadUsers();
@@ -1481,10 +1640,12 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
 // Initial loads
 loadServicesStatus();
 loadEnginesInfo();
+loadGitStatus();
 loadConfigAndCookies();
 loadCloudSyncConfig();
 loadUsers();
 setInterval(loadServicesStatus, 20000);
+
 </script>
 </body>
 </html>

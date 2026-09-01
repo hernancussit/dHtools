@@ -9,8 +9,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./downloads:/app/downloads
-      - ./cookies.txt:/app/cookies.txt
+      - .:/app
+
     restart: unless-stopped
 
   potprovider:
