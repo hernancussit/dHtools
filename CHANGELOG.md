@@ -6,6 +6,25 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ---
 
+## [1.4.0] - 2026-09-01
+
+### ✨ Novedades y Características
+- **Personalización Visual y Selector de Temas:**
+  - Selector de 4 temas visuales con persistencia en `localStorage`:
+    - 🌌 **Cyberpunk / Midnight Neon** (Degradados azul/púrpura de alta estética).
+    - 🖤 **OLED Black** (Negro puro para pantallas OLED y contraste máximo).
+    - 🌲 **Emerald Forest** (Verde esmeralda y tonos oscuros naturales).
+    - ☀️ **Light Modern** (Tema claro elegante).
+  - Selector de tema predeterminado global configurable desde el panel de administración.
+  - Personalización de **Título del Sitio** y **Subtítulo** en tiempo real desde `/admin`.
+- **Soporte de Formatos de Video y Audio Avanzados:**
+  - **Video:** Selector de contenedor de salida: `MP4` (universal), `MKV` (Matroska) y `WebM`.
+  - **Audio:** Selector ampliado de formatos: `MP3` (128, 192, 256, 320 kbps), `FLAC` (sin pérdida / Lossless), `M4A` (AAC), `Opus` y `WAV`.
+- **Soporte de Subtítulos:**
+  - Opciones de subtítulos configurables: Sin subtítulos, Incrustar subtítulos en el video (*embed*) o Descargar archivo `.srt`/`.vtt` independiente.
+
+---
+
 ## [1.3.0] - 2026-09-01
 
 ### ✨ Novedades y Características

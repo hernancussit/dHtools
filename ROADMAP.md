@@ -62,13 +62,14 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-### 📌 Versión 1.4.0 — Personalización y Experiencia Visual
-- [ ] **Customización de la Interfaz:**
-  - Selector de temas visuales (Dark Mode moderno, OLED Black, Light Mode, Cyberpunk).
-  - Posibilidad de personalizar el título del sitio, logotipo y colores de acento desde el panel de administración.
-- [ ] **Subtítulos y Formatos Avanzados:**
-  - Selector de formatos adicionales de video (MKV, WebM, MP4) y audio (FLAC, M4A, Opus, WAV).
-  - Opción para incrustar o descargar subtítulos en formato `.srt` / `.vtt`.
+## 🎯 Versión `v1.4.0` (Completado)
+- [x] **Customización de la Interfaz:**
+  - [x] Selector de temas visuales (Cyberpunk Midnight, OLED Black, Emerald Forest, Light Modern).
+  - [x] Personalización del título del sitio, subtítulo y tema predeterminado desde `/admin`.
+- [x] **Subtítulos y Formatos Avanzados:**
+  - [x] Selector de formatos adicionales de video (`MP4`, `MKV`, `WebM`) y audio (`MP3`, `FLAC`, `M4A`, `Opus`, `WAV`).
+  - [x] Opción para incrustar o descargar subtítulos en formato `.srt` / `.vtt`.
+
 
 ---
 

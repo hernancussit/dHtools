@@ -231,6 +231,9 @@ DISK_EMERGENCY_MIN_FREE_GB = float(os.environ.get("DISK_EMERGENCY_MIN_FREE_GB", 
 
 def load_config() -> dict:
     default_cfg = {
+        "site_title": "🎬 Descargador Multimedia",
+        "site_subtitle": "Descargá videos, playlists o música pegando el enlace.",
+        "default_theme": "cyberpunk",
         "cleanup_after_hours": CLEANUP_AFTER_HOURS,
         "disk_emergency_threshold": DISK_EMERGENCY_THRESHOLD_PERCENT,
         "default_engine": "ytdlp",
@@ -475,7 +478,7 @@ def extract_with_fallback(url, ydl_opts_base, download):
 
 
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 
 
 def normalize_url(url: str) -> str:
@@ -755,7 +758,8 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
 
 @app.route("/")
 def index():
-    return render_template("index.html", version=APP_VERSION)
+    cfg = load_config()
+    return render_template("index.html", version=APP_VERSION, config=cfg)
 
 
 @app.route("/api/version")
@@ -816,7 +820,8 @@ def recent_downloads():
 @app.route("/admin")
 @require_admin
 def admin_panel():
-    return render_template("admin.html", version=APP_VERSION)
+    cfg = load_config()
+    return render_template("admin.html", version=APP_VERSION, config=cfg)
 
 
 @app.route("/api/admin/services-status")
@@ -869,6 +874,12 @@ def admin_config():
     if request.method == "POST":
         data = request.get_json(force=True) or {}
         cfg = load_config()
+        if "site_title" in data:
+            cfg["site_title"] = str(data["site_title"]).strip() or "🎬 Descargador Multimedia"
+        if "site_subtitle" in data:
+            cfg["site_subtitle"] = str(data["site_subtitle"]).strip()
+        if "default_theme" in data:
+            cfg["default_theme"] = str(data["default_theme"]).strip()
         if "cleanup_after_hours" in data:
             cfg["cleanup_after_hours"] = float(data["cleanup_after_hours"])
             CLEANUP_AFTER_HOURS = cfg["cleanup_after_hours"]
@@ -880,6 +891,7 @@ def admin_config():
         save_config(cfg)
         return jsonify({"message": "Configuración guardada exitosamente", "config": cfg})
     return jsonify({"config": load_config()})
+
 
 
 @app.route("/api/admin/cookies", methods=["GET", "POST"])
@@ -1140,7 +1152,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
 
 
 def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
-                  start_time=None, end_time=None):
+                  start_time=None, end_time=None, video_format="mp4", subtitles="none"):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
 
@@ -1184,24 +1196,48 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             job["percent"] = min(100, int((job["completed_count"] + file_fraction) / total_for_pct * 100))
 
     try:
+        container_fmt = video_format if video_format in ("mp4", "mkv", "webm") else "mp4"
         ydl_opts = {
             "outtmpl": os.path.join(job_dir, "%(title)s.%(ext)s"),
             "format": format_for_quality(quality),
             "format_sort": ["res", "fps", "vcodec:av01", "acodec:opus"],
             "noplaylist": not playlist_mode,
             "progress_hooks": [hook],
-            "merge_output_format": "mp4",
+            "merge_output_format": container_fmt,
             "quiet": True,
             "no_warnings": True,
             **cookies_opts(),
         }
 
+        if subtitles in ("embed", "download"):
+            ydl_opts["writesubtitles"] = True
+            ydl_opts["writeautomaticsub"] = True
+            ydl_opts["subtitleslangs"] = ["es", "en"]
+            if subtitles == "embed" and not is_audio_quality(quality):
+                ydl_opts["postprocessors"] = [{
+                    "key": "FFmpegEmbedSubtitle",
+                    "already_have_subtitle": False,
+                }]
+
         if is_audio_quality(quality):
-            ydl_opts["postprocessors"] = [{
+            audio_ext_map = {
+                "audio_flac": "flac",
+                "audio_m4a": "m4a",
+                "audio_opus": "opus",
+                "audio_wav": "wav",
+            }
+            target_codec = audio_ext_map.get(quality, "mp3")
+            pp = {
                 "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": AUDIO_BITRATES.get(quality, "192"),
-            }]
+                "preferredcodec": target_codec,
+            }
+            if target_codec == "mp3":
+                pp["preferredquality"] = AUDIO_BITRATES.get(quality, "192")
+
+            if "postprocessors" in ydl_opts:
+                ydl_opts["postprocessors"].append(pp)
+            else:
+                ydl_opts["postprocessors"] = [pp]
             ydl_opts.pop("merge_output_format", None)
 
         if not playlist_mode and (start_time is not None or end_time is not None):
@@ -1251,6 +1287,8 @@ def download():
     data = request.get_json(force=True)
     raw_url = (data or {}).get("url", "").strip()
     quality = (data or {}).get("quality", "best")
+    video_format = (data or {}).get("video_format", "mp4")
+    subtitles = (data or {}).get("subtitles", "none")
     playlist_mode = bool((data or {}).get("playlist", False))
     total_count = int((data or {}).get("total_count") or 0)
     start_raw = (data or {}).get("start_time")
@@ -1311,12 +1349,13 @@ def download():
     else:
         thread = threading.Thread(
             target=run_download,
-            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time),
+            args=(job_id, url, quality, playlist_mode, total_count, start_time, end_time, video_format, subtitles),
             daemon=True,
         )
     thread.start()
 
     return jsonify({"job_id": job_id})
+
 
 
 
