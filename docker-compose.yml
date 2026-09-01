@@ -1,5 +1,5 @@
 services:
-  ytsite:
+  dhtools:
     build: .
     container_name: yt-downloader
     depends_on:

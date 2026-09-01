@@ -1,6 +1,6 @@
-# 📚 Wiki Técnica & Arquitectura del Sistema: ytsite
+# 📚 Wiki Técnica & Arquitectura del Sistema: dHtools
 
-Documentación técnica detallada sobre el funcionamiento interno, componentes, microservicios y flujos de trabajo de la plataforma multimedia **ytsite**.
+Documentación técnica detallada sobre el funcionamiento interno, componentes, microservicios y flujos de trabajo de la plataforma multimedia **dHtools**.
 
 ---
 
@@ -22,7 +22,7 @@ Documentación técnica detallada sobre el funcionamiento interno, componentes, 
 
 ## 1. Introducción & Visión General
 
-**ytsite** es una plataforma web autohospedada diseñada para la descarga, conversión, etiquetado y distribución de contenido multimedia proveniente de más de 1.800 plataformas de internet.
+**dHtools** es una plataforma web autohospedada diseñada para la descarga, conversión, etiquetado y distribución de contenido multimedia proveniente de más de 1.800 plataformas de internet.
 
 ### Objetivos Clave:
 - **Resistencia a Bloqueos:** Desacopla la lógica de extracción de los desafíos antibot mediante servidores de Proof-of-Origin (PO Tokens) y motores JavaScript dedicados.
@@ -38,7 +38,7 @@ El sistema opera mediante contenedores Docker orquestados con `docker-compose`:
 ```mermaid
 graph TD
     Client["🌐 Usuario / Navegador"] -->|HTTPS :443| Nginx["Nginx Reverse Proxy (HestiaCP)"]
-    Nginx -->|Proxy Pass :5000| Flask["yt-downloader (Flask + Gunicorn)"]
+    Nginx -->|Proxy Pass :5000| Flask["dHtools (Flask + Gunicorn)"]
     
     Flask -->|Generación de PO Token :4416| PotProvider["pot-provider (bgutil HTTP)"]
     Flask -->|Resolución de Scripts JS| Deno["Deno JS Engine (Local Container)"]
@@ -50,10 +50,11 @@ graph TD
 ```
 
 ### Componentes:
-1. **`yt-downloader` (`ytsite` en `:5000`):**
+1. **`dHtools` (`yt-downloader` en `:5000`):**
    - Núcleo de la aplicación en Python (Flask + Gunicorn multihilo).
    - Administra colas de descargas, API REST, renderizado de plantillas y autenticación.
 2. **`pot-provider` (`potprovider` en `:4416`):**
+
    - Microservicio ligero basado en `bgutil-ytdlp-pot-provider`.
    - Genera tokens criptográficos Proof-of-Origin (`visitor_data` y `po_token`) para evitar bloqueos de YouTube.
 3. **`cobalt-api` (`cobalt` en `:9000`):**
