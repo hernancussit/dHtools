@@ -70,8 +70,9 @@ def validate_media_url(url: str) -> bool:
     url = url.strip()
     if len(url) > 2048:
         return False
-    # Check for forbidden shell metacharacters / control chars
-    if any(c in url for c in [";", "&", "|", "`", "$", "\n", "\r", "\t", "<", ">"]):
+    # Check for forbidden shell metacharacters / control chars / quotes (note: & is allowed as standard URL query delimiter)
+    forbidden = [";", "|", "`", "$", "\n", "\r", "\t", "<", ">", '"', "'", "\0", "\\"]
+    if any(c in url for c in forbidden):
         return False
     try:
         parsed = urllib.parse.urlparse(url)
@@ -82,6 +83,7 @@ def validate_media_url(url: str) -> bool:
         return True
     except Exception:
         return False
+
 
 
 def safe_download_path(filename_or_subpath: str) -> str:
