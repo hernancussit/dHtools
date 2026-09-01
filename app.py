@@ -30,6 +30,32 @@ COBALT_URL = os.environ.get("COBALT_URL", "http://cobalt:9000/")
 START_TIME = time.time()
 
 
+def cookies_opts():
+    if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
+        return {"cookiefile": COOKIES_FILE}
+    return {}
+
+
+PLAYER_CLIENTS_ENV = os.environ.get("PLAYER_CLIENTS", "default").strip()
+
+
+def player_client_opts(clients=None):
+    opts = {
+        "extractor_args": {
+            "youtubepot-bgutilhttp": {"base_url": [POT_PROVIDER_URL]},
+        }
+    }
+    target = clients
+    if target is None and PLAYER_CLIENTS_ENV and PLAYER_CLIENTS_ENV != "default":
+        target = PLAYER_CLIENTS_ENV.split(",")
+    if target and target != ["default"] and target != "default":
+        if isinstance(target, str):
+            target = [target]
+        opts["extractor_args"]["youtube"] = {"player_client": target}
+    return opts
+
+
+
 def hash_password(password: str) -> str:
     salt = "ytsite_salt_2026"
     return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
@@ -1157,32 +1183,33 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             file_fraction = (job.get("file_percent") or 0) / 100
             job["percent"] = min(100, int((job["completed_count"] + file_fraction) / total_for_pct * 100))
 
-    ydl_opts = {
-        "outtmpl": os.path.join(job_dir, "%(title)s.%(ext)s"),
-        "format": format_for_quality(quality),
-        "format_sort": ["res", "fps", "vcodec:av01", "acodec:opus"],
-        "noplaylist": not playlist_mode,
-        "progress_hooks": [hook],
-        "merge_output_format": "mp4",
-        "quiet": True,
-        "no_warnings": True,
-        **cookies_opts(),
-    }
-
-    if is_audio_quality(quality):
-        ydl_opts["postprocessors"] = [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": "mp3",
-            "preferredquality": AUDIO_BITRATES.get(quality, "192"),
-        }]
-        ydl_opts.pop("merge_output_format", None)
-
-    if not playlist_mode and (start_time is not None or end_time is not None):
-        ydl_opts["download_ranges"] = download_range_func(None, [(start_time or 0, end_time or None)])
-        ydl_opts["force_keyframes_at_cuts"] = True
-
     try:
+        ydl_opts = {
+            "outtmpl": os.path.join(job_dir, "%(title)s.%(ext)s"),
+            "format": format_for_quality(quality),
+            "format_sort": ["res", "fps", "vcodec:av01", "acodec:opus"],
+            "noplaylist": not playlist_mode,
+            "progress_hooks": [hook],
+            "merge_output_format": "mp4",
+            "quiet": True,
+            "no_warnings": True,
+            **cookies_opts(),
+        }
+
+        if is_audio_quality(quality):
+            ydl_opts["postprocessors"] = [{
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": AUDIO_BITRATES.get(quality, "192"),
+            }]
+            ydl_opts.pop("merge_output_format", None)
+
+        if not playlist_mode and (start_time is not None or end_time is not None):
+            ydl_opts["download_ranges"] = download_range_func(None, [(start_time or 0, end_time or None)])
+            ydl_opts["force_keyframes_at_cuts"] = True
+
         info_result = extract_with_fallback(url, ydl_opts, download=True)
+
 
         title = info_result.get("title", "descarga")
 
