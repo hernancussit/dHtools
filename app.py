@@ -664,11 +664,8 @@ def extract_with_fallback(url, ydl_opts_base, download):
     raise last_exc
 
 
-
-APP_VERSION = "2.0.0"
-
-
 def normalize_url(url: str) -> str:
+
     url = url.strip()
     # Normalize YouTube Shorts to standard watch URL for maximum compatibility
     shorts_match = re.match(r"^https?://(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]+)", url)
