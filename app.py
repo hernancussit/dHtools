@@ -920,6 +920,12 @@ def recent_downloads():
     return jsonify({"downloads": items[:20]})
 
 
+@app.route("/wiki")
+def wiki_page():
+    cfg = load_config()
+    return render_template("wiki.html", version=APP_VERSION, config=cfg)
+
+
 # ==================== ADMIN PANEL & API ====================
 
 @app.route("/admin")
@@ -927,6 +933,7 @@ def recent_downloads():
 def admin_panel():
     cfg = load_config()
     return render_template("admin.html", version=APP_VERSION, config=cfg)
+
 
 
 @app.route("/api/admin/services-status")

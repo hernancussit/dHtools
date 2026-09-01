@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="cyberpunk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<title>Wiki Técnica - {{ (config and config.site_title) or 'ytsite' }}</title>
+<style>
+  :root, [data-theme="cyberpunk"] {
+    --bg-gradient: linear-gradient(160deg, #0f172a, #1e1b4b);
+    --bg-card: #1e293b;
+    --bg-input: #0f172a;
+    --accent: #ef4444;
+    --accent-2: #f87171;
+    --accent-blue: #38bdf8;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --border: #334155;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --code-bg: #090d16;
+  }
+  [data-theme="oled"] {
+    --bg-gradient: #000000;
+    --bg-card: #0a0a0a;
+    --bg-input: #121212;
+    --accent: #e11d48;
+    --accent-2: #fb7185;
+    --accent-blue: #0ea5e9;
+    --text: #ffffff;
+    --muted: #a1a1aa;
+    --border: #27272a;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --code-bg: #000000;
+  }
+  [data-theme="emerald"] {
+    --bg-gradient: linear-gradient(160deg, #022c22, #064e3b);
+    --bg-card: #065f46;
+    --bg-input: #022c22;
+    --accent: #10b981;
+    --accent-2: #34d399;
+    --accent-blue: #6ee7b7;
+    --text: #ecfdf5;
+    --muted: #a7f3d0;
+    --border: #047857;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --code-bg: #011d17;
+  }
+  [data-theme="light"] {
+    --bg-gradient: linear-gradient(160deg, #f8fafc, #e2e8f0);
+    --bg-card: #ffffff;
+    --bg-input: #f1f5f9;
+    --accent: #ef4444;
+    --accent-2: #f87171;
+    --accent-blue: #0284c7;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #cbd5e1;
+    --success: #16a34a;
+    --warning: #d97706;
+    --code-bg: #f8fafc;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px;
+    line-height: 1.6;
+    transition: background 0.3s, color 0.3s;
+  }
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  h1 { font-size: 1.6rem; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { background: var(--border); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: static !important; }
+  }
+
+  /* Sidebar TOC */
+  .sidebar {
+    position: sticky;
+    top: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sidebar-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sidebar-link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.84rem;
+    transition: color 0.2s;
+    display: block;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .sidebar-link:hover {
+    color: var(--text);
+    background: var(--bg-input);
+  }
+
+  /* Content */
+  .content-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 30px;
+  }
+  h2 {
+    font-size: 1.3rem;
+    color: var(--accent-blue);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-top: 36px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2:first-of-type { margin-top: 0; }
+  h3 { font-size: 1.05rem; color: var(--text); margin-top: 22px; margin-bottom: 8px; }
+  p, li { font-size: 0.92rem; color: var(--text); }
+  ul { padding-left: 20px; }
+
+  /* Info Boxes */
+  .callout {
+    background: var(--bg-input);
+    border-left: 4px solid var(--accent-blue);
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin: 16px 0;
+    font-size: 0.88rem;
+  }
+  .callout-success { border-color: var(--success); }
+  .callout-warning { border-color: var(--warning); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.88rem;
+  }
+  th, td {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  th { background: var(--bg-input); color: var(--muted); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+  /* Badges */
+  .badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+  }
+  .badge-success { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+  .badge-blue { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+  .badge-warning { background: #451a03; color: #fde047; border: 1px solid #d97706; }
+
+  /* Code Block */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.82rem;
+    color: #38bdf8;
+  }
+  code {
+    background: var(--bg-input);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: Consolas, Monaco, monospace;
+    color: var(--accent-2);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-header">
+      <div>
+        <h1>📚 Wiki Técnica & Arquitectura</h1>
+        <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">
+          Documentación interna del funcionamiento y componentes de <strong>{{ (config and config.site_title) or 'ytsite' }}</strong>.
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="themeSelector" style="padding:6px 10px; font-size:0.8rem; border-radius:8px; background:var(--bg-card); color:var(--text); border:1px solid var(--border);" title="Cambiar tema">
+          <option value="cyberpunk">🌌 Cyberpunk</option>
+          <option value="oled">🖤 OLED Black</option>
+          <option value="emerald">🌲 Emerald</option>
+          <option value="light">☀️ Light</option>
+        </select>
+        <a href="/" class="btn">⬅ Descargador</a>
+        <a href="/admin" class="btn">⚙️ Admin</a>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- SIDEBAR TOC -->
+      <div class="sidebar">
+        <div class="sidebar-title">📑 Contenido</div>
+        <ul class="sidebar-list">
+          <li><a href="#section-arch" class="sidebar-link">1. Arquitectura de Microservicios</a></li>
+          <li><a href="#section-youtube" class="sidebar-link">2. YouTube & PO Tokens</a></li>
+          <li><a href="#section-deezer" class="sidebar-link">3. Deezer (Con y Sin ARL)</a></li>
+          <li><a href="#section-spotify" class="sidebar-link">4. Spotify (Audio Matching)</a></li>
+          <li><a href="#section-social" class="sidebar-link">5. Redes Sociales</a></li>
+          <li><a href="#section-batch" class="sidebar-link">6. Cola por Lotes (Batch Queue)</a></li>
+          <li><a href="#section-cloud" class="sidebar-link">7. Sincronización en la Nube</a></li>
+          <li><a href="#section-storage" class="sidebar-link">8. Almacenamiento & Purga</a></li>
+          <li><a href="#section-security" class="sidebar-link">9. Seguridad y Roles (RBAC)</a></li>
+          <li><a href="#section-faq" class="sidebar-link">10. Preguntas Frecuentes (FAQ)</a></li>
+        </ul>
+      </div>
+
+      <!-- MAIN CONTENT -->
+      <div class="content-card">
+        <!-- 1. ARCHITECTURE -->
+        <h2 id="section-arch">🏗️ 1. Arquitectura de Microservicios</h2>
+        <p>El sistema se ejecuta en contenedores Docker autónomos orquestados mediante <code>docker-compose</code>:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Microservicio</th>
+              <th>Puerto / Ubicación</th>
+              <th>Función Principal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>yt-downloader (Flask)</strong></td>
+              <td><code>127.0.0.1:5000</code></td>
+              <td>Servidor web principal en Python (Gunicorn multihilo), API REST, colas y UI.</td>
+            </tr>
+            <tr>
+              <td><strong>pot-provider (bgutil)</strong></td>
+              <td><code>127.0.0.1:4416</code></td>
+              <td>Generador de <em>Proof-of-Origin (PO Tokens)</em> para evitar bloqueos antibot de YouTube.</td>
+            </tr>
+            <tr>
+              <td><strong>cobalt-api</strong></td>
+              <td><code>127.0.0.1:9000</code></td>
+              <td>Motor acelerador Cobalt v11 para descargas ultrarrápidas de enlaces individuales.</td>
+            </tr>
+            <tr>
+              <td><strong>Deno Engine</strong></td>
+              <td>Integrado en contenedor</td>
+              <td>Runtime JavaScript seguro para resolver los scripts y firmas cambiantes de YouTube.</td>
+            </tr>
+            <tr>
+              <td><strong>FFmpeg</strong></td>
+              <td>Integrado en contenedor</td>
+              <td>Multiplexación de audio/video, compresión, incrustación de subtítulos y carátulas ID3v2.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 2. YOUTUBE -->
+        <h2 id="section-youtube">▶️ 2. YouTube & Proof-of-Origin (PO Tokens)</h2>
+        <p>YouTube implementa protecciones contra bots y divide sus transmisiones de alta definición en pistas de video y audio separadas (DASH/HLS).</p>
+        <div class="callout callout-success">
+          <strong>¿Cómo lo resuelve ytsite?</strong><br>
+          Antes de cada extracción, <code>yt-dlp</code> consulta en <code>http://potprovider:4416/get_pot</code> y obtiene un token criptográfico generado por <code>bgutil</code>. Simultáneamente, el motor <code>Deno</code> ejecuta el código JavaScript del reproductor para descifrar las firmas de los flujos de video 4K/1080p sin disparar pantallas de verificación.
+        </div>
+
+        <!-- 3. DEEZER -->
+        <h2 id="section-deezer">🎵 3. Deezer (Con y Sin ARL)</h2>
+        <p>Deezer ofrece dos modos de funcionamiento según si el usuario ingresa su token de sesión:</p>
+        <ul>
+          <li><strong>Con Token ARL válido:</strong> Se autentica con la sesión de Deezer y descarga el archivo original directamente desde el CDN de Deezer en <span class="badge badge-success">FLAC Lossless (1411 kbps)</span> o MP3 a 320 kbps.</li>
+          <li><strong>Sin Token ARL (Fallback Inteligente):</strong> Extrae los metadatos oficiales de Deezer y utiliza <em>Audio Matching</em> para descargar la versión de estudio idéntica, inyectando las etiquetas y carátula con FFmpeg para que la descarga nunca falle.</li>
+        </ul>
+
+        <!-- 4. SPOTIFY -->
+        <h2 id="section-spotify">🎧 4. Spotify (Extracción de Metadatos + Audio Matching)</h2>
+        <p><strong>¿Por qué ningún descargador público baja directo del CDN de Spotify?</strong></p>
+        <p>Los servidores de Spotify protegen todos sus archivos con <strong>DRM Widevine (cifrado AES-128)</strong>. Descargar directamente requeriría cuentas de pago con claves privadas de hardware, las cuales Spotify banea al detectar tráfico anómalo.</p>
+        <div class="callout">
+          <strong>El Flujo de Trabajo en ytsite:</strong><br>
+          1. Consulta la API/oEmbed de Spotify y extrae los metadatos oficiales (Título exacto, Artistas, Álbum y Carátula HD).<br>
+          2. Busca y empareja la pista de estudio oficial de mayor fidelidad.<br>
+          3. FFmpeg procesa el audio a 320 kbps e inyecta la portada y etiquetas ID3v2.<br>
+          4. El usuario recibe un archivo <code>.mp3</code> impecable con la carátula y datos exactos.
+        </div>
+
+        <!-- 5. SOCIAL MEDIA -->
+        <h2 id="section-social">📱 5. Redes Sociales</h2>
+        <p>Soporte para más de 1.800 sitios incluyendo:</p>
+        <ul>
+          <li><strong>TikTok:</strong> Videos individuales en alta resolución sin marca de agua (*no watermark*).</li>
+          <li><strong>Instagram:</strong> Reels, videos de publicaciones y contenido público.</li>
+          <li><strong>Twitch & Kick:</strong> Descarga de clips y transmisiones pasadas (VODs).</li>
+          <li><strong>Facebook & X (Twitter):</strong> Videos nativos en máxima calidad.</li>
+        </ul>
+
+        <!-- 6. BATCH QUEUE -->
+        <h2 id="section-batch">📋 6. Cola por Lotes (Batch Queue)</h2>
+        <p>Permite pegar múltiples URLs simultáneas en la interfaz y procesarlas en paralelo:</p>
+        <pre><code>POST /api/batch-download
+{
+  "urls": ["https://youtube.com/...", "https://open.spotify.com/..."],
+  "quality": "audio_320",
+  "video_format": "mp4"
+}</code></pre>
+        <p>Al completarse el lote, el botón <strong>"📦 Descargar Todo (.ZIP)"</strong> permite descargar todos los archivos comprimidos en un solo paquete.</p>
+
+        <!-- 7. CLOUD SYNC -->
+        <h2 id="section-cloud">☁️ 7. Sincronización en la Nube (Cloud Sync)</h2>
+        <p>Configurable desde <code>/admin</code> para enviar los archivos terminados a:</p>
+        <ul>
+          <li><strong>Nextcloud / ownCloud / WebDAV:</strong> Subida directa mediante protocolo WebDAV.</li>
+          <li><strong>Servidor FTP:</strong> Subida automatizada a servidores remotos.</li>
+          <li><strong>Telegram Bot Uploader:</strong> Envío directo a chats/canales de Telegram (hasta 50 MB por archivo).</li>
+          <li><strong>Webhook HTTP:</strong> Disparo de notificaciones JSON para integraciones con n8n, Make o Zapier.</li>
+        </ul>
+
+        <!-- 8. STORAGE -->
+        <h2 id="section-storage">💾 8. Almacenamiento & Purga Automática</h2>
+        <ul>
+          <li><strong>Retención Programada:</strong> Limpieza de archivos que superen las horas configuradas en <code>config.json</code> (por defecto 24h).</li>
+          <li><strong>Auto-purga de Emergencia:</strong> Activación automática si el disco supera el 85% de uso o si quedan menos de 2 GB libres.</li>
+          <li><strong>Descargas Recientes:</strong> Historial en servidor disponible para re-descargar sin reprocesar.</li>
+        </ul>
+
+        <!-- 9. SECURITY -->
+        <h2 id="section-security">🔒 9. Seguridad y Roles (RBAC)</h2>
+        <ul>
+          <li><strong>Contraseñas Cifradas:</strong> Hash criptográfico <code>SHA-256</code> con salt único en <code>users.json</code>.</li>
+          <li><strong>Roles de Usuario:</strong>
+            <ul>
+              <li><code>admin</code>: Acceso total al panel <code>/admin</code>, configuración, cookies y usuarios.</li>
+              <li><code>downloader</code>: Acceso exclusivo a la interfaz de descargas (bloqueado con <code>403 Forbidden</code> en <code>/admin</code>).</li>
+            </ul>
+          </li>
+          <li><strong>Privacidad:</strong> Cabeceras <code>X-Robots-Tag: noindex, nofollow</code> para prevenir indexación en motores de búsqueda.</li>
+        </ul>
+
+        <!-- 10. FAQ -->
+        <h2 id="section-faq">❓ 10. Preguntas Frecuentes (FAQ)</h2>
+        <h3>¿Qué hacer si un video de YouTube arroja error de bot?</h3>
+        <p>Andá a <code>/admin</code> -> pestaña <strong>Actualizador de Motores</strong> y pulsá <strong>"⟳ Actualizar yt-dlp Ahora"</strong>. Si persiste, cargá una sesión en la pestaña <strong>Cookies</strong>.</p>
+        
+        <h3>¿Se pueden descargar álbumes enteros de Spotify o Deezer?</h3>
+        <p>Sí. Marcando la casilla de playlist o pegando el enlace en la cola de lotes, el sistema procesa todas las canciones y las empaqueta en un archivo <code>.zip</code>.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+const themeSelector = document.getElementById('themeSelector');
+const currentTheme = localStorage.getItem('site_theme') || '{{ (config and config.default_theme) or "cyberpunk" }}';
+document.documentElement.setAttribute('data-theme', currentTheme);
+themeSelector.value = currentTheme;
+
+themeSelector.addEventListener('change', (e) => {
+  const chosen = e.target.value;
+  document.documentElement.setAttribute('data-theme', chosen);
+  localStorage.setItem('site_theme', chosen);
+});
+</script>
+</body>
+</html>
