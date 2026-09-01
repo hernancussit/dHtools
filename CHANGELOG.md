@@ -15,8 +15,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - **🍪 Gestor Seguro de Cookies en Panel Admin:**
   - Protección de privacidad eliminando el volcado de texto plano en pantalla y API.
   - Subida y validación obligatoria contra YouTube antes de aplicar cambios en `cookies.txt`.
-- **🌐 Plantillas de Proxy Inverso HestiaCP / Nginx Oficiales:**
-  - Inclusión de `hestiacp-templates/dhtools-proxy.tpl` y `dhtools-proxy.stpl`.
+- **🌐 Plantillas de Proxy Inverso Universales (Nginx, HestiaCP, cPanel, Caddy):**
+  - Inclusión de carpeta [`proxy-configs/`](proxy-configs/) con soporte para Nginx Universal, HestiaCP, cPanel y Caddy.
 - **🌿 Selector de Rama Git y Actualizador en Vivo:**
   - Soporte completo para alternar entre ramas `main` y `dev` con autenticación SSH en contenedores Docker.
 - **🎨 Corrección Visual de Branding:**
