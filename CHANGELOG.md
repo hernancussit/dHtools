@@ -23,6 +23,10 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Unificación visual de los 3 motores (`yt-dlp`, `Cobalt` y `Deno`) con badge uniforme `● Online` y medición de latencia en ms en tiempo real.
   - Implementación de comprobación remota y auto-actualización vía `deno upgrade` para Deno JS desde el panel administrativo.
   - Botón "Refrescar Datos" que sincroniza simultáneamente el estado de todos los motores y métricas del sistema.
+- **Unificación de Descargas en Lote en Modo Fácil y Avanzado (Opción C):**
+  - Conmutador interactivo `[ 🔗 Enlace Único | 📋 Descarga en Lote ]` integrado directamente en Modo Fácil y Modo Avanzado.
+  - Procesamiento de lotes con presets rápidos en Modo Fácil y con personalización completa en Modo Avanzado (resoluciones hasta 4K, contenedores MP4/MKV/WebM, subtítulos, motor Cobalt/yt-dlp y sincronización a la nube).
+  - Monitor global de progreso de lotes con descarga directa en `.zip` y barra lateral simplificada.
 
 ---
 
