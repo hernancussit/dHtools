@@ -124,7 +124,7 @@ def info():
         "socket_timeout": 10,
         "playlistend": 300,
         "ignoreerrors": True,
-        **cookies_opts(),
+        **cookies_opts(for_url=url),
     }
     try:
         result = extract_with_fallback(url, ydl_opts, download=False)
