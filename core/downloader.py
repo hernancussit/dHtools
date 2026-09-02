@@ -1,44 +1,47 @@
-import os, sys, time, json, re, shutil, threading, subprocess, requests, logging, zipfile, ftplib
+import os
+import sys
+import time
+import json
+import re
+import shutil
+import threading
+import subprocess
+import requests
+import logging
+import zipfile
+import ftplib
 import yt_dlp
-from core.config import POT_PROVIDER_URL, PLAYER_CLIENTS_ENV, DOWNLOAD_DIR, COBALT_URL, APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES
-from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, BATCH_JOBS, BATCH_LOCK, LOGIN_ATTEMPTS_LOCK, LOGIN_ATTEMPTS, START_TIME
-from core.utils import format_for_quality, is_audio_quality, format_bytes, parse_time_to_seconds, safe_filename, safe_download_path, enqueue_job, record_download_meta, delete_download_meta, load_cloud_config, load_downloads_meta, save_queue_state
+from yt_dlp.utils import download_range_func
 
-
-def cookies_opts():
-    if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
-        return {"cookiefile": COOKIES_FILE}
-    return {}
-
-
-
-def player_client_opts(clients=None, for_download: bool = True):
-    opts = {
-        "extractor_args": {
-            "youtubetab": {"skip": ["authcheck"]}
-        }
-    }
-    if for_download:
-        opts["extractor_args"]["youtubepot-bgutilhttp"] = {"base_url": [POT_PROVIDER_URL]}
-
-    target = clients
-    if target is None and PLAYER_CLIENTS_ENV and PLAYER_CLIENTS_ENV != "default":
-        target = PLAYER_CLIENTS_ENV.split(",")
-    if target and target != ["default"] and target != "default":
-        if isinstance(target, str):
-            target = [target]
-        opts["extractor_args"]["youtube"] = {"player_client": target}
-    return opts
-
-
+from core.config import (
+    POT_PROVIDER_URL, PLAYER_CLIENTS_ENV, DOWNLOAD_DIR, COBALT_URL,
+    APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES
+)
+from core.state import (
+    JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, BATCH_JOBS, BATCH_LOCK,
+    START_TIME
+)
+from core.utils import (
+    cookies_opts, player_client_opts, format_speed, load_config,
+    load_cloud_config, load_downloads_meta, save_downloads_meta,
+    record_download_meta, delete_download_meta, save_queue_state,
+    load_queue_state, get_disk_status, format_bytes, safe_filename,
+    format_for_quality, is_audio_quality, parse_time_to_seconds,
+    safe_download_path, enqueue_job
+)
 
 def get_ytdlp_version():
     try:
         return yt_dlp.version.__version__
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
         return "desconocida"
 
+
+def run_pip_update():
+    return subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp[default]"],
+        capture_output=True, text=True, timeout=180,
+    )
 
 
 def restart_process_soon(delay=1.5):
@@ -48,7 +51,6 @@ def restart_process_soon(delay=1.5):
     threading.Thread(target=_restart, daemon=True).start()
 
 
-
 def auto_update_loop():
     while True:
         time.sleep(max(AUTO_UPDATE_INTERVAL_HOURS, 1) * 3600)
@@ -56,21 +58,8 @@ def auto_update_loop():
             result = run_pip_update()
             if result.returncode == 0 and "Successfully installed" in (result.stdout or ""):
                 restart_process_soon(delay=0)
-        except Exception as e:
-            logging.exception(f"Exception caught: {e}")
-
-
-
-def format_speed(bytes_per_sec):
-
-    if not bytes_per_sec:
-        return None
-    for unit in ("B/s", "KB/s", "MB/s", "GB/s"):
-        if bytes_per_sec < 1024:
-            return f"{bytes_per_sec:.1f} {unit}"
-        bytes_per_sec /= 1024
-    return f"{bytes_per_sec:.1f} TB/s"
-
+        except Exception:
+            pass
 
 
 def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_cloud_cfg: dict = None):
@@ -128,8 +117,8 @@ def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_clou
             if remote_dir and remote_dir != "/":
                 try:
                     ftp.cwd(remote_dir)
-                except Exception as e:
-                    logging.exception(f"Exception caught: {e}")
+                except Exception:
+                    pass
             with open(filepath, "rb") as f:
                 ftp.storbinary(f"STOR {filename}", f)
             ftp.quit()
@@ -152,7 +141,6 @@ def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_clou
                     )
         except Exception as e:
             print(f"[CloudSync Telegram Error] {e}")
-
 
 
 def purge_downloads(force_all=False):
@@ -210,7 +198,6 @@ def purge_downloads(force_all=False):
     }
 
 
-
 def cleanup_loop():
     while True:
         time.sleep(max(CLEANUP_CHECK_INTERVAL_MINUTES, 1) * 60)
@@ -259,9 +246,8 @@ def cleanup_loop():
                             shutil.rmtree(entry_path, ignore_errors=True)
                         else:
                             os.remove(entry_path)
-        except Exception as e:
-            logging.exception(f"Exception caught: {e}")
-
+        except Exception:
+            pass
 
 
 def is_permanent_error(err_str: str) -> bool:
@@ -277,7 +263,6 @@ def is_permanent_error(err_str: str) -> bool:
         "confirm your age",
         "sign in if you've been granted access",
     ])
-
 
 
 def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
@@ -337,7 +322,6 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
     return None
 
 
-
 def normalize_url(url: str) -> str:
 
     url = url.strip()
@@ -347,7 +331,6 @@ def normalize_url(url: str) -> str:
         video_id = shorts_match.group(1)
         return f"https://www.youtube.com/watch?v={video_id}"
     return url
-
 
 
 def detect_platform(url: str) -> str:
@@ -375,7 +358,6 @@ def detect_platform(url: str) -> str:
     return "Web"
 
 
-
 def is_playlist_url(url: str) -> bool:
     url_l = (url or "").lower()
     if "youtube.com/playlist" in url_l or "list=" in url_l:
@@ -385,7 +367,6 @@ def is_playlist_url(url: str) -> bool:
     if "deezer.com/playlist" in url_l or "deezer.com/album" in url_l:
         return True
     return False
-
 
 
 def get_deezer_info(url: str):
@@ -476,10 +457,9 @@ def get_deezer_info(url: str):
                     "items": items,
                     "url": url,
                 }
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
     return None
-
 
 
 def get_spotify_info(url: str):
@@ -505,10 +485,9 @@ def get_spotify_info(url: str):
                     "thumbnail": data.get("thumbnail_url"),
                     "url": url,
                 }
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
     return None
-
 
 
 def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None, owner: str = "admin", user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None):
@@ -599,8 +578,8 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                     with open(cover_file, "wb") as cf:
                         cf.write(cr.content)
                     has_cover = True
-            except Exception as e:
-                logging.exception(f"Exception caught: {e}")
+            except Exception:
+                pass
 
         # Target bitrate
         bitrate_map = {"audio_128": "128k", "audio_192": "192k", "audio_256": "256k", "audio_320": "320k"}
@@ -670,7 +649,6 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
-
 def append_job_log(job_id: str, message: str):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -680,7 +658,6 @@ def append_job_log(job_id: str, message: str):
             job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": message})
             if len(job["logs"]) > 150:
                 job["logs"] = job["logs"][-150:]
-
 
 
 def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin", user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None):
@@ -783,7 +760,6 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
         raise
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
-
 
 
 def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
@@ -1026,7 +1002,6 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
-
 def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
                          start_time=None, end_time=None, video_format="mp4", subtitles="none",
                          owner: str = "admin", user_cloud_sync: dict = None,
@@ -1116,7 +1091,6 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                 "finished_at": time.time(),
             })
             append_job_log(job_id, "[!] ERROR: Se agotaron todos los métodos de descarga disponibles.")
-
 
 
 def background_queue_worker():
@@ -1217,5 +1191,3 @@ def background_queue_worker():
                     QUEUE_LIST.remove(job_id)
             ACTIVE_WORKER_JOB = None
             save_queue_state()
-
-

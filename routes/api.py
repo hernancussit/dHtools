@@ -1,18 +1,38 @@
-import os, json, time, logging, threading, zipfile, shutil, uuid
+import os
+import json
+import time
+import logging
+import threading
+import zipfile
+import shutil
+import uuid
 from flask import Blueprint, request, jsonify, send_file, Response, render_template
-from core.state import JOBS, JOBS_LOCK, BATCH_JOBS, BATCH_LOCK, QUEUE_LIST, QUEUE_LOCK
-from core.utils import validate_media_url, is_audio_quality, format_for_quality, format_bytes, load_config, safe_filename, enqueue_job, record_download_meta, delete_download_meta, load_downloads_meta, save_queue_state, get_disk_status
-from core.downloader import run_download, append_job_log, purge_downloads, get_ytdlp_version
+
+from core.config import DOWNLOAD_DIR, COBALT_URL
+from core.state import (
+    JOBS, JOBS_LOCK, BATCH_JOBS, BATCH_LOCK, QUEUE_LIST, QUEUE_LOCK
+)
+from core.utils import (
+    validate_media_url, is_audio_quality, format_for_quality, format_bytes,
+    load_config, safe_filename, enqueue_job, record_download_meta,
+    delete_download_meta, load_downloads_meta, save_queue_state,
+    safe_download_path
+)
+from core.downloader import (
+    run_download, run_download_cascade, append_job_log, purge_downloads,
+    get_ytdlp_version, run_pip_update, restart_process_soon,
+    extract_with_fallback, normalize_url, detect_platform, is_playlist_url
+)
 from routes.auth import require_admin
 
-api_bp = Blueprint('api_bp', __name__)
+api_bp = Blueprint("api_bp", __name__)
 
-
+@api_bp.route("/api/ytdlp-version")
 def ytdlp_version():
     return jsonify({"version": get_ytdlp_version()})
 
 
-
+@api_bp.route("/api/update-ytdlp", methods=["POST"])
 def update_ytdlp():
     old_version = get_ytdlp_version()
     try:
@@ -40,192 +60,7 @@ def update_ytdlp():
     })
 
 
-
-def delete_folder_downloads(group_id):
-    user = getattr(request, "current_user", {}) or {}
-    username = user.get("username", "admin")
-    is_admin = (user.get("role") == "admin")
-
-    meta = load_downloads_meta()
-    matching_jids = [
-        jid for jid, info in meta.items()
-        if info.get("group_id") == group_id and (is_admin or info.get("username") == username)
-    ]
-
-    deleted_count = 0
-    if os.path.exists(DOWNLOAD_DIR):
-        for jid in matching_jids:
-            for entry in os.listdir(DOWNLOAD_DIR):
-                if entry.startswith(jid):
-                    try:
-                        os.remove(os.path.join(DOWNLOAD_DIR, entry))
-                        deleted_count += 1
-                    except Exception as e:
-                        logging.exception(f"Exception caught: {e}")
-            delete_download_meta(jid)
-
-    return jsonify({"success": True, "deleted_count": deleted_count})
-
-
-
-def folder_download_zip(group_id):
-    user = getattr(request, "current_user", {}) or {}
-    username = user.get("username", "admin")
-    is_admin = (user.get("role") == "admin")
-
-    meta = load_downloads_meta()
-    matching_jids = {
-        jid: info for jid, info in meta.items()
-        if info.get("group_id") == group_id and (is_admin or info.get("username") == username)
-    }
-
-    if not matching_jids:
-        with JOBS_LOCK:
-            matching_jids = {
-                jid: job for jid, job in JOBS.items()
-                if job.get("group_id") == group_id and (is_admin or job.get("owner") == username)
-            }
-
-    if not matching_jids:
-        abort(404)
-
-    folder_name = next(iter(matching_jids.values())).get("folder_name", f"folder_{group_id[:8]}")
-    safe_f_name = safe_filename(folder_name) or f"coleccion_{group_id[:8]}"
-    zip_path = os.path.join(DOWNLOAD_DIR, f"folder_{group_id}.zip")
-
-    # If already generated and valid, return immediately
-    if os.path.exists(zip_path) and os.path.getsize(zip_path) > 100:
-        return send_file(
-            zip_path,
-            as_attachment=True,
-            download_name=f"{safe_f_name}.zip",
-            mimetype="application/zip",
-        )
-
-    # Collect unique individual files
-    files_to_zip = []
-    if os.path.exists(DOWNLOAD_DIR):
-        for jid in matching_jids:
-            for entry in os.listdir(DOWNLOAD_DIR):
-                if entry.startswith(jid) and not entry.lower().endswith(".zip"):
-                    fpath = os.path.join(DOWNLOAD_DIR, entry)
-                    if os.path.isfile(fpath):
-                        disp_name = entry[len(jid):].lstrip("_-") or entry
-                        files_to_zip.append((fpath, disp_name))
-
-    if not files_to_zip:
-        # Check if a pre-existing zip for this group is in DOWNLOAD_DIR
-        for entry in os.listdir(DOWNLOAD_DIR):
-            if group_id in entry and entry.lower().endswith(".zip"):
-                return send_file(
-                    os.path.join(DOWNLOAD_DIR, entry),
-                    as_attachment=True,
-                    download_name=f"{safe_f_name}.zip",
-                    mimetype="application/zip",
-                )
-        abort(404)
-
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for fpath, arcname in files_to_zip:
-            if os.path.exists(fpath):
-                zf.write(fpath, arcname=arcname)
-
-    return send_file(
-        zip_path,
-        as_attachment=True,
-        download_name=f"{safe_f_name}.zip",
-        mimetype="application/zip",
-    )
-
-
-
-def delete_single_my_download(job_id):
-    user = getattr(request, "current_user", {}) or {}
-    username = user.get("username", "admin")
-    is_admin = (user.get("role") == "admin")
-
-    meta = load_downloads_meta()
-    item_owner = meta.get(job_id, {}).get("username")
-    with JOBS_LOCK:
-        job = JOBS.pop(job_id, None)
-        if job and not item_owner:
-            item_owner = job.get("owner")
-    if not item_owner:
-        item_owner = "admin"
-
-    if not is_admin and item_owner != username:
-        return jsonify({"error": "No tenés permiso para eliminar este archivo"}), 403
-
-    deleted = False
-    if os.path.exists(DOWNLOAD_DIR):
-        for entry in os.listdir(DOWNLOAD_DIR):
-            if entry.startswith(job_id):
-                fpath = os.path.join(DOWNLOAD_DIR, entry)
-                try:
-                    os.remove(fpath)
-                    deleted = True
-                except Exception as e:
-                    logging.exception(f"Exception caught: {e}")
-    delete_download_meta(job_id)
-    return jsonify({"success": True, "deleted": deleted})
-
-
-
-def cleanup_my_downloads():
-    user = getattr(request, "current_user", {}) or {}
-    username = user.get("username", "admin")
-    is_admin = (user.get("role") == "admin")
-
-    meta = load_downloads_meta()
-    cleaned_count = 0
-    reclaimed_bytes = 0
-
-    if os.path.exists(DOWNLOAD_DIR):
-        if is_admin:
-            for entry in os.listdir(DOWNLOAD_DIR):
-                if entry == ".gitkeep":
-                    continue
-                fpath = os.path.join(DOWNLOAD_DIR, entry)
-                try:
-                    if os.path.isdir(fpath):
-                        for root, _, files in os.walk(fpath):
-                            for f in files:
-                                reclaimed_bytes += os.path.getsize(os.path.join(root, f))
-                        shutil.rmtree(fpath, ignore_errors=True)
-                    else:
-                        reclaimed_bytes += os.path.getsize(fpath)
-                        os.remove(fpath)
-                    cleaned_count += 1
-                except Exception as e:
-                    logging.exception(f"Exception caught: {e}")
-            for jid in list(meta.keys()):
-                delete_download_meta(jid)
-            with JOBS_LOCK:
-                JOBS.clear()
-        else:
-            user_job_ids = [jid for jid, info in meta.items() if info.get("username") == username]
-            for jid in user_job_ids:
-                for entry in os.listdir(DOWNLOAD_DIR):
-                    if entry.startswith(jid):
-                        fpath = os.path.join(DOWNLOAD_DIR, entry)
-                        try:
-                            reclaimed_bytes += os.path.getsize(fpath)
-                            os.remove(fpath)
-                            cleaned_count += 1
-                        except Exception as e:
-                            logging.exception(f"Exception caught: {e}")
-                delete_download_meta(jid)
-                with JOBS_LOCK:
-                    JOBS.pop(jid, None)
-
-    return jsonify({
-        "success": True,
-        "cleaned_count": cleaned_count,
-        "reclaimed_formatted": format_bytes(reclaimed_bytes),
-    })
-
-
-
+@api_bp.route("/api/info", methods=["POST"])
 def info():
     data = request.get_json(force=True)
     raw_url = (data or {}).get("url", "").strip()
@@ -310,7 +145,7 @@ def info():
         })
 
 
-
+@api_bp.route("/api/download", methods=["POST"])
 def download():
     data = request.get_json(force=True)
     raw_url = (data or {}).get("url", "").strip()
@@ -399,7 +234,7 @@ def download():
     return jsonify({"job_id": job_id, "status": "queued"})
 
 
-
+@api_bp.route("/api/playlist-download", methods=["POST"])
 def playlist_download():
     data = request.get_json(force=True) or {}
     items = data.get("items") or []
@@ -509,7 +344,7 @@ def playlist_download():
     })
 
 
-
+@api_bp.route("/api/playlist-status/<group_id>")
 def playlist_status(group_id):
     user = getattr(request, "current_user", {}) or {}
     username = user.get("username", "admin")
@@ -559,7 +394,7 @@ def playlist_status(group_id):
     })
 
 
-
+@api_bp.route("/api/playlist-cancel/<group_id>", methods=["POST"])
 def playlist_cancel(group_id):
     global QUEUE_LIST
     user = getattr(request, "current_user", {}) or {}
@@ -583,7 +418,7 @@ def playlist_cancel(group_id):
     return jsonify({"success": True, "cancelled_count": cancelled_count, "group_id": group_id})
 
 
-
+@api_bp.route("/api/queue")
 def get_queue():
     user = getattr(request, "current_user", {}) or {}
     username = user.get("username", "admin")
@@ -628,7 +463,7 @@ def get_queue():
     })
 
 
-
+@api_bp.route("/api/debug-threads")
 def debug_threads():
     import traceback
     res = {}
@@ -643,6 +478,7 @@ def debug_threads():
     return jsonify(res)
 
 
+@api_bp.route("/api/queue/move", methods=["POST"])
 
 def move_queue_item():
     data = request.get_json(force=True) or {}
@@ -674,7 +510,7 @@ def move_queue_item():
     return jsonify({"success": True, "queue": QUEUE_LIST})
 
 
-
+@api_bp.route("/api/queue/<job_id>", methods=["DELETE"])
 def cancel_queue_item(job_id):
     user = getattr(request, "current_user", {}) or {}
     username = user.get("username", "admin")
@@ -701,7 +537,7 @@ def cancel_queue_item(job_id):
     return jsonify({"success": True, "message": "Elemento quitado/cancelado de la cola"})
 
 
-
+@api_bp.route("/api/queue/cancel-all", methods=["POST"])
 def cancel_all_queue():
     user = getattr(request, "current_user", {}) or {}
     username = user.get("username", "admin")
@@ -740,7 +576,7 @@ def cancel_all_queue():
     return jsonify({"success": True, "cancelled_count": cancelled_count})
 
 
-
+@api_bp.route("/api/status/<job_id>")
 def status(job_id):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -749,7 +585,7 @@ def status(job_id):
     return jsonify(job)
 
 
-
+@api_bp.route("/api/files/<job_id>")
 def files(job_id):
     if not job_id or not re.match(r"^[a-zA-Z0-9_-]+$", str(job_id)):
         abort(400)
@@ -802,7 +638,7 @@ def files(job_id):
     abort(404)
 
 
-
+@api_bp.route("/api/batch-download", methods=["POST"])
 def batch_download():
     data = request.get_json(force=True) or {}
     urls_raw = data.get("urls", [])
@@ -874,7 +710,7 @@ def batch_download():
     return jsonify({"batch_id": batch_id, "job_ids": job_ids, "total": len(job_ids)})
 
 
-
+@api_bp.route("/api/batch-status/<batch_id>")
 def batch_status(batch_id):
     with BATCH_LOCK:
         batch = BATCH_JOBS.get(batch_id)
@@ -910,7 +746,7 @@ def batch_status(batch_id):
     })
 
 
-
+@api_bp.route("/api/batch-download-zip/<batch_id>")
 def batch_download_zip(batch_id):
     with BATCH_LOCK:
         batch = BATCH_JOBS.get(batch_id)
@@ -938,5 +774,3 @@ def batch_download_zip(batch_id):
         download_name=f"lote_{batch_id[:8]}.zip",
         mimetype="application/zip",
     )
-
-

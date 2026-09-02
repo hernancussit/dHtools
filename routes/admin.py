@@ -9,10 +9,19 @@ import ftplib
 import logging
 from flask import Blueprint, request, jsonify, render_template
 
-from core.config import APP_VERSION
-from core.state import JOBS_LOCK, JOBS
-from routes.auth import require_admin, load_users, save_users, hash_password
-# Note: some functions still depend on app.py methods, we need to mock or import them
+from core.config import (
+    APP_VERSION, POT_PROVIDER_URL, COBALT_URL, ROLLBACK_STATE_FILE,
+    COOKIES_FILE, USERS_FILE, CONFIG_FILE, DOWNLOAD_DIR
+)
+from core.state import JOBS_LOCK, JOBS, START_TIME
+from core.utils import (
+    load_config, save_config, get_disk_status, get_ram_status,
+    load_cloud_config, save_cloud_config, safe_download_path, format_bytes
+)
+from core.downloader import restart_process_soon, sync_to_cloud
+from routes.auth import (
+    require_admin, load_users, save_users, hash_password
+)
 
 admin_bp = Blueprint("admin_bp", __name__)
 
@@ -21,8 +30,6 @@ def wiki_page():
     cfg = load_config()
     return render_template("wiki.html", version=APP_VERSION, config=cfg)
 
-
-# ==================== ADMIN PANEL & API ====================
 
 @admin_bp.route("/admin")
 @require_admin
@@ -41,8 +48,8 @@ def admin_services_status():
         requests.get(POT_PROVIDER_URL, timeout=3)
         pot_lat = round((time.time() - t0) * 1000)
         pot_ok = True
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
     cobalt_ok = False
     cobalt_lat = 0
@@ -51,8 +58,8 @@ def admin_services_status():
         requests.get(COBALT_URL, timeout=3)
         cobalt_lat = round((time.time() - t0) * 1000)
         cobalt_ok = True
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
     deno_path = shutil.which("deno") or "/usr/local/bin/deno"
     deno_installed = False
@@ -62,8 +69,8 @@ def admin_services_status():
         if dr.returncode == 0:
             deno_installed = True
             deno_ver = dr.stdout.splitlines()[0]
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
     uptime_s = round(time.time() - START_TIME)
     return jsonify({
@@ -141,8 +148,8 @@ def get_git_info() -> dict:
                 m = re.search(r"github\.com[:/]([^/]+/[^/.]+)", rem_str)
                 if m:
                     remote_repo = m.group(1)
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
     return {
         "is_repo": is_repo,
         "branch": branch,
@@ -158,8 +165,8 @@ def load_rollback_state() -> dict:
         try:
             with open(ROLLBACK_STATE_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception as e:
-            logging.exception(f"Exception caught: {e}")
+        except Exception:
+            pass
     return {}
 
 
@@ -167,8 +174,8 @@ def save_rollback_state(data: dict):
     try:
         with open(ROLLBACK_STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
 
 @admin_bp.route("/api/admin/git-status")
@@ -192,8 +199,8 @@ def admin_git_status():
             remote_date = gh_data.get("commit", {}).get("committer", {}).get("date", "")[:10]
             if remote_commit and remote_commit != git_info["commit"] and git_info["commit"] != "unknown":
                 update_available = True
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
     return jsonify({
         "app_version": APP_VERSION,
@@ -208,7 +215,6 @@ def admin_git_status():
     })
 
 
-
 def ensure_git_safe_and_remote():
     try:
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
@@ -220,9 +226,8 @@ def ensure_git_safe_and_remote():
             if "git@github.com:" in rem_url:
                 https_url = rem_url.replace("git@github.com:", "https://github.com/")
                 subprocess.run(["git", "remote", "set-url", "origin", https_url], cwd="/app", capture_output=True, timeout=3)
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
-
+    except Exception:
+        pass
 
 
 @admin_bp.route("/api/admin/git-switch-branch", methods=["POST"])
@@ -304,7 +309,6 @@ def admin_git_rollback():
         return jsonify({"error": f"Error durante el rollback: {e}"}), 500
 
 
-
 @admin_bp.route("/api/admin/check-updates")
 @require_admin
 def admin_check_updates():
@@ -317,8 +321,8 @@ def admin_check_updates():
             latest = r.json().get("info", {}).get("version", curr)
             if latest and latest != curr:
                 has_update = True
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
     return jsonify({
         "current_version": curr,
         "latest_version": latest,
@@ -391,8 +395,8 @@ def validate_netscape_cookies(content: str) -> tuple:
         if os.path.exists(temp_cookie_path):
             try:
                 os.remove(temp_cookie_path)
-            except Exception as e:
-                logging.exception(f"Exception caught: {e}")
+            except Exception:
+                pass
 
 
 @admin_bp.route("/api/admin/cookies", methods=["GET", "DELETE"])
@@ -416,8 +420,8 @@ def admin_cookies():
                 lines = len([l for l in f.readlines() if l.strip() and not l.strip().startswith("#")])
             size_formatted = format_bytes(os.path.getsize(COOKIES_FILE))
             mtime_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(COOKIES_FILE)))
-        except Exception as e:
-            logging.exception(f"Exception caught: {e}")
+        except Exception:
+            pass
     return jsonify({
         "has_cookies": has_cookies,
         "lines": lines,
@@ -457,7 +461,6 @@ def admin_cookies_upload():
         })
     except Exception as e:
         return jsonify({"error": f"Error al guardar archivo cookies.txt: {e}"}), 500
-
 
 
 @admin_bp.route("/api/admin/users", methods=["GET", "POST"])
@@ -527,8 +530,8 @@ def admin_user_detail(username):
                     if entry.startswith(jid):
                         try:
                             os.remove(os.path.join(DOWNLOAD_DIR, entry))
-                        except Exception as e:
-                            logging.exception(f"Exception caught: {e}")
+                        except Exception:
+                            pass
                 delete_download_meta(jid)
         return jsonify({"message": f"Usuario '{username}' y sus descargas eliminados exitosamente"})
     if request.method == "PUT":
@@ -579,8 +582,8 @@ def admin_user_clean_downloads(username):
                         os.remove(fpath)
                         cleaned_count += 1
                         reclaimed_bytes += size
-                    except Exception as e:
-                        logging.exception(f"Exception caught: {e}")
+                    except Exception:
+                        pass
             delete_download_meta(jid)
             with JOBS_LOCK:
                 JOBS.pop(jid, None)
@@ -590,8 +593,6 @@ def admin_user_clean_downloads(username):
         "reclaimed_formatted": format_bytes(reclaimed_bytes),
     })
 
-
-# ==================== COBALT MAINTENANCE & UPDATES ====================
 
 @admin_bp.route("/api/admin/cobalt-status")
 @require_admin
@@ -607,8 +608,8 @@ def admin_cobalt_status():
             curr_ver = cobalt_info.get("version", "v11.x")
             services = cobalt_info.get("services", [])
             online = True
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
     latest_ver = curr_ver
     update_available = False
@@ -623,8 +624,8 @@ def admin_cobalt_status():
             latest_ver = gh_r.json().get("tag_name", "").lstrip("v")
             if latest_ver and latest_ver != curr_ver.lstrip("v"):
                 update_available = True
-    except Exception as e:
-        logging.exception(f"Exception caught: {e}")
+    except Exception:
+        pass
 
     return jsonify({
         "online": online,
@@ -649,7 +650,6 @@ def admin_update_cobalt():
     except Exception as e:
         return jsonify({"error": f"Error al verificar Cobalt: {e}"}), 500
     return jsonify({"message": "Estado de Cobalt verificado."})
-
 
 
 @admin_bp.route("/api/admin/cloud-sync", methods=["GET", "POST"])
@@ -730,9 +730,3 @@ def admin_cloud_sync_test():
             return jsonify({"error": f"Error WebDAV: {e}"}), 400
 
     return jsonify({"error": "Servicio desconocido"}), 400
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
-
-
