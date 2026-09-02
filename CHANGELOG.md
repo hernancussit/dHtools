@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.0-dev] - En desarrollo (Rama dev)
+
+### 🏗️ Arquitectura Modular (Flask Blueprints)
+- **100% Modularización del Monolito:**
+  - Desacoplado `app.py` en capas funcionales independientes:
+    - `core/config.py`: Gestión centralizada de configuración de entorno, rutas portables y secreto de sesión dinámico.
+    - `core/state.py`: Estructuras de memoria compartida, bloqueos de concurrencia (`JOBS_LOCK`, `QUEUE_LOCK`) y estado global.
+    - `core/utils.py`: Funciones utilitarias de formateo, sanitización y validación estricta de URLs.
+    - `core/downloader.py`: Motor de descargas (yt-dlp, Cobalt, Deezer, Spotify) y workers en segundo plano.
+    - `routes/auth.py`: Autenticación, protección de endpoints, hashing PBKDF2 y limitador por IP.
+    - `routes/admin.py`: Panel de administración, salud de microservicios, gestión de usuarios y sincronización.
+    - `routes/ui.py`: Rutas de interfaz web, descarga de archivos personales y PWA (`manifest`, `sw.js`).
+    - `routes/api.py`: API de descarga, monitor de estado, encolamiento y cancelación en tiempo real.
+- **Workers en Segundo Plano con Compatibilidad Gunicorn:**
+  - Inicialización incondicional de hilos de trabajo (`background_queue_worker`, `cleanup_loop`, `auto_update_loop`) en la carga de la aplicación.
+- **Homogeneización de Motores y Latencias en Milisegundos:**
+  - Unificación visual de los 3 motores (yt-dlp, Cobalt y Deno) a badge `● Online` con indicador de latencia en ms.
+  - Implementación de comprobación remota y auto-actualización vía `deno upgrade` para Deno JS.
+  - Botón de refresco simultáneo de datos y motores.
+
+---
+
 ## [1.1.1] - 2026-09-01
 
 ### 🛡️ Parche Crítico de Seguridad (Security Hardening)
