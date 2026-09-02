@@ -853,6 +853,7 @@
             </div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button id="btnSaveTelegramQuick" class="btn btn-primary btn-sm">💾 Guardar Configuración Telegram</button>
             <button id="btnTestTelegram" class="btn btn-secondary btn-sm">🧪 Probar Envío</button>
             <button id="btnRestartTgBot" class="btn btn-secondary btn-sm">🔄 Reiniciar Servicio Bot</button>
           </div>
@@ -1783,6 +1784,23 @@ document.getElementById('btnSaveCloudConfig').addEventListener('click', async ()
     showToast(data.message || 'Configuración de Cloud Sync guardada.', 'success');
   } catch (e) {
     showToast('Error al guardar Cloud Sync: ' + e.message, 'error');
+  }
+});
+document.getElementById('btnSaveTelegramQuick')?.addEventListener('click', async () => {
+  try {
+    const payload = getCloudConfigPayload();
+    payload.telegram.enabled = true;
+    document.getElementById('cloudTelegramEnabled').checked = true;
+    const res = await fetch('/api/admin/cloud-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    showToast('Configuración de Telegram guardada y bot activado.', 'success');
+    loadTelegramBotStatus();
+  } catch (e) {
+    showToast('Error al guardar Telegram: ' + e.message, 'error');
   }
 });
 

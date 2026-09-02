@@ -842,6 +842,10 @@ def admin_cloud_sync():
     if request.method == "POST":
         data = request.get_json(force=True) or {}
         save_cloud_config(data)
+        from core.telegram_bot import telegram_bot
+        telegram_bot.stop()
+        time.sleep(0.5)
+        telegram_bot.start()
         return jsonify({"message": "Configuración de Sincronización en la Nube guardada exitosamente", "cloud_sync": data})
     return jsonify({"cloud_sync": load_cloud_config()})
 
@@ -872,15 +876,25 @@ def admin_cloud_sync_test():
             r = requests.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 json={"chat_id": chat_id, "text": "✅ Prueba de conexión de dHtools exitosa!"},
-
-                timeout=6,
+                timeout=8,
             )
             res = r.json()
             if res.get("ok"):
-                return jsonify({"success": True, "message": "Mensaje de prueba enviado a Telegram correctamente"})
+                curr = load_cloud_config()
+                curr["telegram"] = {
+                    "enabled": True,
+                    "bot_token": token,
+                    "chat_id": chat_id
+                }
+                save_cloud_config(curr)
+                from core.telegram_bot import telegram_bot
+                telegram_bot.stop()
+                telegram_bot.start()
+                return jsonify({"success": True, "message": "Mensaje de prueba enviado y bot activado correctamente!"})
             return jsonify({"error": res.get("description", "Error de Telegram")}), 400
         except Exception as e:
             return jsonify({"error": f"Error conectando con Telegram: {e}"}), 400
+
 
     if service == "ftp":
         host = config.get("host")

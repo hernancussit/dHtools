@@ -619,7 +619,7 @@ def user_telegram_status():
         return jsonify({"error": "No autenticado"}), 401
 
     from core.telegram_bot import telegram_bot
-    bot_info = telegram_bot.get_bot_info()
+    bot_info = telegram_bot.get_bot_info(force_refresh=True)
     bot_username = bot_info.get("username") if bot_info else None
 
     users = load_users()
@@ -646,7 +646,7 @@ def user_telegram_token():
     from core.utils import create_telegram_link_token
     from core.telegram_bot import telegram_bot
     token = create_telegram_link_token(current_user)
-    bot_info = telegram_bot.get_bot_info()
+    bot_info = telegram_bot.get_bot_info(force_refresh=True)
     bot_username = bot_info.get("username") if bot_info else None
     deep_link = f"https://t.me/{bot_username}?start=link_{token}" if bot_username else None
 
@@ -656,6 +656,7 @@ def user_telegram_token():
         "bot_username": bot_username,
         "deep_link": deep_link
     })
+
 
 
 @auth_bp.route("/api/user/telegram-unlink", methods=["POST"])
