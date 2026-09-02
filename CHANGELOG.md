@@ -6,6 +6,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [1.2.0-dev] - En desarrollo (Rama dev)
 
+### 🐛 Correcciones de Bugs
+- **`fix`: Recorte temporal (trimming) ignorado en descargas encoladas:**
+  - Los campos `start_time` y `end_time` eran correctamente parseados en `/api/download` pero jamás se guardaban en el `job_spec`. El worker de cola siempre leía `None` para ambos campos, por lo que yt-dlp descargaba el video completo en lugar del segmento solicitado.
+  - Impacto: afectaba a todos los usuarios que usaran el campo de recorte temporal en Modo Avanzado.
+- **`fix`: Recorte temporal degradaba la calidad a 360p:**
+  - Al usar `download_range_func` con streams DASH de YouTube (los que permiten 720p+), yt-dlp caía silenciosamente al stream progresivo de 360p (el único que soporta range requests HTTP directas).
+  - Solución: se agrega `postprocessor_args["ffmpeg_i"]` con `-ss <inicio>` y `postprocessor_args["ffmpeg_o"]` con `-t <duración>` para que FFmpeg ejecute el recorte exacto durante el paso de merge del stream DASH sin necesidad de degradar la calidad.
+  - El `download_ranges` y `force_keyframes_at_cuts` se mantienen para eficiencia de segmentación inicial.
+
 ### 🏗️ Arquitectura Modular (Flask Blueprints)
 - **100% Modularización del Monolito:**
   - Desacoplado `app.py` en capas funcionales independientes y mantenibles:
