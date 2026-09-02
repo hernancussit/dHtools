@@ -591,6 +591,12 @@ class TelegramBot:
             return
 
         if data.startswith("cancel_select:"):
+            cache_id = data.split(":", 1)[1] if ":" in data else ""
+            with TELEGRAM_MEDIA_CACHE_LOCK:
+                cached = TELEGRAM_MEDIA_CACHE.get(cache_id)
+            if cached and cached.get("owner") != username:
+                self.answer_callback_query(q_id, "⛔ No tenés permiso para cancelar esta acción", show_alert=True)
+                return
             self.answer_callback_query(q_id, "Selección cancelada")
             self.edit_message(chat_id, message_id, "❌ <i>Descarga cancelada.</i>")
             return
@@ -598,6 +604,10 @@ class TelegramBot:
         if data.startswith("cancel_job:"):
             job_id = data.split(":", 1)[1]
             with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                if job and job.get("owner") != username:
+                    self.answer_callback_query(q_id, "⛔ No tenés permiso para cancelar este trabajo", show_alert=True)
+                    return
                 if job_id in JOBS:
                     JOBS[job_id]["status"] = "cancelled"
             with QUEUE_LOCK:
@@ -609,17 +619,24 @@ class TelegramBot:
 
         if data.startswith("send:"):
             fn = data.split(":", 1)[1]
-            self.answer_callback_query(q_id, "Enviando archivo...")
-            # Find file in downloads
             meta = load_downloads_meta()
             matched = None
-            for stored_fn in meta.keys():
+            matched_info = None
+            for stored_fn, finfo in meta.items():
                 if stored_fn.startswith(fn) or fn in stored_fn:
                     matched = stored_fn
+                    matched_info = finfo
                     break
-            if not matched:
-                matched = fn
 
+            if not matched or not matched_info:
+                self.answer_callback_query(q_id, "Archivo no encontrado", show_alert=True)
+                return
+
+            if matched_info.get("owner") != username:
+                self.answer_callback_query(q_id, "⛔ No tenés permiso para acceder a este archivo", show_alert=True)
+                return
+
+            self.answer_callback_query(q_id, "Enviando archivo...")
             fpath = safe_download_path(matched)
             if fpath and os.path.exists(fpath):
                 ok = self.send_media(chat_id, fpath, caption=f"📥 <b>{matched}</b>")
@@ -645,6 +662,10 @@ class TelegramBot:
             if not cached:
                 self.answer_callback_query(q_id, "La sesión de descarga expiró. Volvé a enviar el enlace.", show_alert=True)
                 self.edit_message(chat_id, message_id, "⚠️ <i>Sesión expirada. Por favor reenviá el enlace.</i>")
+                return
+
+            if cached.get("owner") != username:
+                self.answer_callback_query(q_id, "⛔ Esta solicitud pertenece a otro usuario", show_alert=True)
                 return
 
             can_dl, q_err = check_user_storage_quota(username)

@@ -181,6 +181,11 @@ def load_cloud_config() -> dict:
 def save_cloud_config(cfg: dict):
     with open(CLOUD_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+    try:
+        os.chmod(CLOUD_CONFIG_FILE, 0o600)
+    except Exception:
+        pass
+
 
 
 def get_user_cloud_presets(username: str) -> list:
