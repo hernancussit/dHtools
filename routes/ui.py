@@ -43,6 +43,12 @@ def service_worker():
     return send_file(os.path.join(current_app.root_path, "static", "sw.js"), mimetype="application/javascript")
 
 
+@ui_bp.route("/favicon.ico")
+def favicon_ico():
+    return send_file(os.path.join(current_app.root_path, "static", "favicon.ico"), mimetype="image/x-icon")
+
+
+
 @ui_bp.route("/api/version")
 def api_version():
     return jsonify({

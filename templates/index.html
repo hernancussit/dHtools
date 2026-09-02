@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="alternate icon" href="/static/favicon.ico">
 <title>{{ (config and config.site_title) or 'dHtools - Suite Multimedia' }}</title>
 
 <style>
@@ -734,6 +736,7 @@
     .app-layout {
       flex-direction: column;
       overflow-y: auto;
+      overflow-x: hidden;
     }
     .sidebar {
       width: 100%;
@@ -741,27 +744,70 @@
       height: auto;
       border-right: none;
       border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
+      padding: 10px 14px;
+    }
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .user-badge-box {
+      margin-top: 0;
+      padding: 3px 8px;
+      font-size: 0.75rem;
     }
     .nav-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 6px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .nav-title {
-      grid-column: 1 / -1;
+      display: none; /* Ocultar subtitulos para no robar espacio vertical */
+    }
+    .nav-item {
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      border-radius: 8px;
+    }
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
       margin-top: 4px;
-      padding: 2px 4px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .sidebar-footer > div:first-child {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar-footer > div:first-child label {
+      margin: 0;
+      white-space: nowrap;
     }
     .main-content {
-      padding: 14px 12px;
+      padding: 12px 10px;
       height: auto;
       overflow-y: visible;
+      overflow-x: hidden;
+    }
+    .card {
+      padding: 14px 12px;
+      border-radius: 12px;
+      margin-bottom: 14px;
     }
   }
 
   @media (max-width: 600px) {
+    .queue-url-sub {
+      display: none !important;
+    }
     .url-input-header {
       flex-direction: column;
       align-items: stretch;
@@ -791,6 +837,17 @@
       justify-content: center;
       padding: 9px 12px;
       font-size: 0.84rem;
+    }
+    .preset-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .preset-pill {
+      padding: 8px 10px;
+    }
+    .engine-selector {
+      flex-direction: column;
+      gap: 6px;
     }
   }
 </style>
@@ -1853,8 +1910,14 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
     startProgressBanner('Encolando descarga en segundo plano...');
 
     try {
+      const inspectedTitle = document.getElementById('quickPreviewCard')?.style.display !== 'none' 
+        ? (document.getElementById('quickPreviewTitle')?.textContent || '') 
+        : '';
+
       const data = await safeApiPost('/api/download', {
         url,
+        title: inspectedTitle,
+        video_title: inspectedTitle,
         quality: quickPreset,
         video_format: 'mp4',
         subtitles: 'none',
@@ -1992,8 +2055,14 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
     startProgressBanner('Encolando descarga avanzada...');
 
     try {
+      const advInspectedTitle = document.getElementById('advPreviewCard')?.style.display !== 'none' 
+        ? (document.getElementById('advPreviewTitle')?.textContent || '') 
+        : '';
+
       const data = await safeApiPost('/api/download', {
         url,
+        title: advInspectedTitle,
+        video_title: advInspectedTitle,
         quality,
         video_format: videoFormat,
         start_time: startTime,
@@ -2268,16 +2337,23 @@ function renderQueueState(data) {
     if (queue.length === 0) {
       pendingList.innerHTML = '<div style="font-size:0.82rem; color:var(--muted); text-align:center; padding:18px; border:1px dashed var(--border); border-radius:8px;">No hay descargas en espera en la cola.</div>';
     } else {
-      pendingList.innerHTML = queue.map((item, idx) => `
+      pendingList.innerHTML = queue.map((item, idx) => {
+        const rawTitle = item.video_title || item.title || item.current_title;
+        const isUrlTitle = !rawTitle || rawTitle.startsWith('http://') || rawTitle.startsWith('https://');
+        const displayTitle = isUrlTitle ? (item.url || 'Descarga multimedia en espera') : rawTitle;
+        const showUrlSub = !isUrlTitle && item.url;
+
+        return `
         <div class="queue-item-row">
-          <div style="display:flex; align-items:center; gap:10px; overflow:hidden; flex:1;">
+          <div style="display:flex; align-items:center; gap:10px; overflow:hidden; flex:1; min-width:0;">
             <span class="queue-badge-pos">#${idx + 1}</span>
-            ${item.thumbnail ? `<img src="${item.thumbnail}" style="width:36px; height:36px; border-radius:6px; object-fit:cover; flex-shrink:0;">` : ''}
-            <div style="overflow:hidden; flex:1;">
-              <div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.video_title || item.url}">
-                ${item.item_index ? `<span style="color:var(--accent-blue); margin-right:4px;">[#${item.item_index}]</span>` : ''}${item.video_title || item.url}
+            ${item.thumbnail ? `<img src="${item.thumbnail}" style="width:38px; height:38px; border-radius:6px; object-fit:cover; flex-shrink:0;">` : ''}
+            <div style="overflow:hidden; flex:1; min-width:0;">
+              <div style="font-size:0.86rem; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${displayTitle}">
+                ${item.item_index ? `<span style="color:var(--accent-blue); margin-right:4px;">[#${item.item_index}]</span>` : ''}${displayTitle}
               </div>
-              <div style="font-size:0.75rem; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:2px; flex-wrap:wrap;">
+              ${showUrlSub ? `<div class="queue-url-sub" style="font-size:0.72rem; color:var(--muted); opacity:0.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;" title="${item.url}">🔗 ${item.url}</div>` : ''}
+              <div style="font-size:0.73rem; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:3px; flex-wrap:wrap;">
                 ${item.folder_name ? `<span class="brand-badge" style="font-size:0.65rem; background:rgba(236,72,153,0.15); color:#f472b6;">📁 ${item.folder_name}</span>` : ''}
                 <span class="brand-badge" style="font-size:0.65rem;">${item.quality || 'Auto'}</span>
                 <span class="brand-badge" style="font-size:0.65rem; background:rgba(255,255,255,0.05);">${item.engine || 'auto'}</span>
@@ -2285,13 +2361,14 @@ function renderQueueState(data) {
               </div>
             </div>
           </div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'up')" title="Subir prioridad" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
-            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'down')" title="Bajar prioridad" ${idx === queue.length - 1 ? 'disabled' : ''}>⬇️</button>
-            <button class="btn btn-danger btn-sm" style="padding:3px 8px; font-size:0.72rem;" onclick="cancelQueueItem('${item.job_id}')" title="Quitar de la cola">🗑️</button>
+          <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'up')" title="Subir prioridad" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.72rem;" onclick="moveQueueItem('${item.job_id}', 'down')" title="Bajar prioridad" ${idx === queue.length - 1 ? 'disabled' : ''}>⬇️</button>
+            <button class="btn btn-danger btn-sm" style="padding:4px 8px; font-size:0.72rem;" onclick="cancelQueueItem('${item.job_id}')" title="Quitar de la cola">🗑️</button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
   }
 
