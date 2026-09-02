@@ -1,4 +1,6 @@
 import os
+import sys
+import re
 import json
 import time
 import logging
@@ -6,22 +8,24 @@ import threading
 import zipfile
 import shutil
 import uuid
-from flask import Blueprint, request, jsonify, send_file, Response, render_template
+from flask import Blueprint, request, jsonify, send_file, Response, render_template, abort
 
 from core.config import DOWNLOAD_DIR, COBALT_URL
 from core.state import (
-    JOBS, JOBS_LOCK, BATCH_JOBS, BATCH_LOCK, QUEUE_LIST, QUEUE_LOCK
+    JOBS, JOBS_LOCK, BATCH_JOBS, BATCH_LOCK, QUEUE_LIST, QUEUE_LOCK,
+    ACTIVE_WORKER_JOB
 )
 from core.utils import (
     validate_media_url, is_audio_quality, format_for_quality, format_bytes,
     load_config, safe_filename, enqueue_job, record_download_meta,
     delete_download_meta, load_downloads_meta, save_queue_state,
-    safe_download_path
+    safe_download_path, parse_time_to_seconds, cookies_opts
 )
 from core.downloader import (
     run_download, run_download_cascade, append_job_log, purge_downloads,
     get_ytdlp_version, run_pip_update, restart_process_soon,
-    extract_with_fallback, normalize_url, detect_platform, is_playlist_url
+    extract_with_fallback, normalize_url, detect_platform, is_playlist_url,
+    get_deezer_info, get_spotify_info
 )
 from routes.auth import require_admin
 
