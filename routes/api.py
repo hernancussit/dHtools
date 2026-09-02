@@ -824,3 +824,60 @@ def batch_download_zip(batch_id):
         download_name=f"lote_{batch_id[:8]}.zip",
         mimetype="application/zip",
     )
+
+
+# ==================== USER CLOUD PRESETS (CLOUD STORAGE HUB) ====================
+
+@api_bp.route("/api/user/cloud-presets", methods=["GET"])
+def api_get_user_cloud_presets():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    from core.utils import get_user_cloud_presets
+    presets = get_user_cloud_presets(username)
+    return jsonify({"presets": presets})
+
+
+@api_bp.route("/api/user/cloud-presets", methods=["POST"])
+def api_save_user_cloud_preset():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    data = request.get_json(force=True) or {}
+    from core.utils import save_user_cloud_preset
+    ok, saved = save_user_cloud_preset(username, data)
+    if ok:
+        return jsonify({"success": True, "preset": saved})
+    return jsonify({"error": "No se pudo guardar el preset"}), 400
+
+
+@api_bp.route("/api/user/cloud-presets/<preset_id>", methods=["DELETE"])
+def api_delete_user_cloud_preset(preset_id):
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    from core.utils import delete_user_cloud_preset
+    ok = delete_user_cloud_preset(username, preset_id)
+    if ok:
+        return jsonify({"success": True, "message": "Preset eliminado correctamente"})
+    return jsonify({"error": "Preset no encontrado"}), 404
+
+
+@api_bp.route("/api/user/cloud-presets/test", methods=["POST"])
+def api_test_user_cloud_preset():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    data = request.get_json(force=True) or {}
+    service = data.get("service")
+    config = data.get("config", {})
+    from core.utils import test_cloud_connection
+    ok, msg = test_cloud_connection(service, config)
+    if ok:
+        return jsonify({"success": True, "message": msg})
+    return jsonify({"error": msg}), 400
+
