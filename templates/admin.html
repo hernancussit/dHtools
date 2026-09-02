@@ -710,6 +710,63 @@
           <div id="cookiesUploadNotice" style="display:none; margin-top:12px; padding:10px 14px; border-radius:8px; font-size:0.82rem;"></div>
         </div>
       </div>
+
+      <!-- Servidor SMTP y Notificaciones -->
+      <div class="card">
+        <div class="card-title">
+          <span>📧 Servidor SMTP & Alertas por Correo</span>
+          <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
+            <input type="checkbox" id="smtpEnabled"> Habilitar Envío de Correo
+          </label>
+        </div>
+        <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
+          Configurá un servidor SMTP saliente (Gmail, Outlook, Mailgun, Amazon SES o tu propio servidor) para permitir la recuperación de contraseñas de usuarios y alertas del sistema.
+        </p>
+
+        <form id="formSmtpConfig">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:12px;">
+            <div class="form-group">
+              <label>Servidor SMTP (Host)</label>
+              <input type="text" id="smtpHost" placeholder="smtp.gmail.com">
+            </div>
+            <div class="form-group">
+              <label>Puerto</label>
+              <input type="number" id="smtpPort" placeholder="587" value="587">
+            </div>
+            <div class="form-group">
+              <label>Usuario / Email Autenticación</label>
+              <input type="text" id="smtpUser" placeholder="notificaciones@midominio.com">
+            </div>
+            <div class="form-group">
+              <label>Contraseña / App Password</label>
+              <input type="password" id="smtpPass" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+              <label>Email Remitente (From)</label>
+              <input type="email" id="smtpFrom" placeholder="no-reply@midominio.com">
+            </div>
+            <div class="form-group" style="display:flex; flex-direction:column; justify-content:center;">
+              <label>Seguridad de Conexión</label>
+              <div style="display:flex; gap:16px; align-items:center; margin-top:6px;">
+                <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.82rem;">
+                  <input type="radio" name="smtpSecurity" id="smtpSecTls" value="tls" checked> STARTTLS (587)
+                </label>
+                <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.82rem;">
+                  <input type="radio" name="smtpSecurity" id="smtpSecSsl" value="ssl"> SSL/TLS (465)
+                </label>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Configuración SMTP</button>
+            <div style="display:flex; gap:6px; align-items:center; margin-left:auto;">
+              <input type="email" id="smtpTestEmail" placeholder="destinatario@correo.com" style="padding:6px 10px; font-size:0.82rem; border-radius:6px; background:var(--bg-input); border:1px solid var(--border); width:200px;">
+              <button type="button" id="btnTestSmtp" class="btn btn-secondary btn-sm">🧪 Probar Envío</button>
+            </div>
+          </div>
+          <div id="smtpNotice" style="display:none; margin-top:12px; padding:10px 14px; border-radius:8px; font-size:0.82rem;"></div>
+        </form>
+      </div>
     </div>
 
 
@@ -835,6 +892,10 @@
                 <input type="text" id="newUsername" required placeholder="ej. usuario2">
               </div>
               <div class="form-group">
+                <label>Correo Electrónico (opcional)</label>
+                <input type="email" id="newEmail" placeholder="usuario@correo.com">
+              </div>
+              <div class="form-group">
                 <label>Contraseña</label>
                 <input type="password" id="newPassword" required placeholder="••••••••">
               </div>
@@ -864,16 +925,17 @@
           <table>
             <thead>
               <tr>
-                <th style="min-width:120px;">Usuario</th>
-                <th style="min-width:120px;">Rol</th>
-                <th style="min-width:110px;">Estado</th>
-                <th style="min-width:150px;">Descargas en Servidor</th>
-                <th style="min-width:140px;">Fecha Alta</th>
+                <th style="min-width:110px;">Usuario</th>
+                <th style="min-width:150px;">Email</th>
+                <th style="min-width:110px;">Rol</th>
+                <th style="min-width:100px;">Estado</th>
+                <th style="min-width:140px;">Descargas Servidor</th>
+                <th style="min-width:130px;">Fecha Alta</th>
                 <th style="text-align:right; min-width:240px;">Acciones</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
-              <tr><td colspan="6" style="text-align:center; color:var(--muted);">Cargando usuarios...</td></tr>
+              <tr><td colspan="7" style="text-align:center; color:var(--muted);">Cargando usuarios...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1675,7 +1737,7 @@ async function loadUsers() {
     tbody.innerHTML = '';
     const users = data.users || [];
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:20px;">No hay usuarios registrados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:20px;">No hay usuarios registrados.</td></tr>';
       return;
     }
     users.forEach(u => {
@@ -1690,9 +1752,11 @@ async function loadUsers() {
         : '<span class="status-badge" style="background:#1e293b; color:#94a3b8; border:1px solid #334155;"><span class="badge-dot" style="background:#64748b;"></span> 👤 Descargador</span>';
 
       const dlInfo = `${u.downloads_count || 0} archivos (${u.downloads_formatted || '0 B'})`;
+      const emailText = u.email ? `<span style="color:var(--text); font-size:0.82rem;">${u.email}</span>` : '<span style="color:var(--muted); font-size:0.75rem;">Sin email</span>';
 
       tr.innerHTML = `
         <td><strong style="color:var(--text); font-size:0.92rem;">${u.username}</strong></td>
+        <td>${emailText}</td>
         <td>${roleBadge}</td>
         <td>${statusBadge}</td>
         <td style="font-size:0.84rem; color:var(--muted);">${dlInfo}</td>
@@ -1704,8 +1768,8 @@ async function loadUsers() {
           <button class="btn btn-secondary btn-sm" onclick="cleanUserDownloads('${u.username}')" title="Eliminar solo las descargas de este usuario" style="margin-left:4px;">
             🧹 Limpiar
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')" title="Cambiar clave o rol" style="margin-left:4px;">
-            🔑 Clave
+          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')" title="Cambiar clave o email" style="margin-left:4px;">
+            🔑 Editar
           </button>
           <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')" title="Eliminar usuario definitivamente" style="margin-left:4px;">
             🗑️
@@ -1715,7 +1779,7 @@ async function loadUsers() {
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar usuarios.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar usuarios.</td></tr>';
   }
 }
 
@@ -1729,6 +1793,7 @@ document.getElementById('btnCancelAddUser').addEventListener('click', () => {
 document.getElementById('formAddUser').addEventListener('submit', async (e) => {
   e.preventDefault();
   const username = document.getElementById('newUsername').value.trim();
+  const email = document.getElementById('newEmail').value.trim();
   const password = document.getElementById('newPassword').value;
   const role = document.getElementById('newRole').value;
   const status = document.getElementById('newStatus').value;
@@ -1736,7 +1801,7 @@ document.getElementById('formAddUser').addEventListener('submit', async (e) => {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, role, status })
+      body: JSON.stringify({ username, email, password, role, status })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1746,7 +1811,6 @@ document.getElementById('formAddUser').addEventListener('submit', async (e) => {
     loadUsers();
   } catch (e) {
     showToast(e.message, 'error');
-  }
 });
 
 async function toggleUserStatus(username, currentStatus) {
@@ -1815,12 +1879,94 @@ document.getElementById('logoutBtn')?.addEventListener('click', () => {
   }
 });
 
+// 6. SMTP Management
+async function loadSmtpConfig() {
+  try {
+    const res = await fetch('/api/admin/smtp');
+    const data = await res.json();
+    const smtp = data.smtp || {};
+    document.getElementById('smtpEnabled').checked = Boolean(smtp.enabled);
+    document.getElementById('smtpHost').value = smtp.host || '';
+    document.getElementById('smtpPort').value = smtp.port || 587;
+    document.getElementById('smtpUser').value = smtp.user || '';
+    document.getElementById('smtpPass').value = smtp.password_masked ? smtp.password : '';
+    document.getElementById('smtpFrom').value = smtp.from_email || '';
+    if (smtp.use_ssl) {
+      document.getElementById('smtpSecSsl').checked = true;
+    } else {
+      document.getElementById('smtpSecTls').checked = true;
+    }
+  } catch (e) {}
+}
+
+document.getElementById('formSmtpConfig')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const notice = document.getElementById('smtpNotice');
+  const passVal = document.getElementById('smtpPass').value;
+  const payload = {
+    enabled: document.getElementById('smtpEnabled').checked,
+    host: document.getElementById('smtpHost').value.trim(),
+    port: parseInt(document.getElementById('smtpPort').value) || 587,
+    user: document.getElementById('smtpUser').value.trim(),
+    password: passVal.startsWith('••') ? undefined : passVal,
+    from_email: document.getElementById('smtpFrom').value.trim(),
+    use_tls: document.getElementById('smtpSecTls').checked,
+    use_ssl: document.getElementById('smtpSecSsl').checked
+  };
+  try {
+    const res = await fetch('/api/admin/smtp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    showToast(data.message || 'Configuración SMTP guardada exitosamente.', 'success');
+  } catch (e) {
+    showToast('Error al guardar SMTP: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnTestSmtp')?.addEventListener('click', async () => {
+  const to_email = document.getElementById('smtpTestEmail').value.trim();
+  const notice = document.getElementById('smtpNotice');
+  if (!to_email) {
+    showToast('Ingresá un correo destinatario para la prueba', 'error');
+    return;
+  }
+  notice.style.display = 'block';
+  notice.style.background = 'var(--bg-input)';
+  notice.style.border = '1px solid var(--border)';
+  notice.style.color = 'var(--text)';
+  notice.textContent = `⏳ Conectando con el servidor SMTP y enviando correo a ${to_email}...`;
+  try {
+    const res = await fetch('/api/admin/smtp-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to_email })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Fallo en la prueba SMTP');
+    notice.style.background = 'rgba(16, 185, 129, 0.15)';
+    notice.style.border = '1px solid var(--success)';
+    notice.style.color = 'var(--success)';
+    notice.textContent = `✅ ${data.message}`;
+    showToast('Prueba SMTP exitosa', 'success');
+  } catch (e) {
+    notice.style.background = 'rgba(239, 68, 68, 0.15)';
+    notice.style.border = '1px solid var(--danger)';
+    notice.style.color = 'var(--danger)';
+    notice.textContent = `❌ ${e.message}`;
+    showToast(e.message, 'error');
+  }
+});
+
 document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadServicesStatus();
   loadEnginesInfo();
   loadGitStatus();
   loadConfigAndCookies();
   loadCloudSyncConfig();
+  loadSmtpConfig();
   loadUsers();
   showToast('Datos actualizados en vivo.', 'success', 2000);
 });
@@ -1831,6 +1977,7 @@ loadEnginesInfo();
 loadGitStatus();
 loadConfigAndCookies();
 loadCloudSyncConfig();
+loadSmtpConfig();
 loadUsers();
 setInterval(loadServicesStatus, 20000);
 

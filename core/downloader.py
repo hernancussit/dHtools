@@ -29,7 +29,7 @@ from core.utils import (
     record_download_meta, delete_download_meta, save_queue_state,
     load_queue_state, get_disk_status, format_bytes, safe_filename,
     format_for_quality, is_audio_quality, parse_time_to_seconds,
-    safe_download_path, enqueue_job
+    safe_download_path, enqueue_job, format_seconds
 )
 
 QUALITY_FORMAT_MAP = {
@@ -925,6 +925,10 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 })
 
         if start_time is not None or end_time is not None:
+            st_str = format_seconds(start_time) if start_time else "00:00"
+            et_str = format_seconds(end_time) if end_time else "fin"
+            append_job_log(job_id, f"[*] Recorte temporal inteligente: solicitando rango {st_str} -> {et_str}.")
+            append_job_log(job_id, "[*] Descarga por segmentos activos (sin transferir el video completo).")
             ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
                 None, [(start_time or 0, end_time or float("inf"))]
             )

@@ -30,14 +30,15 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - Subtítulo con URL secundaria pequeña y atenuada en pantallas de escritorio, ocultándose automáticamente en celulares (`.queue-url-sub`).
   - Propagación inmediata de metadatos de inspección desde el cliente a la API para mostrar el título desde el segundo cero.
 - [x] **Favicon e Identidad de Pestaña:** Integración del favicon oficial (`favicon.svg` y `favicon.ico`) en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) y endpoint directo `/favicon.ico`.
-- [ ] **Descarga Estricta de Fragmentos Recortados (Trimming Optimization):**
-  - Configurar descarga estricta por secciones temporales (`download_ranges` / `--download-sections` y pre-seeking con FFmpeg `-ss`) para evitar descargar el video completo cuando solo se solicita un fragmento.
-  - Reducción drástica del consumo de ancho de banda, uso de disco temporal y tiempos de espera en recortes de videos largos (podcasts, conciertos, directos).
-- [ ] **Sistema de Cuentas con Correo Electrónico:**
-  - Registro de email por usuario para comunicaciones y alertas del sistema.
-  - Configuración de servidor **SMTP** desde el Panel de Administración (Gmail, Outlook, Mailgun, Amazon SES o SMTP personalizado) con prueba de envío en vivo.
-- [ ] **Recuperación Segura de Contraseñas:**
-  - Flujo de restablecimiento de contraseña mediante tokens criptográficos temporales de un solo uso enviados por correo electrónico.
+- [x] **Descarga Estricta de Fragmentos Recortados (Trimming Optimization):**
+  - Registro informativo en tiempo real (`format_seconds`) con aviso explícito al usuario en consola.
+  - Descarga estricta por secciones temporales activas (`download_ranges` con forzado de keyframes y pre-seeking), evitando la transferencia innecesaria de archivos completos.
+- [x] **Sistema de Cuentas con Correo Electrónico & Servidor SMTP:**
+  - Soporte de servidor SMTP configurable en el panel de administración (TLS/SSL) con prueba de envío en vivo (`/api/admin/smtp-test`).
+  - Registro y edición de direcciones de email por usuario en la administración (`users.json`).
+- [x] **Recuperación Segura de Contraseñas:**
+  - Tokens temporales de un solo uso de 1 hora de duración para recuperación de accesos.
+  - Flujo completo con modal "¿Olvidaste tu contraseña?" y formulario de cambio de clave con token (`/api/auth/reset-password`).
 - [ ] **Autenticación de Dos Factores (2FA / TOTP):**
   - Soporte para aplicaciones de autenticación estándar (Google Authenticator, Authy, Aegis, Bitwarden).
   - Asistente de configuración con código QR y códigos de recuperación de respaldo (*backup codes*).

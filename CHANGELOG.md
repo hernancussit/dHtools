@@ -34,6 +34,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Eliminación de desbordes horizontales accidentales (`overflow-x: hidden`) y compactación de la navegación en móviles (cuadrícula 2x2).
   - Presentación enriquecida en la cola destacando el título real del contenido en negrita y ocultando URLs secundarias en pantallas móviles.
   - Propagación de títulos pre-inspeccionados a la API para visualización inmediata desde el segundo cero.
+- **Optimización de Recorte Temporal (Trimming) con Feedback en Vivo:**
+  - Inyección de avisos en consola informando el rango exacto de recorte solicitado (`HH:MM:SS` / `MM:SS`) y confirmando la transferencia estricta de segmentos sin descargar el video completo.
+- **Configuración de Servidor SMTP & Alertas por Correo:**
+  - Módulo nativo `send_system_email` con soporte STARTTLS y SSL/TLS para proveedores como Gmail, Outlook o SMTP privados.
+  - Tarjeta de administración para configurar servidor, puerto, credenciales y prueba de envío en vivo (`/api/admin/smtp-test`).
+- **Gestión de Cuentas con Email & Recuperación de Contraseñas:**
+  - Campo de correo electrónico integrado en la creación y administración de usuarios (`users.json`).
+  - Flujo de recuperación de contraseñas olvidadas mediante tokens seguros de un solo uso (1 hora) con enlace directo desde `/login`.
 
 ---
 

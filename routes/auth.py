@@ -5,15 +5,18 @@ import secrets
 import hashlib
 import functools
 import urllib.parse
-import logging
+import threading
 from flask import Blueprint, request, jsonify, render_template, session, redirect, url_for, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from core.config import USERS_FILE, APP_USERNAME, APP_PASSWORD, MAX_FAILED_LOGINS, LOCKOUT_DURATION_SECONDS
 from core.state import LOGIN_ATTEMPTS, LOGIN_ATTEMPTS_LOCK
-from core.utils import load_config
+from core.utils import load_config, send_system_email
 
 auth_bp = Blueprint("auth_bp", __name__)
+
+RESET_TOKENS = {}
+RESET_TOKENS_LOCK = threading.Lock()
 
 def get_client_ip() -> str:
     """Extracts client IP respecting proxy headers."""
@@ -110,7 +113,8 @@ def protect_all_routes():
         request.path == "/login"
         or request.path == "/logout"
         or request.path.startswith("/static/")
-        or request.path in ("/manifest.json", "/sw.js", "/robots.txt")
+        or request.path in ("/manifest.json", "/sw.js", "/robots.txt", "/favicon.ico")
+        or request.path in ("/api/auth/forgot-password", "/api/auth/reset-password")
     ):
         return None
 
@@ -268,3 +272,105 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("auth_bp.login", msg="logged_out"))
+
+
+@auth_bp.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json(force=True) or {}
+    identifier = str(data.get("identifier", "")).strip().lower()
+    if not identifier:
+        return jsonify({"error": "Ingresá tu nombre de usuario o correo electrónico."}), 400
+
+    users = load_users()
+    target_user = None
+    target_username = None
+
+    for u, d in users.items():
+        if u.lower() == identifier or (d.get("email") and d.get("email").strip().lower() == identifier):
+            target_user = d
+            target_username = u
+            break
+
+    if not target_user:
+        return jsonify({"message": "Si la cuenta existe y tiene un correo asociado, recibirás las instrucciones en breve."})
+
+    user_email = (target_user.get("email") or "").strip()
+    cfg = load_config()
+    smtp_enabled = cfg.get("smtp", {}).get("enabled", False)
+
+    if not user_email:
+        if not smtp_enabled:
+            return jsonify({"error": "El servidor de correo no está configurado. Contactá al Administrador para restablecer tu contraseña."}), 400
+        return jsonify({"error": "Tu cuenta no tiene una dirección de correo registrada. Contactá al Administrador para recuperar tu acceso."}), 400
+
+    if not smtp_enabled:
+        return jsonify({"error": "El servicio de correo electrónico está desactivado temporalmente. Contactá al Administrador."}), 400
+
+    token = secrets.token_urlsafe(32)
+    with RESET_TOKENS_LOCK:
+        now = time.time()
+        for t, rec in list(RESET_TOKENS.items()):
+            if rec.get("expires", 0) < now or rec.get("username") == target_username:
+                RESET_TOKENS.pop(t, None)
+        RESET_TOKENS[token] = {
+            "username": target_username,
+            "expires": now + 3600
+        }
+
+    reset_url = request.host_url.rstrip("/") + f"/login?reset_token={token}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; border: 1px solid #334155;">
+        <h2 style="color: #38bdf8; margin-top: 0;">⚡ dHtools — Restablecimiento de Contraseña</h2>
+        <p>Hola <strong>{target_username}</strong>,</p>
+        <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en dHtools.</p>
+        <div style="text-align: center; margin: 24px 0;">
+            <a href="{reset_url}" style="background: #ef4444; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Restablecer mi Contraseña</a>
+        </div>
+        <p style="font-size: 0.85rem; color: #94a3b8;">O copiá y pegá este enlace en tu navegador:</p>
+        <p style="font-size: 0.78rem; word-break: break-all; color: #38bdf8;">{reset_url}</p>
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+        <p style="font-size: 0.75rem; color: #64748b;">Este enlace es válido por 1 hora. Si no solicitaste este cambio, podés ignorar este correo de forma segura.</p>
+    </div>
+    """
+    text = f"Hola {target_username},\n\nPara restablecer tu contraseña en dHtools, ingresá al siguiente enlace:\n{reset_url}\n\nEl enlace caduca en 1 hora."
+
+    success, msg = send_system_email(user_email, "⚡ dHtools — Recuperación de Contraseña", html, text)
+    if not success:
+        return jsonify({"error": f"No se pudo enviar el correo de recuperación: {msg}"}), 500
+
+    masked = user_email
+    if "@" in user_email:
+        prefix, domain = user_email.split("@", 1)
+        masked = (prefix[:2] + "***@" + domain) if len(prefix) > 2 else ("*@" + domain)
+    return jsonify({"message": f"Se enviaron las instrucciones de recuperación a {masked}."})
+
+
+@auth_bp.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json(force=True) or {}
+    token = str(data.get("token", "")).strip()
+    new_password = str(data.get("password", "")).strip()
+
+    if not token or not new_password:
+        return jsonify({"error": "Falta el token o la nueva contraseña."}), 400
+
+    if len(new_password) < 6:
+        return jsonify({"error": "La contraseña debe tener al menos 6 caracteres."}), 400
+
+    with RESET_TOKENS_LOCK:
+        rec = RESET_TOKENS.get(token)
+        if not rec or rec.get("expires", 0) < time.time():
+            RESET_TOKENS.pop(token, None)
+            return jsonify({"error": "El enlace de restablecimiento es inválido o ha caducado. Solicitá uno nuevo."}), 400
+
+        username = rec.get("username")
+        RESET_TOKENS.pop(token, None)
+
+    users = load_users()
+    if username not in users:
+        return jsonify({"error": "Usuario no encontrado."}), 404
+
+    users[username]["password_hash"] = hash_password(new_password)
+    save_users(users)
+    return jsonify({"message": "¡Contraseña actualizada exitosamente! Ya podés iniciar sesión."})
+
