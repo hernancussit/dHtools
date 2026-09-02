@@ -1419,8 +1419,148 @@
   </main>
 </div>
 
+<!-- MODAL: CONFIGURACION 2FA (TOTP) -->
+<div id="modal2faConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:480px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(16px);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+        <span>🛡️</span> Autenticación de Dos Factores (2FA)
+      </h3>
+      <button type="button" id="btnClose2faModal" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+
+    <div id="totpCurrentStatusBox" style="background:var(--bg-input); padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:0.8rem; color:var(--muted);">Estado del 2FA en tu cuenta:</div>
+        <strong id="totpStatusLabel" style="font-size:0.95rem;">Consultando...</strong>
+      </div>
+      <div id="totpStatusActionBtn"></div>
+    </div>
+
+    <!-- PASO DE CONFIGURACION NUEVA -->
+    <div id="totpSetupBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Escaneá el código QR con tu app de autenticación (Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc.) o ingresá la clave manualmente.
+      </p>
+
+      <div style="text-align:center; margin:16px 0;">
+        <img id="totpQrImage" src="" alt="Código QR 2FA" style="width:160px; height:160px; border-radius:8px; border:3px solid #fff; background:#fff; padding:4px;">
+      </div>
+
+      <div style="background:#090e1a; padding:10px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">Clave de configuración manual (Base32):</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <code id="totpSecretFormatted" style="font-size:0.95rem; font-weight:700; color:var(--accent-blue); letter-spacing:1px;"></code>
+          <button type="button" id="btnCopyTotpSecret" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.74rem;">📋 Copiar</button>
+        </div>
+      </div>
+
+      <div style="background:#090e1a; padding:10px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">🎟️ Códigos de Respaldo de Emergencia (guardalos en un lugar seguro):</div>
+        <div id="totpBackupCodesList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-family:Consolas, monospace; font-size:0.82rem; color:var(--text); margin-top:6px;"></div>
+      </div>
+
+      <form id="formConfirm2fa">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Ingresá el código de 6 dígitos generado por tu aplicación para verificar:</label>
+          <input type="text" id="totpConfirmCode" required placeholder="000000" maxlength="6" style="text-align:center; font-size:1.2rem; letter-spacing:3px; font-weight:700;">
+        </div>
+        <button type="submit" id="btnConfirmEnable2fa" class="btn btn-primary" style="width:100%;">
+          ✅ Confirmar y Activar 2FA
+        </button>
+      </form>
+    </div>
+
+    <!-- DESACTIVAR 2FA -->
+    <div id="totpDisableBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Para desactivar el doble factor de autenticación, confirmá tu contraseña actual.
+      </p>
+      <form id="formDisable2fa">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Contraseña Actual</label>
+          <input type="password" id="totpDisablePassword" required placeholder="••••••••">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button type="submit" class="btn btn-danger btn-sm" style="flex:1;">🔓 Desactivar 2FA</button>
+          <button type="button" id="btnCancelDisable2fa" class="btn btn-secondary btn-sm">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ASISTENTE DE TELEGRAM -->
+<div id="modalTelegramConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:480px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(16px);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+        <span>🤖</span> Asistente de Telegram
+      </h3>
+      <button type="button" id="btnCloseTelegramModal" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+
+    <div id="tgStatusBox" style="background:var(--bg-input); padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:0.8rem; color:var(--muted);">Estado de vinculación:</div>
+        <strong id="tgStatusLabel" style="font-size:0.95rem;">Consultando...</strong>
+      </div>
+      <div id="tgStatusActionBtn"></div>
+    </div>
+
+    <!-- PASO DE VINCULACION -->
+    <div id="tgSetupBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Conectá tu cuenta de Telegram para enviar enlaces de descarga por chat, ver tus descargas recientes y recibir tus archivos directamente en el celular.
+      </p>
+
+      <div style="background:#090e1a; padding:14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; text-align:center;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:6px;">Tu código de vinculación temporal (válido 10 min):</div>
+        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:10px;">
+          <code id="tgTokenCode" style="font-size:1.35rem; font-weight:800; color:var(--accent-blue); letter-spacing:2px;">DHT-......</code>
+          <button type="button" id="btnCopyTgToken" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.74rem;">📋 Copiar</button>
+        </div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">
+          O abrí el enlace directo para iniciar el bot con 1 clic:
+        </div>
+        <a id="btnTgDeepLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; padding:8px 14px;">
+          ✈️ Abrir Bot en Telegram
+        </a>
+      </div>
+
+      <div style="font-size:0.8rem; color:var(--muted); line-height:1.5;">
+        <strong>Instrucciones:</strong>
+        <ol style="margin:6px 0 0 0; padding-left:18px;">
+          <li>Abrí el bot en Telegram (<span id="tgBotNameLabel" style="color:var(--accent-blue); font-weight:600;">@bot</span>).</li>
+          <li>Enviá el comando: <code id="tgCmdExample" style="color:var(--text); font-weight:600;">/vincular DHT-......</code></li>
+          <li>¡Listo! Tu cuenta quedará vinculada al instante.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- CUENTA VINCULADA -->
+    <div id="tgLinkedBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Tu cuenta está conectada con Telegram. Podés enviar enlaces directamente al bot para descargarlos o consultar tus archivos.
+      </p>
+      <div style="background:rgba(16, 185, 129, 0.1); border:1px solid var(--success); padding:12px; border-radius:8px; margin-bottom:16px;">
+        <div style="font-size:0.82rem; color:var(--success); font-weight:600;">✨ Comandos disponibles en Telegram:</div>
+        <ul style="margin:6px 0 0 0; padding-left:18px; font-size:0.8rem; color:var(--text);">
+          <li><code>🔗 Enlace</code>: Enviá cualquier video/canción para descargarlo con botones de calidad.</li>
+          <li><code>/descargas</code>: Explorá tus descargas y reenviátelas al chat.</li>
+          <li><code>/cola</code>: Consultá tareas en segundo plano.</li>
+          <li><code>/cuota</code>: Verificá tu almacenamiento en disco.</li>
+        </ul>
+      </div>
+      <button type="button" id="btnUnlinkTelegram" class="btn btn-danger btn-sm" style="width:100%;">
+        🔌 Desvincular Cuenta de Telegram
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
+
 // ==================== GLOBAL INITIALIZATION & PWA ====================
 let deferredPrompt;
 const pwaInstallBtn = document.getElementById('pwaInstallBtn');
@@ -2919,13 +3059,23 @@ async function start2faSetup() {
 }
 
 document.getElementById('btnOpen2faModal')?.addEventListener('click', () => {
-  modal2fa.style.display = 'flex';
-  loadTotpStatus();
+  const m = document.getElementById('modal2faConfig');
+  if (m) {
+    m.style.display = 'flex';
+    loadTotpStatus();
+  }
 });
 
 document.getElementById('btnClose2faModal')?.addEventListener('click', () => {
-  modal2fa.style.display = 'none';
+  const m = document.getElementById('modal2faConfig');
+  if (m) m.style.display = 'none';
 });
+
+document.getElementById('modal2faConfig')?.addEventListener('click', (e) => {
+  const m = document.getElementById('modal2faConfig');
+  if (e.target === m) m.style.display = 'none';
+});
+
 
 document.getElementById('btnCopyTotpSecret')?.addEventListener('click', () => {
   const raw = document.getElementById('totpSecretFormatted').dataset.raw;
@@ -2999,8 +3149,8 @@ async function loadTelegramStatus() {
       linkedBox.style.display = 'block';
     } else {
       statusLabel.innerHTML = '<span style="color:var(--muted);">⚪ No vinculado</span>';
-      actionContainer.innerHTML = '<button type="button" id="btnStartSetupTg" class="btn btn-primary btn-sm" style="font-size:0.78rem;">🚀 Vincular</button>';
-      document.getElementById('btnStartSetupTg')?.addEventListener('click', startTelegramSetup);
+      actionContainer.innerHTML = '';
+      startTelegramSetup();
     }
   } catch (e) {
     statusLabel.textContent = 'Error al consultar Telegram';
@@ -3035,17 +3185,23 @@ async function startTelegramSetup() {
 }
 
 document.getElementById('btnOpenTelegramModal')?.addEventListener('click', () => {
-  modalTg.style.display = 'flex';
-  loadTelegramStatus();
+  const m = document.getElementById('modalTelegramConfig');
+  if (m) {
+    m.style.display = 'flex';
+    loadTelegramStatus();
+  }
 });
 
 document.getElementById('btnCloseTelegramModal')?.addEventListener('click', () => {
-  modalTg.style.display = 'none';
+  const m = document.getElementById('modalTelegramConfig');
+  if (m) m.style.display = 'none';
 });
 
-modalTg?.addEventListener('click', (e) => {
-  if (e.target === modalTg) modalTg.style.display = 'none';
+document.getElementById('modalTelegramConfig')?.addEventListener('click', (e) => {
+  const m = document.getElementById('modalTelegramConfig');
+  if (e.target === m) m.style.display = 'none';
 });
+
 
 document.getElementById('btnCopyTgToken')?.addEventListener('click', () => {
   const tok = document.getElementById('tgTokenCode').textContent;
@@ -3071,149 +3227,9 @@ document.getElementById('btnUnlinkTelegram')?.addEventListener('click', async ()
 fetchQueueState();
 loadRecentDownloads();
 loadUserQuota();
-setInterval(loadUserQuota, 15000);
 </script>
-
-<!-- MODAL: CONFIGURACION 2FA (TOTP) -->
-<div id="modal2faConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
-  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:480px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(16px);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
-        <span>🛡️</span> Autenticación de Dos Factores (2FA)
-      </h3>
-      <button type="button" id="btnClose2faModal" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
-    </div>
-
-    <div id="totpCurrentStatusBox" style="background:var(--bg-input); padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <div style="font-size:0.8rem; color:var(--muted);">Estado del 2FA en tu cuenta:</div>
-        <strong id="totpStatusLabel" style="font-size:0.95rem;">Consultando...</strong>
-      </div>
-      <div id="totpStatusActionBtn"></div>
-    </div>
-
-    <!-- PASO DE CONFIGURACION NUEVA -->
-    <div id="totpSetupBox" style="display:none;">
-      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
-        Escaneá el código QR con tu app de autenticación (Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc.) o ingresá la clave manualmente.
-      </p>
-
-      <div style="text-align:center; margin:16px 0;">
-        <img id="totpQrImage" src="" alt="Código QR 2FA" style="width:160px; height:160px; border-radius:8px; border:3px solid #fff; background:#fff; padding:4px;">
-      </div>
-
-      <div style="background:#090e1a; padding:10px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
-        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">Clave de configuración manual (Base32):</div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <code id="totpSecretFormatted" style="font-size:0.95rem; font-weight:700; color:var(--accent-blue); letter-spacing:1px;"></code>
-          <button type="button" id="btnCopyTotpSecret" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.74rem;">📋 Copiar</button>
-        </div>
-      </div>
-
-      <div style="background:#090e1a; padding:10px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
-        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">🎟️ Códigos de Respaldo de Emergencia (guardalos en un lugar seguro):</div>
-        <div id="totpBackupCodesList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-family:Consolas, monospace; font-size:0.82rem; color:var(--text); margin-top:6px;"></div>
-      </div>
-
-      <form id="formConfirm2fa">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>Ingresá el código de 6 dígitos generado por tu aplicación para verificar:</label>
-          <input type="text" id="totpConfirmCode" required placeholder="000000" maxlength="6" style="text-align:center; font-size:1.2rem; letter-spacing:3px; font-weight:700;">
-        </div>
-        <button type="submit" id="btnConfirmEnable2fa" class="btn btn-primary" style="width:100%;">
-          ✅ Confirmar y Activar 2FA
-        </button>
-      </form>
-    </div>
-
-    <!-- DESACTIVAR 2FA -->
-    <div id="totpDisableBox" style="display:none;">
-      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
-        Para desactivar el doble factor de autenticación, confirmá tu contraseña actual.
-      </p>
-      <form id="formDisable2fa">
-        <div class="form-group" style="margin-bottom:14px;">
-          <label>Contraseña Actual</label>
-          <input type="password" id="totpDisablePassword" required placeholder="••••••••">
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button type="submit" class="btn btn-danger btn-sm" style="flex:1;">🔓 Desactivar 2FA</button>
-          <button type="button" id="btnCancelDisable2fa" class="btn btn-secondary btn-sm">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: ASISTENTE DE TELEGRAM -->
-<div id="modalTelegramConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
-  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:480px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(16px);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
-        <span>🤖</span> Asistente de Telegram
-      </h3>
-      <button type="button" id="btnCloseTelegramModal" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
-    </div>
-
-    <div id="tgStatusBox" style="background:var(--bg-input); padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <div style="font-size:0.8rem; color:var(--muted);">Estado de vinculación:</div>
-        <strong id="tgStatusLabel" style="font-size:0.95rem;">Consultando...</strong>
-      </div>
-      <div id="tgStatusActionBtn"></div>
-    </div>
-
-    <!-- PASO DE VINCULACION -->
-    <div id="tgSetupBox" style="display:none;">
-      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
-        Conectá tu cuenta de Telegram para enviar enlaces de descarga por chat, ver tus descargas recientes y recibir tus archivos directamente en el celular.
-      </p>
-
-      <div style="background:#090e1a; padding:14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; text-align:center;">
-        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:6px;">Tu código de vinculación temporal (válido 10 min):</div>
-        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:10px;">
-          <code id="tgTokenCode" style="font-size:1.35rem; font-weight:800; color:var(--accent-blue); letter-spacing:2px;">DHT-......</code>
-          <button type="button" id="btnCopyTgToken" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.74rem;">📋 Copiar</button>
-        </div>
-        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">
-          O abrí el enlace directo para iniciar el bot con 1 clic:
-        </div>
-        <a id="btnTgDeepLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; padding:8px 14px;">
-          ✈️ Abrir Bot en Telegram
-        </a>
-      </div>
-
-      <div style="font-size:0.8rem; color:var(--muted); line-height:1.5;">
-        <strong>Instrucciones:</strong>
-        <ol style="margin:6px 0 0 0; padding-left:18px;">
-          <li>Abrí el bot en Telegram (<span id="tgBotNameLabel" style="color:var(--accent-blue); font-weight:600;">@bot</span>).</li>
-          <li>Enviá el comando: <code id="tgCmdExample" style="color:var(--text); font-weight:600;">/vincular DHT-......</code></li>
-          <li>¡Listo! Tu cuenta quedará vinculada al instante.</li>
-        </ol>
-      </div>
-    </div>
-
-    <!-- CUENTA VINCULADA -->
-    <div id="tgLinkedBox" style="display:none;">
-      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
-        Tu cuenta está conectada con Telegram. Podés enviar enlaces directamente al bot para descargarlos o consultar tus archivos.
-      </p>
-      <div style="background:rgba(16, 185, 129, 0.1); border:1px solid var(--success); padding:12px; border-radius:8px; margin-bottom:16px;">
-        <div style="font-size:0.82rem; color:var(--success); font-weight:600;">✨ Comandos disponibles en Telegram:</div>
-        <ul style="margin:6px 0 0 0; padding-left:18px; font-size:0.8rem; color:var(--text);">
-          <li><code>🔗 Enlace</code>: Enviá cualquier video/canción para descargarlo con botones de calidad.</li>
-          <li><code>/descargas</code>: Explorá tus descargas y reenviátelas al chat.</li>
-          <li><code>/cola</code>: Consultá tareas en segundo plano.</li>
-          <li><code>/cuota</code>: Verificá tu almacenamiento en disco.</li>
-        </ul>
-      </div>
-      <button type="button" id="btnUnlinkTelegram" class="btn btn-danger btn-sm" style="width:100%;">
-        🔌 Desvincular Cuenta de Telegram
-      </button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
+
 
 
