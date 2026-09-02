@@ -21,6 +21,10 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Workers en Segundo Plano (Gunicorn WSGI):** Inicialización de hilos concurrentes compatible con servidores de producción.
 - [x] **Homogeneización de Motores:** Badges `● Online` con indicador de latencia en milisegundos en tiempo real y auto-actualizador de Deno JS.
 - [x] **Unificación de Descargas en Lote:** Conmutador interactivo `[ 🔗 Enlace Único | 📋 Descarga en Lote ]` integrado en Modo Fácil y Modo Avanzado con todas las resoluciones y formatos.
+- [ ] 🚨 **[PRIORIDAD ALTA] Optimización Integral de Navegabilidad y Layout Móvil (Smartphones / WebApp):**
+  - Auditoría y ajuste exhaustivo de diseño responsivo para teléfonos celulares en todas las pantallas (`index.html`, `admin.html`, `login.html`, `wiki.html`).
+  - Evitar que tarjetas, paneles de progreso, modales o botones se encimen, se recorten o generen desplazamiento horizontal en pantallas estrechas (320px a 480px).
+  - Estudiar y diseñar navegación móvil optimizada (ej. barra de navegación inferior fija estilo app nativa o menú colapsable) para que el contenido no quede desplazado hacia abajo.
 - [ ] **Favicon e Identidad de Pestaña:** Integrar favicon oficial (en formatos `.ico`, `.png` y `.svg`) en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) para visualización clara en pestañas del navegador y marcadores.
 - [ ] **Sistema de Cuentas con Correo Electrónico:**
   - Registro de email por usuario para comunicaciones y alertas del sistema.
