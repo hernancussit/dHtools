@@ -870,7 +870,14 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:0.75rem; color:var(--muted);">Suite Multimedia</span>
-          <span class="brand-badge">v{{ version }}</span>
+          <div style="display:flex; align-items:center; gap:5px;">
+            <span class="brand-badge">v{{ version }}</span>
+            {% if branch %}
+            <span style="font-size:0.65rem; font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px; {% if branch == 'dev' %}background:rgba(245,158,11,0.18); color:#fbbf24; border:1px solid rgba(245,158,11,0.35);{% else %}background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35);{% endif %}">
+              {{ branch }}
+            </span>
+            {% endif %}
+          </div>
         </div>
 
         <div class="user-badge-box">
