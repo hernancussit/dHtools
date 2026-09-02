@@ -459,3 +459,40 @@ def player_client_opts(clients=None, for_download: bool = True):
             target = [target]
         opts["extractor_args"]["youtube"] = {"player_client": target}
     return opts
+
+
+def get_user_storage_used(username: str) -> int:
+    """Returns the total disk storage in bytes currently used by the specified user."""
+    meta = load_downloads_meta()
+    total = 0
+    for jid, info in meta.items():
+        user = info.get("username") or info.get("owner")
+        if user == username:
+            total += int(info.get("size_bytes") or info.get("size", 0))
+    return total
+
+
+def check_user_storage_quota(username: str) -> tuple[bool, str]:
+    """
+    Checks if the user has exceeded their assigned storage quota.
+    Returns (True, '') if OK, or (False, error_message) if quota is exceeded.
+    """
+    if not username:
+        return True, ""
+    from routes.auth import load_users
+    users = load_users()
+    user = users.get(username)
+    if not user:
+        return True, ""
+    try:
+        quota_gb = float(user.get("quota_gb", 0) or 0)
+    except (ValueError, TypeError):
+        quota_gb = 0
+    if quota_gb <= 0:
+        return True, ""  # 0 = Unlimited
+    quota_bytes = int(quota_gb * (1024 ** 3))
+    used_bytes = get_user_storage_used(username)
+    if used_bytes >= quota_bytes:
+        return False, f"Has alcanzado tu límite de cuota de almacenamiento ({quota_gb:.1f} GB). Eliminá descargas anteriores desde tu panel para continuar."
+    return True, ""
+

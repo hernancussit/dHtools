@@ -923,6 +923,10 @@
                   <option value="suspended">⏸️ Suspendido</option>
                 </select>
               </div>
+              <div class="form-group">
+                <label>Cuota Disco (GB, 0=Ilimitado)</label>
+                <input type="number" step="0.5" min="0" id="newQuota" value="0" placeholder="0 = Ilimitado">
+              </div>
             </div>
             <div style="display:flex; gap:8px; margin-top:8px;">
               <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Usuario</button>
@@ -936,22 +940,97 @@
             <thead>
               <tr>
                 <th style="min-width:110px;">Usuario</th>
-                <th style="min-width:150px;">Email</th>
+                <th style="min-width:140px;">Email</th>
                 <th style="min-width:110px;">Rol</th>
                 <th style="min-width:100px;">Estado</th>
-                <th style="min-width:140px;">Descargas Servidor</th>
-                <th style="min-width:130px;">Fecha Alta</th>
-                <th style="text-align:right; min-width:240px;">Acciones</th>
+                <th style="min-width:100px;">2FA</th>
+                <th style="min-width:100px;">Cuota</th>
+                <th style="min-width:130px;">Descargas Servidor</th>
+                <th style="min-width:120px;">Fecha Alta</th>
+                <th style="text-align:right; min-width:220px;">Acciones</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
-              <tr><td colspan="7" style="text-align:center; color:var(--muted);">Cargando usuarios...</td></tr>
+              <tr><td colspan="9" style="text-align:center; color:var(--muted);">Cargando usuarios...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AUDITORIA DE SESIONES ACTIVAS -->
+      <div class="card" style="margin-top:20px;">
+        <div class="card-title">
+          <span>🛡️ Auditoría de Sesiones Activas en Tiempo Real</span>
+          <button id="btnRefreshSessions" class="btn btn-secondary btn-sm">🔄 Refrescar Sesiones</button>
+        </div>
+        <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+          Supervisá todas las sesiones web actualmente conectadas. Podés revocar el acceso de cualquier dispositivo o usuario de inmediato.
+        </p>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:110px;">Usuario</th>
+                <th style="min-width:90px;">Rol</th>
+                <th style="min-width:120px;">Dirección IP</th>
+                <th style="min-width:180px;">Navegador / Dispositivo</th>
+                <th style="min-width:140px;">Inicio Sesión</th>
+                <th style="min-width:140px;">Última Actividad</th>
+                <th style="text-align:right; min-width:110px;">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="sessionsTableBody">
+              <tr><td colspan="7" style="text-align:center; color:var(--muted); padding:16px;">Cargando sesiones activas...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
   </main>
+</div>
+
+<!-- MODAL: EDITAR USUARIO -->
+<div id="modalEditUser" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:460px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); backdrop-filter:blur(16px);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:1.1rem; color:var(--text);">✏️ Editar Usuario: <span id="editUserTitle" style="color:var(--accent-blue);"></span></h3>
+      <button type="button" id="btnCloseEditUser" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+    <form id="formEditUser">
+      <input type="hidden" id="editUsername">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Correo Electrónico</label>
+        <input type="email" id="editEmail" placeholder="usuario@correo.com">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Nueva Contraseña (dejar vacío para no cambiar)</label>
+        <input type="password" id="editPassword" placeholder="••••••••">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>Rol</label>
+          <select id="editRole">
+            <option value="downloader">👤 Descargador</option>
+            <option value="admin">👑 Administrador</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cuota Disco (GB, 0=Ilimitado)</label>
+          <input type="number" step="0.5" min="0" id="editQuota" value="0">
+        </div>
+      </div>
+      <div style="margin-bottom:16px; background:var(--bg-input); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0; font-size:0.84rem;">
+          <input type="checkbox" id="editReset2fa">
+          <span>🛡️ <strong>Restablecer 2FA:</strong> Desactivar doble factor si el usuario perdió su app autenticadora.</span>
+        </label>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" id="btnCancelEditUser" class="btn btn-secondary btn-sm">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Cambios</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -1747,7 +1826,7 @@ async function loadUsers() {
     tbody.innerHTML = '';
     const users = data.users || [];
     if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:20px;">No hay usuarios registrados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--muted); padding:20px;">No hay usuarios registrados.</td></tr>';
       return;
     }
     users.forEach(u => {
@@ -1761,6 +1840,14 @@ async function loadUsers() {
         ? '<span class="status-badge" style="background:#064e3b; color:#6ee7b7; border:1px solid #059669;"><span class="badge-dot" style="background:#10b981;"></span> 👑 Admin</span>'
         : '<span class="status-badge" style="background:#1e293b; color:#94a3b8; border:1px solid #334155;"><span class="badge-dot" style="background:#64748b;"></span> 👤 Descargador</span>';
 
+      const totpBadge = u.totp_enabled
+        ? '<span class="status-badge status-online" style="font-size:0.75rem;"><span class="badge-dot" style="background:#10b981;"></span> Activo</span>'
+        : '<span class="status-badge" style="background:var(--bg-input); color:var(--muted); border:1px solid var(--border); font-size:0.75rem;"><span class="badge-dot" style="background:#64748b;"></span> No</span>';
+
+      const quotaText = (u.quota_gb && u.quota_gb > 0)
+        ? `<strong style="color:var(--text); font-size:0.84rem;">${u.quota_gb} GB</strong>`
+        : '<span style="color:var(--muted); font-size:0.78rem;">Ilimitada</span>';
+
       const dlInfo = `${u.downloads_count || 0} archivos (${u.downloads_formatted || '0 B'})`;
       const emailText = u.email ? `<span style="color:var(--text); font-size:0.82rem;">${u.email}</span>` : '<span style="color:var(--muted); font-size:0.75rem;">Sin email</span>';
 
@@ -1769,6 +1856,8 @@ async function loadUsers() {
         <td>${emailText}</td>
         <td>${roleBadge}</td>
         <td>${statusBadge}</td>
+        <td>${totpBadge}</td>
+        <td>${quotaText}</td>
         <td style="font-size:0.84rem; color:var(--muted);">${dlInfo}</td>
         <td style="font-size:0.84rem; color:var(--muted);">${u.created_at || 'Inicial'}</td>
         <td style="text-align:right;">
@@ -1778,8 +1867,8 @@ async function loadUsers() {
           <button class="btn btn-secondary btn-sm" onclick="cleanUserDownloads('${u.username}')" title="Eliminar solo las descargas de este usuario" style="margin-left:4px;">
             🧹 Limpiar
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${u.username}')" title="Cambiar clave o email" style="margin-left:4px;">
-            🔑 Editar
+          <button class="btn btn-secondary btn-sm" onclick='openEditUserModal(${JSON.stringify(u)})' title="Editar usuario, clave, cuota y 2FA" style="margin-left:4px;">
+            ✏️ Editar
           </button>
           <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')" title="Eliminar usuario definitivamente" style="margin-left:4px;">
             🗑️
@@ -1789,7 +1878,7 @@ async function loadUsers() {
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar usuarios.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar usuarios.</td></tr>';
   }
 }
 
@@ -1807,11 +1896,12 @@ document.getElementById('formAddUser').addEventListener('submit', async (e) => {
   const password = document.getElementById('newPassword').value;
   const role = document.getElementById('newRole').value;
   const status = document.getElementById('newStatus').value;
+  const quota_gb = parseFloat(document.getElementById('newQuota').value) || 0;
   try {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password, role, status })
+      body: JSON.stringify({ username, email, password, role, status, quota_gb })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1821,6 +1911,108 @@ document.getElementById('formAddUser').addEventListener('submit', async (e) => {
     loadUsers();
   } catch (e) {
     showToast(e.message, 'error');
+  }
+});
+
+// Edit User Modal handlers
+function openEditUserModal(u) {
+  document.getElementById('editUserTitle').textContent = u.username;
+  document.getElementById('editUsername').value = u.username;
+  document.getElementById('editEmail').value = u.email || '';
+  document.getElementById('editPassword').value = '';
+  document.getElementById('editRole').value = u.role || 'downloader';
+  document.getElementById('editQuota').value = u.quota_gb || 0;
+  document.getElementById('editReset2fa').checked = false;
+  document.getElementById('modalEditUser').style.display = 'flex';
+}
+
+document.getElementById('btnCloseEditUser')?.addEventListener('click', () => {
+  document.getElementById('modalEditUser').style.display = 'none';
+});
+document.getElementById('btnCancelEditUser')?.addEventListener('click', () => {
+  document.getElementById('modalEditUser').style.display = 'none';
+});
+
+document.getElementById('formEditUser')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('editUsername').value;
+  const email = document.getElementById('editEmail').value.trim();
+  const password = document.getElementById('editPassword').value;
+  const role = document.getElementById('editRole').value;
+  const quota_gb = parseFloat(document.getElementById('editQuota').value) || 0;
+  const reset_2fa = document.getElementById('editReset2fa').checked;
+
+  const payload = { email, role, quota_gb, reset_2fa };
+  if (password) payload.password = password;
+
+  try {
+    const res = await fetch(`/api/admin/users/${username}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(`Usuario "${username}" actualizado exitosamente.`, 'success');
+    document.getElementById('modalEditUser').style.display = 'none';
+    loadUsers();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+});
+
+// Active Sessions Auditing
+async function loadSessions() {
+  const tbody = document.getElementById('sessionsTableBody');
+  if (!tbody) return;
+  try {
+    const res = await fetch('/api/admin/sessions');
+    const data = await res.json();
+    tbody.innerHTML = '';
+    const sessions = data.sessions || [];
+    if (sessions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:16px;">No hay sesiones activas registradas.</td></tr>';
+      return;
+    }
+    sessions.forEach(s => {
+      const tr = document.createElement('tr');
+      const isRevoked = Boolean(s.revoked);
+      tr.innerHTML = `
+        <td><strong style="color:var(--text); font-size:0.9rem;">${s.username}</strong></td>
+        <td><span class="status-badge" style="font-size:0.75rem;">${s.role || 'downloader'}</span></td>
+        <td><code style="font-size:0.78rem;">${s.ip}</code></td>
+        <td style="font-size:0.78rem; color:var(--muted); max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="${s.user_agent}">${s.user_agent}</td>
+        <td style="font-size:0.8rem; color:var(--muted);">${s.created_at || '-'}</td>
+        <td style="font-size:0.8rem; color:var(--text);">${s.last_active || '-'}</td>
+        <td style="text-align:right;">
+          ${isRevoked 
+            ? '<span style="color:var(--danger); font-size:0.78rem;">Revocada</span>'
+            : `<button class="btn btn-danger btn-sm" onclick="revokeSession('${s.session_id}', '${s.username}')" style="font-size:0.75rem; padding:4px 8px;">🚪 Revocar</button>`}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:16px;">Error al cargar sesiones.</td></tr>';
+  }
+}
+
+async function revokeSession(sessionId, username) {
+  if (!confirm(`¿Cerrar y revocar la sesión activa de "${username}" inmediatamente?`)) return;
+  try {
+    const res = await fetch(`/api/admin/sessions/${sessionId}/revoke`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message || 'Sesión revocada exitosamente.', 'success');
+    loadSessions();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+document.getElementById('btnRefreshSessions')?.addEventListener('click', () => {
+  loadSessions();
+  showToast('Auditoría de sesiones actualizada.', 'success', 1500);
 });
 
 async function toggleUserStatus(username, currentStatus) {
@@ -1978,6 +2170,7 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadCloudSyncConfig();
   loadSmtpConfig();
   loadUsers();
+  loadSessions();
   showToast('Datos actualizados en vivo.', 'success', 2000);
 });
 
@@ -1989,7 +2182,9 @@ loadConfigAndCookies();
 loadCloudSyncConfig();
 loadSmtpConfig();
 loadUsers();
+loadSessions();
 setInterval(loadServicesStatus, 20000);
+setInterval(loadSessions, 30000);
 
 </script>
 </body>

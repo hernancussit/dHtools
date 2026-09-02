@@ -10,8 +10,12 @@ from flask import Blueprint, request, jsonify, render_template, session, redirec
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from core.config import USERS_FILE, APP_USERNAME, APP_PASSWORD, MAX_FAILED_LOGINS, LOCKOUT_DURATION_SECONDS
-from core.state import LOGIN_ATTEMPTS, LOGIN_ATTEMPTS_LOCK
+from core.state import LOGIN_ATTEMPTS, LOGIN_ATTEMPTS_LOCK, ACTIVE_SESSIONS, ACTIVE_SESSIONS_LOCK
 from core.utils import load_config, send_system_email
+from core.totp import (
+    generate_totp_secret, get_totp_code, verify_totp_code,
+    generate_backup_codes, get_totp_uri
+)
 
 auth_bp = Blueprint("auth_bp", __name__)
 
@@ -114,13 +118,39 @@ def protect_all_routes():
         or request.path == "/logout"
         or request.path.startswith("/static/")
         or request.path in ("/manifest.json", "/sw.js", "/robots.txt", "/favicon.ico")
-        or request.path in ("/api/auth/forgot-password", "/api/auth/reset-password")
+        or request.path in ("/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/verify-2fa")
     ):
         return None
 
     # 1. Check Flask Web Session
     sess_user = session.get("username")
+    sess_id = session.get("session_id")
     if sess_user:
+        # Check active session revocation
+        if sess_id:
+            with ACTIVE_SESSIONS_LOCK:
+                sess_info = ACTIVE_SESSIONS.get(sess_id)
+                if sess_info and sess_info.get("revoked"):
+                    session.clear()
+                    if request.path.startswith("/api/"):
+                        return jsonify({"error": "Tu sesión ha sido revocada por el administrador."}), 401
+                    return redirect(url_for("auth_bp.login", error="Tu sesión ha sido cerrada remotamente."))
+                elif not sess_info:
+                    ACTIVE_SESSIONS[sess_id] = {
+                        "session_id": sess_id,
+                        "username": sess_user,
+                        "role": session.get("role", "downloader"),
+                        "ip": get_client_ip(),
+                        "user_agent": request.headers.get("User-Agent", "Desconocido")[:120],
+                        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "last_active": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "last_active_ts": time.time(),
+                        "revoked": False
+                    }
+                else:
+                    sess_info["last_active"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    sess_info["last_active_ts"] = time.time()
+
         users = load_users()
         if sess_user in users:
             u = dict(users[sess_user])
@@ -246,12 +276,49 @@ def login():
                 next_url=next_url,
             ), 401
 
+        # Check if user has TOTP (2FA) enabled
+        users = load_users()
+        user_data = users.get(username, {})
+        if user_data.get("totp_enabled"):
+            session["pending_2fa"] = {
+                "username": username,
+                "role": u.get("role", "downloader"),
+                "next_url": next_url,
+                "expires": time.time() + 300
+            }
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+                return jsonify({"require_2fa": True, "message": "Autenticación de Dos Factores (2FA) requerida."})
+            return render_template(
+                "login.html",
+                config=load_config(),
+                step="2fa",
+                username=username,
+                next_url=next_url
+            )
+
         # Successful login: clear IP record
         with LOGIN_ATTEMPTS_LOCK:
             LOGIN_ATTEMPTS.pop(ip, None)
 
+        session_id = secrets.token_urlsafe(24)
         session["username"] = u.get("username", username)
         session["role"] = u.get("role", "downloader")
+        session["session_id"] = session_id
+
+        # Register in ACTIVE_SESSIONS
+        with ACTIVE_SESSIONS_LOCK:
+            ACTIVE_SESSIONS[session_id] = {
+                "session_id": session_id,
+                "username": session["username"],
+                "role": session["role"],
+                "ip": ip,
+                "user_agent": request.headers.get("User-Agent", "Desconocido")[:120],
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_active": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_active_ts": time.time(),
+                "revoked": False
+            }
+
         if is_safe_redirect_url(next_url):
             return redirect(next_url)
         return redirect("/")
@@ -270,8 +337,177 @@ def login():
 
 @auth_bp.route("/logout")
 def logout():
+    sess_id = session.get("session_id")
+    if sess_id:
+        with ACTIVE_SESSIONS_LOCK:
+            ACTIVE_SESSIONS.pop(sess_id, None)
     session.clear()
     return redirect(url_for("auth_bp.login", msg="logged_out"))
+
+
+@auth_bp.route("/api/auth/verify-2fa", methods=["POST"])
+def verify_2fa():
+    pending = session.get("pending_2fa")
+    if not pending or pending.get("expires", 0) < time.time():
+        return jsonify({"error": "La sesión de verificación 2FA ha expirado. Por favor iniciá sesión nuevamente."}), 400
+
+    username = pending["username"]
+    data = request.get_json(silent=True) or request.form
+    code = str(data.get("code") or "").strip()
+
+    if not code:
+        return jsonify({"error": "Ingresá el código de verificación de 6 dígitos o un código de respaldo."}), 400
+
+    users = load_users()
+    user_data = users.get(username)
+    if not user_data:
+        return jsonify({"error": "Usuario no encontrado."}), 400
+
+    totp_secret = user_data.get("totp_secret", "")
+    backup_codes = user_data.get("backup_codes", [])
+
+    is_valid = False
+    used_backup = False
+
+    # Check 6-digit TOTP
+    clean_numeric = code.replace(" ", "").replace("-", "")
+    if len(clean_numeric) == 6 and clean_numeric.isdigit():
+        if verify_totp_code(totp_secret, clean_numeric):
+            is_valid = True
+
+    # Check Backup Code (e.g. A1B2-C3D4)
+    if not is_valid and backup_codes:
+        normalized_code = code.upper().replace(" ", "").replace("-", "")
+        for bc in list(backup_codes):
+            if bc.replace("-", "") == normalized_code:
+                is_valid = True
+                used_backup = True
+                backup_codes.remove(bc)
+                user_data["backup_codes"] = backup_codes
+                save_users(users)
+                break
+
+    if not is_valid:
+        return jsonify({"error": "Código de autenticación o de respaldo inválido."}), 401
+
+    # Login success
+    session.pop("pending_2fa", None)
+    ip = get_client_ip()
+    with LOGIN_ATTEMPTS_LOCK:
+        LOGIN_ATTEMPTS.pop(ip, None)
+
+    session_id = secrets.token_urlsafe(24)
+    session["username"] = username
+    session["role"] = pending.get("role", "downloader")
+    session["session_id"] = session_id
+
+    with ACTIVE_SESSIONS_LOCK:
+        ACTIVE_SESSIONS[session_id] = {
+            "session_id": session_id,
+            "username": username,
+            "role": session["role"],
+            "ip": ip,
+            "user_agent": request.headers.get("User-Agent", "Desconocido")[:120],
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "last_active": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "last_active_ts": time.time(),
+            "revoked": False
+        }
+
+    next_url = pending.get("next_url") or "/"
+    if not is_safe_redirect_url(next_url):
+        next_url = "/"
+
+    msg = "Inicio de sesión exitoso."
+    if used_backup:
+        msg += f" Has usado un código de respaldo. Te quedan {len(backup_codes)} códigos disponibles."
+
+    return jsonify({"success": True, "message": msg, "redirect": next_url})
+
+
+@auth_bp.route("/api/auth/2fa/status", methods=["GET"])
+def totp_status():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    users = load_users()
+    user_data = users.get(username, {})
+    return jsonify({
+        "totp_enabled": bool(user_data.get("totp_enabled")),
+        "backup_codes_count": len(user_data.get("backup_codes", []))
+    })
+
+
+@auth_bp.route("/api/auth/2fa/setup", methods=["POST"])
+def totp_setup():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    temp_secret = generate_totp_secret()
+    backup_codes = generate_backup_codes(8)
+    session["temp_totp_secret"] = temp_secret
+    session["temp_backup_codes"] = backup_codes
+    otpauth_uri = get_totp_uri(username, temp_secret)
+    formatted_secret = " ".join([temp_secret[i:i+4] for i in range(0, len(temp_secret), 4)])
+    return jsonify({
+        "secret": temp_secret,
+        "formatted_secret": formatted_secret,
+        "otpauth_uri": otpauth_uri,
+        "backup_codes": backup_codes
+    })
+
+
+@auth_bp.route("/api/auth/2fa/enable", methods=["POST"])
+def totp_enable():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    temp_secret = session.get("temp_totp_secret")
+    temp_backup_codes = session.get("temp_backup_codes")
+    if not temp_secret or not temp_backup_codes:
+        return jsonify({"error": "No se ha iniciado el proceso de configuración de 2FA."}), 400
+
+    data = request.get_json(silent=True) or {}
+    code = str(data.get("code", "")).strip()
+
+    if not verify_totp_code(temp_secret, code):
+        return jsonify({"error": "El código de 6 dígitos ingresado es incorrecto o expiró."}), 400
+
+    users = load_users()
+    if username not in users:
+        users[username] = {"password_hash": "", "role": session.get("role", "downloader"), "status": "active"}
+
+    users[username]["totp_enabled"] = True
+    users[username]["totp_secret"] = temp_secret
+    users[username]["backup_codes"] = temp_backup_codes
+    save_users(users)
+
+    session.pop("temp_totp_secret", None)
+    session.pop("temp_backup_codes", None)
+
+    return jsonify({"success": True, "message": "¡Autenticación de Dos Factores (2FA) activada exitosamente!"})
+
+
+@auth_bp.route("/api/auth/2fa/disable", methods=["POST"])
+def totp_disable():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    data = request.get_json(silent=True) or {}
+    password = data.get("password", "")
+
+    if not check_auth(username, password):
+        return jsonify({"error": "Contraseña incorrecta."}), 403
+
+    users = load_users()
+    if username in users:
+        users[username]["totp_enabled"] = False
+        users[username].pop("totp_secret", None)
+        users[username].pop("backup_codes", None)
+        save_users(users)
+
+    return jsonify({"success": True, "message": "Autenticación de Dos Factores desactivada."})
+
 
 
 @auth_bp.route("/api/auth/forgot-password", methods=["POST"])

@@ -759,6 +759,11 @@
       padding: 3px 8px;
       font-size: 0.75rem;
     }
+    #userQuotaWidget {
+      width: 100%;
+      margin-top: 4px;
+      padding: 6px 10px;
+    }
     .nav-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -876,6 +881,16 @@
           <span style="color:var(--muted); font-size:0.72rem;">Usuario</span>
           {% endif %}
         </div>
+
+        <div id="userQuotaWidget" style="background:var(--bg-card); padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--muted); margin-bottom:4px;">
+            <span>💾 Cuota Disco</span>
+            <span id="quotaTextVal">Calculando...</span>
+          </div>
+          <div style="background:var(--bg-input); height:5px; border-radius:3px; overflow:hidden;">
+            <div id="quotaProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-2)); transition:width 0.3s;"></div>
+          </div>
+        </div>
       </div>
 
       <!-- NAVIGATION TABS -->
@@ -916,18 +931,22 @@
         </select>
       </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:6px;">
+      <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="width:100%; font-size:0.78rem; grid-column:1 / -1; margin-top:2px;">
+        🛡️ Seguridad & 2FA
+      </button>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1;">
         {% if is_admin %}
         <a href="/admin" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">⚙️ Admin</a>
         {% endif %}
         <a href="/wiki" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">📚 Wiki</a>
       </div>
 
-      <button id="pwaInstallBtn" class="btn btn-primary btn-sm" style="display:none; width:100%; font-size:0.8rem;">
+      <button id="pwaInstallBtn" class="btn btn-primary btn-sm" style="display:none; width:100%; font-size:0.8rem; grid-column:1 / -1;">
         📲 Instalar App
       </button>
 
-      <button id="logoutBtn" class="btn btn-danger btn-sm" style="width:100%; font-size:0.8rem;">
+      <button id="logoutBtn" class="btn btn-danger btn-sm" style="width:100%; font-size:0.8rem; grid-column:1 / -1;">
         🚪 Cerrar Sesión
       </button>
     </div>
@@ -2621,11 +2640,239 @@ document.getElementById('logoutBtn')?.addEventListener('click', () => {
 // Periodic Queue polling every 2 seconds
 setInterval(fetchQueueState, 2000);
 
+// Storage Quota Widget
+async function loadUserQuota() {
+  const textEl = document.getElementById('quotaTextVal');
+  const barEl = document.getElementById('quotaProgressBar');
+  if (!textEl || !barEl) return;
+  try {
+    const res = await fetch('/api/user/quota');
+    const data = await res.json();
+    if (data.quota_bytes > 0) {
+      textEl.textContent = `${data.used_formatted} / ${data.quota_formatted}`;
+      barEl.style.width = `${Math.min(data.percent_used, 100)}%`;
+      if (data.percent_used >= 90) {
+        barEl.style.background = 'var(--danger)';
+        textEl.style.color = 'var(--danger)';
+      } else if (data.percent_used >= 70) {
+        barEl.style.background = 'var(--warning)';
+        textEl.style.color = 'var(--warning)';
+      } else {
+        barEl.style.background = 'linear-gradient(90deg, var(--accent-blue), var(--accent-2))';
+        textEl.style.color = 'var(--muted)';
+      }
+    } else {
+      textEl.textContent = `${data.used_formatted} (Ilimitada)`;
+      barEl.style.width = '100%';
+      barEl.style.background = 'rgba(56, 189, 248, 0.4)';
+    }
+  } catch (e) {}
+}
+
+// 2FA Security Modal
+const modal2fa = document.getElementById('modal2faConfig');
+
+async function loadTotpStatus() {
+  const statusLabel = document.getElementById('totpStatusLabel');
+  const actionContainer = document.getElementById('totpStatusActionBtn');
+  const setupBox = document.getElementById('totpSetupBox');
+  const disableBox = document.getElementById('totpDisableBox');
+  if (!statusLabel || !actionContainer) return;
+
+  try {
+    const res = await fetch('/api/auth/2fa/status');
+    const data = await res.json();
+    setupBox.style.display = 'none';
+    disableBox.style.display = 'none';
+
+    if (data.totp_enabled) {
+      statusLabel.innerHTML = '<span style="color:var(--success);">✅ Activado</span> <span style="font-size:0.75rem; color:var(--muted);">(' + data.backup_codes_count + ' códigos de respaldo)</span>';
+      actionContainer.innerHTML = '<button type="button" id="btnShowDisable2fa" class="btn btn-danger btn-sm" style="font-size:0.78rem;">Desactivar 2FA</button>';
+      document.getElementById('btnShowDisable2fa')?.addEventListener('click', () => {
+        setupBox.style.display = 'none';
+        disableBox.style.display = 'block';
+      });
+    } else {
+      statusLabel.innerHTML = '<span style="color:var(--muted);">⚪ Desactivado</span>';
+      actionContainer.innerHTML = '<button type="button" id="btnStartSetup2fa" class="btn btn-primary btn-sm" style="font-size:0.78rem;">🚀 Activar 2FA</button>';
+      document.getElementById('btnStartSetup2fa')?.addEventListener('click', start2faSetup);
+    }
+  } catch (e) {
+    statusLabel.textContent = 'Error al consultar 2FA';
+  }
+}
+
+async function start2faSetup() {
+  const setupBox = document.getElementById('totpSetupBox');
+  const disableBox = document.getElementById('totpDisableBox');
+  setupBox.style.display = 'block';
+  disableBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+    const data = await res.json();
+    document.getElementById('totpSecretFormatted').textContent = data.formatted_secret;
+    document.getElementById('totpSecretFormatted').dataset.raw = data.secret;
+
+    // Load QR code
+    const qrImg = document.getElementById('totpQrImage');
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.otpauth_uri)}`;
+
+    // Render Backup Codes
+    const bcList = document.getElementById('totpBackupCodesList');
+    bcList.innerHTML = '';
+    (data.backup_codes || []).forEach(bc => {
+      const el = document.createElement('div');
+      el.style.padding = '4px 8px';
+      el.style.background = 'var(--bg-input)';
+      el.style.borderRadius = '4px';
+      el.style.textAlign = 'center';
+      el.textContent = bc;
+      bcList.appendChild(el);
+    });
+
+    document.getElementById('totpConfirmCode').value = '';
+    document.getElementById('totpConfirmCode').focus();
+  } catch (e) {
+    showToast('Error al iniciar configuración 2FA: ' + e.message, 'error');
+  }
+}
+
+document.getElementById('btnOpen2faModal')?.addEventListener('click', () => {
+  modal2fa.style.display = 'flex';
+  loadTotpStatus();
+});
+
+document.getElementById('btnClose2faModal')?.addEventListener('click', () => {
+  modal2fa.style.display = 'none';
+});
+
+document.getElementById('btnCopyTotpSecret')?.addEventListener('click', () => {
+  const raw = document.getElementById('totpSecretFormatted').dataset.raw;
+  if (raw) {
+    navigator.clipboard.writeText(raw);
+    showToast('Clave secreta copiada al portapapeles', 'success');
+  }
+});
+
+document.getElementById('formConfirm2fa')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('totpConfirmCode').value.trim();
+  try {
+    const res = await fetch('/api/auth/2fa/enable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Código incorrecto');
+    showToast(data.message || '2FA activado con éxito', 'success');
+    loadTotpStatus();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+});
+
+document.getElementById('btnCancelDisable2fa')?.addEventListener('click', () => {
+  document.getElementById('totpDisableBox').style.display = 'none';
+});
+
+document.getElementById('formDisable2fa')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const password = document.getElementById('totpDisablePassword').value;
+  try {
+    const res = await fetch('/api/auth/2fa/disable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Contraseña incorrecta');
+    showToast(data.message || '2FA desactivado.', 'success');
+    document.getElementById('totpDisablePassword').value = '';
+    loadTotpStatus();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+});
+
 // Load on start
 fetchQueueState();
 loadRecentDownloads();
+loadUserQuota();
+setInterval(loadUserQuota, 15000);
 </script>
 
+<!-- MODAL: CONFIGURACION 2FA (TOTP) -->
+<div id="modal2faConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:480px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(16px);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+        <span>🛡️</span> Autenticación de Dos Factores (2FA)
+      </h3>
+      <button type="button" id="btnClose2faModal" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+
+    <div id="totpCurrentStatusBox" style="background:var(--bg-input); padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:0.8rem; color:var(--muted);">Estado del 2FA en tu cuenta:</div>
+        <strong id="totpStatusLabel" style="font-size:0.95rem;">Consultando...</strong>
+      </div>
+      <div id="totpStatusActionBtn"></div>
+    </div>
+
+    <!-- PASO DE CONFIGURACION NUEVA -->
+    <div id="totpSetupBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Escaneá el código QR con tu app de autenticación (Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc.) o ingresá la clave manualmente.
+      </p>
+
+      <div style="text-align:center; margin:16px 0;">
+        <img id="totpQrImage" src="" alt="Código QR 2FA" style="width:160px; height:160px; border-radius:8px; border:3px solid #fff; background:#fff; padding:4px;">
+      </div>
+
+      <div style="background:#090e1a; padding:10px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">Clave de configuración manual (Base32):</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <code id="totpSecretFormatted" style="font-size:0.95rem; font-weight:700; color:var(--accent-blue); letter-spacing:1px;"></code>
+          <button type="button" id="btnCopyTotpSecret" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.74rem;">📋 Copiar</button>
+        </div>
+      </div>
+
+      <div style="background:#090e1a; padding:10px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">🎟️ Códigos de Respaldo de Emergencia (guardalos en un lugar seguro):</div>
+        <div id="totpBackupCodesList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-family:Consolas, monospace; font-size:0.82rem; color:var(--text); margin-top:6px;"></div>
+      </div>
+
+      <form id="formConfirm2fa">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Ingresá el código de 6 dígitos generado por tu aplicación para verificar:</label>
+          <input type="text" id="totpConfirmCode" required placeholder="000000" maxlength="6" style="text-align:center; font-size:1.2rem; letter-spacing:3px; font-weight:700;">
+        </div>
+        <button type="submit" id="btnConfirmEnable2fa" class="btn btn-primary" style="width:100%;">
+          ✅ Confirmar y Activar 2FA
+        </button>
+      </form>
+    </div>
+
+    <!-- DESACTIVAR 2FA -->
+    <div id="totpDisableBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Para desactivar el doble factor de autenticación, confirmá tu contraseña actual.
+      </p>
+      <form id="formDisable2fa">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Contraseña Actual</label>
+          <input type="password" id="totpDisablePassword" required placeholder="••••••••">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button type="submit" class="btn btn-danger btn-sm" style="flex:1;">🔓 Desactivar 2FA</button>
+          <button type="button" id="btnCancelDisable2fa" class="btn btn-secondary btn-sm">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 

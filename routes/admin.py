@@ -14,7 +14,7 @@ from core.config import (
     APP_VERSION, POT_PROVIDER_URL, COBALT_URL, ROLLBACK_STATE_FILE,
     COOKIES_FILE, USERS_FILE, CONFIG_FILE, DOWNLOAD_DIR
 )
-from core.state import JOBS_LOCK, JOBS, START_TIME
+from core.state import JOBS_LOCK, JOBS, START_TIME, ACTIVE_SESSIONS, ACTIVE_SESSIONS_LOCK
 from core.utils import (
     load_config, save_config, get_disk_status, get_ram_status,
     load_cloud_config, save_cloud_config, safe_download_path, format_bytes,
@@ -559,11 +559,13 @@ def admin_users():
             return jsonify({"error": "Falta usuario o contraseña"}), 400
         if username in users:
             return jsonify({"error": f"El usuario '{username}' ya existe"}), 400
+        quota_gb = float(data.get("quota_gb", 0) or 0)
         users[username] = {
             "password_hash": hash_password(password),
             "role": role,
             "status": status,
             "email": email,
+            "quota_gb": quota_gb,
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         save_users(users)
@@ -584,6 +586,8 @@ def admin_users():
             "role": d.get("role", "downloader"),
             "status": d.get("status", "active"),
             "email": d.get("email", ""),
+            "quota_gb": d.get("quota_gb", 0),
+            "totp_enabled": bool(d.get("totp_enabled", False)),
             "created_at": d.get("created_at", "Inicial"),
             "downloads_count": user_stats.get(u, {}).get("count", 0),
             "downloads_bytes": user_stats.get(u, {}).get("bytes", 0),
@@ -605,6 +609,11 @@ def admin_user_detail(username):
             return jsonify({"error": "No se puede eliminar el administrador principal"}), 400
         del users[username]
         save_users(users)
+        # Revoke sessions
+        with ACTIVE_SESSIONS_LOCK:
+            for s in ACTIVE_SESSIONS.values():
+                if s.get("username") == username:
+                    s["revoked"] = True
         # Purge user downloads
         meta = load_downloads_meta()
         user_jobs = [jid for jid, item in meta.items() if item.get("username") == username]
@@ -626,10 +635,46 @@ def admin_user_detail(username):
             users[username]["role"] = data["role"]
         if "status" in data and data["status"]:
             users[username]["status"] = data["status"]
+            if data["status"] == "suspended":
+                with ACTIVE_SESSIONS_LOCK:
+                    for s in ACTIVE_SESSIONS.values():
+                        if s.get("username") == username:
+                            s["revoked"] = True
         if "email" in data:
             users[username]["email"] = str(data["email"]).strip()
+        if "quota_gb" in data:
+            try:
+                users[username]["quota_gb"] = float(data["quota_gb"] or 0)
+            except (ValueError, TypeError):
+                users[username]["quota_gb"] = 0
+        if data.get("reset_2fa"):
+            users[username]["totp_enabled"] = False
+            users[username].pop("totp_secret", None)
+            users[username].pop("backup_codes", None)
         save_users(users)
         return jsonify({"message": f"Usuario '{username}' actualizado exitosamente"})
+
+
+@admin_bp.route("/api/admin/sessions", methods=["GET"])
+@require_admin
+def admin_sessions():
+    with ACTIVE_SESSIONS_LOCK:
+        sess_list = [dict(s) for s in ACTIVE_SESSIONS.values()]
+    sess_list.sort(key=lambda s: s.get("last_active_ts", 0), reverse=True)
+    return jsonify({"sessions": sess_list})
+
+
+@admin_bp.route("/api/admin/sessions/<session_id>/revoke", methods=["POST"])
+@require_admin
+def admin_revoke_session(session_id):
+    with ACTIVE_SESSIONS_LOCK:
+        sess_info = ACTIVE_SESSIONS.get(session_id)
+        if not sess_info:
+            return jsonify({"error": "Sesión no encontrada o ya expirada"}), 404
+        sess_info["revoked"] = True
+        u = sess_info.get("username", "usuario")
+    return jsonify({"message": f"Sesión de '{u}' revocada exitosamente"})
+
 
 
 @admin_bp.route("/api/admin/smtp", methods=["GET", "POST"])
