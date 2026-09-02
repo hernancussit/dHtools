@@ -39,13 +39,14 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Recuperación Segura de Contraseñas:**
   - Tokens temporales de un solo uso de 1 hora de duración para recuperación de accesos.
   - Flujo completo con modal "¿Olvidaste tu contraseña?" y formulario de cambio de clave con token (`/api/auth/reset-password`).
-- [ ] **Autenticación de Dos Factores (2FA / TOTP):**
-  - Soporte para aplicaciones de autenticación estándar (Google Authenticator, Authy, Aegis, Bitwarden).
-  - Asistente de configuración con código QR y códigos de recuperación de respaldo (*backup codes*).
-- [ ] **Control de Cuotas y Auditoría de Sesiones:**
-  - Asignación de límites de almacenamiento en disco por usuario (ej. 5 GB máx. por cuenta).
-  - Límite configurable de descargas simultáneas y descargas diarias por rol.
-  - Monitor de sesiones activas con visualización de IP/dispositivo y botón de revocación remota de accesos.
+- [x] **Autenticación de Dos Factores (2FA / TOTP Opcional):**
+  - Motor criptográfico puro en Python bajo el estándar RFC 6238 compatible con Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc.
+  - Asistente de configuración con clave Base32, URL `otpauth://`, código QR dinámico y 8 códigos de respaldo (*backup recovery codes*).
+  - Flujo de inicio de sesión en dos pasos y panel de gestión para activar o desactivar 2FA en cualquier momento.
+- [x] **Control de Cuotas de Almacenamiento & Auditoría de Sesiones Activas:**
+  - Asignación de cuotas de almacenamiento en disco por usuario (ej. 5 GB, 10 GB o ilimitada) con bloqueo preventivo y amigable al superar el límite.
+  - Barra de progreso de cuota en vivo en el perfil del usuario.
+  - Monitor de telemetría de sesiones web activas en tiempo real (IP, dispositivo, navegador, última actividad) con revocación remota instantánea desde la administración.
 
 ---
 

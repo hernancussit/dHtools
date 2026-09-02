@@ -42,6 +42,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - **Gestión de Cuentas con Email & Recuperación de Contraseñas:**
   - Campo de correo electrónico integrado en la creación y administración de usuarios (`users.json`).
   - Flujo de recuperación de contraseñas olvidadas mediante tokens seguros de un solo uso (1 hora) con enlace directo desde `/login`.
+- **Autenticación de Dos Factores (2FA / TOTP Opcional):**
+  - Motor de generación y verificación RFC 6238 implementado en Python nativo sin dependencias externas.
+  - Asistente de configuración con clave Base32, URL `otpauth://`, código QR dinámico y 8 códigos de respaldo (*backup recovery codes*).
+  - Verificación en dos pasos en pantalla de login (`step="2fa"`) y modal de gestión de seguridad en el perfil.
+- **Control de Cuotas de Almacenamiento & Auditoría de Sesiones Activas:**
+  - Asignación de cuota máxima de disco por cuenta (`quota_gb`) con validación preventiva en descargas individuales y por lotes.
+  - Widget con barra de progreso de almacenamiento en el panel lateral de usuario.
+  - Registro y telemetría de sesiones web activas en tiempo real con capacidad de revocación remota instantánea desde la administración.
 
 ---
 

@@ -190,6 +190,31 @@
   </div>
   {% endif %}
 
+  {% if step == '2fa' %}
+  <div style="text-align:center; margin-bottom:18px;">
+    <div style="font-size:2.5rem; margin-bottom:8px;">🔐</div>
+    <h2 style="font-size:1.2rem; margin:0 0 6px 0; color:var(--text); font-weight:700;">Verificación en Dos Pasos (2FA)</h2>
+    <p style="font-size:0.84rem; color:var(--muted); margin:0; line-height:1.4;">
+      Tu cuenta tiene la autenticación de dos factores activada. Ingresá el código de 6 dígitos de tu app autenticadora o un código de respaldo.
+    </p>
+  </div>
+
+  <form id="formVerify2fa">
+    <div class="form-group" style="margin-bottom:16px;">
+      <label for="totpCode">Código 2FA o de Respaldo</label>
+      <div class="input-wrap">
+        <input type="text" id="totpCode" name="code" required autofocus placeholder="000000 o A1B2-C3D4" style="text-align:center; font-size:1.25rem; letter-spacing:3px; font-weight:700;" autocomplete="one-time-code">
+      </div>
+    </div>
+    <div id="verify2faNotice" style="display:none; margin-bottom:14px; padding:10px 12px; border-radius:8px; font-size:0.82rem;"></div>
+    <button type="submit" id="btnSubmit2fa" class="btn-submit">
+      ✅ Verificar y Acceder
+    </button>
+    <div style="text-align:center; margin-top:14px;">
+      <a href="/login" style="color:var(--muted); font-size:0.82rem; text-decoration:none;">⬅ Cancelar y usar otra cuenta</a>
+    </div>
+  </form>
+  {% else %}
   <form method="POST" action="/login">
     <input type="hidden" name="next" value="{{ next_url or '' }}">
     
@@ -215,6 +240,7 @@
       <a href="javascript:void(0)" id="linkForgotPassword" style="color:var(--accent-blue); font-size:0.82rem; text-decoration:none;">¿Olvidaste tu contraseña?</a>
     </div>
   </form>
+  {% endif %}
 
   <div class="footer-note">
     🔒 Acceso privado restringido a usuarios autorizados.
@@ -412,6 +438,45 @@ document.getElementById('formResetPassword')?.addEventListener('submit', async (
     notice.style.color = 'var(--accent-2)';
     notice.textContent = `❌ ${err.message}`;
     btn.disabled = false;
+  }
+});
+
+// 2FA Verification Form
+document.getElementById('formVerify2fa')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('totpCode').value.trim();
+  const notice = document.getElementById('verify2faNotice');
+  const btn = document.getElementById('btnSubmit2fa');
+  btn.disabled = true;
+  notice.style.display = 'block';
+  notice.style.background = 'var(--bg-input)';
+  notice.style.border = '1px solid var(--border)';
+  notice.style.color = 'var(--text)';
+  notice.textContent = '⏳ Verificando código de seguridad...';
+
+  try {
+    const res = await fetch('/api/auth/verify-2fa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Código incorrecto');
+    notice.style.background = 'rgba(16, 185, 129, 0.15)';
+    notice.style.border = '1px solid var(--success)';
+    notice.style.color = 'var(--success)';
+    notice.textContent = `✅ ${data.message}`;
+    setTimeout(() => {
+      window.location.href = data.redirect || '/';
+    }, 600);
+  } catch (err) {
+    notice.style.background = 'rgba(239, 68, 68, 0.15)';
+    notice.style.border = '1px solid var(--accent)';
+    notice.style.color = 'var(--accent-2)';
+    notice.textContent = `❌ ${err.message}`;
+    btn.disabled = false;
+    document.getElementById('totpCode').focus();
+    document.getElementById('totpCode').select();
   }
 });
 </script>

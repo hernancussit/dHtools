@@ -19,7 +19,8 @@ from core.utils import (
     validate_media_url, is_audio_quality, format_for_quality, format_bytes,
     load_config, safe_filename, enqueue_job, record_download_meta,
     delete_download_meta, load_downloads_meta, save_queue_state,
-    safe_download_path, parse_time_to_seconds, cookies_opts
+    safe_download_path, parse_time_to_seconds, cookies_opts,
+    check_user_storage_quota, get_user_storage_used
 )
 from core.downloader import (
     run_download, run_download_cascade, append_job_log, purge_downloads,
@@ -30,6 +31,33 @@ from core.downloader import (
 from routes.auth import require_admin
 
 api_bp = Blueprint("api_bp", __name__)
+
+@api_bp.route("/api/user/quota")
+def user_quota():
+    from flask import session
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username") or session.get("username", "admin")
+    from routes.auth import load_users
+    users = load_users()
+    user_data = users.get(username, {})
+    try:
+        quota_gb = float(user_data.get("quota_gb", 0) or 0)
+    except (ValueError, TypeError):
+        quota_gb = 0
+    used_bytes = get_user_storage_used(username)
+    quota_bytes = int(quota_gb * (1024 ** 3)) if quota_gb > 0 else 0
+    percent = round((used_bytes / quota_bytes * 100), 1) if quota_bytes > 0 else 0
+    return jsonify({
+        "username": username,
+        "quota_gb": quota_gb,
+        "quota_bytes": quota_bytes,
+        "quota_formatted": f"{quota_gb:.1f} GB" if quota_gb > 0 else "Ilimitada",
+        "used_bytes": used_bytes,
+        "used_formatted": format_bytes(used_bytes),
+        "percent_used": min(percent, 100),
+        "is_exceeded": (quota_bytes > 0 and used_bytes >= quota_bytes)
+    })
+
 
 @api_bp.route("/api/ytdlp-version")
 def ytdlp_version():
@@ -173,6 +201,11 @@ def download():
     user = getattr(request, "current_user", {}) or {}
     owner = user.get("username", "admin")
 
+    # Enforce Storage Quota per user
+    quota_ok, quota_err = check_user_storage_quota(owner)
+    if not quota_ok:
+        return jsonify({"error": quota_err}), 403
+
     if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
     if not validate_media_url(raw_url):
@@ -254,6 +287,11 @@ def playlist_download():
 
     user = getattr(request, "current_user", {}) or {}
     owner = user.get("username", "admin")
+
+    # Enforce Storage Quota per user
+    quota_ok, quota_err = check_user_storage_quota(owner)
+    if not quota_ok:
+        return jsonify({"error": quota_err}), 403
 
     if not items and not playlist_url:
         return jsonify({"error": "No se recibieron elementos de playlist para descargar"}), 400
