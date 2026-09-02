@@ -1,5 +1,7 @@
+# dHtools - Docker Build Exclusions (v1.1.0)
 downloads/
 __pycache__/
 *.pyc
 .git
 cookies.txt
+.backups/
