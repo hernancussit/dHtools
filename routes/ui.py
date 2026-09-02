@@ -24,12 +24,15 @@ def index():
     cfg = load_config()
     user = getattr(request, "current_user", {}) or {}
     is_admin = (user.get("role") == "admin")
+    from core.telegram_bot import telegram_bot
+    telegram_enabled = telegram_bot.is_enabled() and bool(telegram_bot.get_token())
     return render_template(
         "index.html",
         version=APP_VERSION,
         config=cfg,
         is_admin=is_admin,
         username=user.get("username", "admin"),
+        telegram_enabled=telegram_enabled,
     )
 
 

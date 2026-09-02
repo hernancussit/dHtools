@@ -931,7 +931,8 @@
         </select>
       </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1; margin-top:2px;">
+      {% if telegram_enabled %}
+      <div id="userSecurityNavGrid" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1; margin-top:2px;">
         <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">
           🛡️ 2FA
         </button>
@@ -939,6 +940,13 @@
           ✈️ Telegram
         </button>
       </div>
+      {% else %}
+      <div id="userSecurityNavGrid" style="display:grid; grid-template-columns: 1fr; gap:6px; grid-column:1 / -1; margin-top:2px;">
+        <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">
+          🛡️ Autenticación 2FA
+        </button>
+      </div>
+      {% endif %}
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1;">
         {% if is_admin %}
@@ -3139,6 +3147,15 @@ async function loadTelegramStatus() {
   try {
     const res = await fetch('/api/user/telegram-status');
     const data = await res.json();
+    if (data.bot_enabled === false) {
+      const tgBtn = document.getElementById('btnOpenTelegramModal');
+      if (tgBtn) tgBtn.style.display = 'none';
+      const navGrid = document.getElementById('userSecurityNavGrid');
+      if (navGrid) navGrid.style.gridTemplateColumns = '1fr';
+      const modal = document.getElementById('modalTelegramConfig');
+      if (modal) modal.style.display = 'none';
+      return;
+    }
     setupBox.style.display = 'none';
     linkedBox.style.display = 'none';
 
@@ -3231,6 +3248,8 @@ document.getElementById('btnUnlinkTelegram')?.addEventListener('click', async ()
 fetchQueueState();
 loadRecentDownloads();
 loadUserQuota();
+loadTelegramStatus();
+
 </script>
 </body>
 </html>

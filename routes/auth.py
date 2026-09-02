@@ -75,6 +75,11 @@ def load_users() -> dict:
 def save_users(users: dict):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(users, f, indent=2, ensure_ascii=False)
+    try:
+        os.chmod(USERS_FILE, 0o600)
+    except Exception:
+        pass
+
 
 
 def check_auth(username, password):
@@ -632,7 +637,8 @@ def user_telegram_status():
         "telegram_chat_id": tg_chat_id,
         "telegram_username": tg_user,
         "bot_username": bot_username,
-        "bot_active": telegram_bot.is_running()
+        "bot_active": telegram_bot.is_running(),
+        "bot_enabled": telegram_bot.is_enabled() and bool(telegram_bot.get_token())
     })
 
 
@@ -643,8 +649,11 @@ def user_telegram_token():
     if not current_user:
         return jsonify({"error": "No autenticado"}), 401
 
-    from core.utils import create_telegram_link_token
     from core.telegram_bot import telegram_bot
+    if not telegram_bot.is_enabled() or not telegram_bot.get_token():
+        return jsonify({"error": "El asistente de Telegram está desactivado por el administrador."}), 403
+
+    from core.utils import create_telegram_link_token
     token = create_telegram_link_token(current_user)
     bot_info = telegram_bot.get_bot_info(force_refresh=True)
     bot_username = bot_info.get("username") if bot_info else None
@@ -656,6 +665,7 @@ def user_telegram_token():
         "bot_username": bot_username,
         "deep_link": deep_link
     })
+
 
 
 
