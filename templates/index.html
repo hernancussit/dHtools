@@ -640,6 +640,22 @@
   }
 
   /* MODE TOGGLE (SINGLE URL / BATCH MODE) */
+  .url-input-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .url-header-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+  }
   .mode-toggle-group {
     display: inline-flex;
     background: var(--bg-input);
@@ -654,7 +670,7 @@
     color: var(--muted);
     font-size: 0.76rem;
     font-weight: 600;
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -669,6 +685,22 @@
     background: var(--accent-blue);
     color: #fff;
     box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
+  }
+
+  /* URL INPUT ROW RESPONSIVE */
+  .url-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .url-input-row input {
+    flex: 1;
+    min-width: 0;
+  }
+  .url-input-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   /* QUEUE ITEM CARD */
@@ -697,7 +729,7 @@
     text-align: center;
   }
 
-  /* RESPONSIVE */
+  /* RESPONSIVE (TABLETS & MOBILE) */
   @media (max-width: 860px) {
     .app-layout {
       flex-direction: column;
@@ -709,11 +741,56 @@
       height: auto;
       border-right: none;
       border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+    }
+    .nav-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .nav-title {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding: 2px 4px;
     }
     .main-content {
-      padding: 16px;
+      padding: 14px 12px;
       height: auto;
       overflow-y: visible;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .url-input-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .mode-toggle-group {
+      width: 100%;
+      display: flex;
+    }
+    .mode-toggle-btn {
+      flex: 1;
+      justify-content: center;
+      padding: 8px 6px;
+      font-size: 0.82rem;
+    }
+    .url-input-row {
+      flex-direction: column;
+      gap: 8px;
+    }
+    .url-input-actions {
+      width: 100%;
+      display: flex;
+    }
+    .url-input-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 9px 12px;
+      font-size: 0.84rem;
     }
   }
 </style>
@@ -880,8 +957,8 @@
         </div>
 
         <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
-            <label style="margin:0;">Entrada de Enlaces</label>
+          <div class="url-input-header">
+            <label class="url-header-label">Entrada de Enlaces</label>
             <div class="mode-toggle-group">
               <button type="button" class="mode-toggle-btn active" id="btnQuickModeSingle">🔗 Enlace Único</button>
               <button type="button" class="mode-toggle-btn" id="btnQuickModeBatch">📋 Descarga en Lote</button>
@@ -889,10 +966,12 @@
           </div>
 
           <div id="quickSingleUrlWrap">
-            <div style="display:flex; gap:8px;">
+            <div class="url-input-row">
               <input type="text" id="quickUrlInput" placeholder="https://youtube.com/watch?v=... o spotify/deezer..." autocomplete="off">
-              <button id="btnPasteQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">📋 Pegar</button>
-              <button id="btnInspectQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
+              <div class="url-input-actions">
+                <button id="btnPasteQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">📋 Pegar</button>
+                <button id="btnInspectQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
+              </div>
             </div>
           </div>
 
@@ -983,8 +1062,8 @@
         </div>
 
         <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
-            <label style="margin:0;">Entrada de Enlaces</label>
+          <div class="url-input-header">
+            <label class="url-header-label">Entrada de Enlaces</label>
             <div class="mode-toggle-group">
               <button type="button" class="mode-toggle-btn active" id="btnAdvModeSingle">🔗 Enlace Único</button>
               <button type="button" class="mode-toggle-btn" id="btnAdvModeBatch">📋 Descarga en Lote</button>
@@ -992,9 +1071,11 @@
           </div>
 
           <div id="advSingleUrlWrap">
-            <div style="display:flex; gap:8px;">
+            <div class="url-input-row">
               <input type="text" id="advUrlInput" placeholder="https://youtube.com/watch?v=... o playlist/álbum..." autocomplete="off">
-              <button id="btnInspectAdv" class="btn btn-secondary btn-sm">🔍 Inspeccionar</button>
+              <div class="url-input-actions">
+                <button id="btnInspectAdv" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
+              </div>
             </div>
           </div>
 
