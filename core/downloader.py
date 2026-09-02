@@ -301,15 +301,28 @@ def is_permanent_error(err_str: str) -> bool:
     err_lower = str(err_str).lower()
     return any(p in err_lower for p in [
         "playlist does not exist",
-        "video is unavailable",
-        "this video is private",
-        "private video",
-        "drm protection",
         "copyright",
         "account has been terminated",
-        "confirm your age",
-        "sign in if you've been granted access",
+        "drm protection",
     ])
+
+
+def format_friendly_error(err_str: str) -> str:
+    err = str(err_str)
+    err_lower = err.lower()
+    if "confirm you’re not a bot" in err_lower or "not a bot" in err_lower or "sign in to confirm" in err_lower:
+        if "no longer valid" in err_lower or "rotated" in err_lower:
+            return "YouTube requiere verificación de cuenta y las cookies guardadas en el servidor expiraron. Por favor actualizá cookies.txt en el panel de Admin."
+        return "YouTube bloqueó la petición solicitando verificar que no eres un robot. Por favor subí o actualizá cookies.txt en el panel de Administración."
+    if "no longer valid" in err_lower or "rotated" in err_lower:
+        return "Las cookies de YouTube en el servidor expiraron o fueron rotadas por seguridad. Por favor actualizá cookies.txt en Administración."
+    if "confirm your age" in err_lower or "age-restricted" in err_lower:
+        return "Este video tiene restricción de edad de YouTube. Requiere una sesión activa con cookies válidas en Administración."
+    if "this video is private" in err_lower or "private video" in err_lower:
+        return "El video es privado o requiere permisos especiales de acceso en YouTube."
+    if "no se generó ningún archivo" in err_lower:
+        return "No se pudo generar el archivo. Los servidores de streaming denegaron o limitaron las fuentes de video."
+    return err
 
 
 def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
@@ -354,7 +367,10 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
         opts["extractor_args"] = player_client_opts(clients, for_download=download)["extractor_args"]
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
-                return ydl.extract_info(url, download=download)
+                res = ydl.extract_info(url, download=download)
+                if not res:
+                    raise yt_dlp.utils.DownloadError("El cliente no pudo extraer el video o no devolvió datos.")
+                return res
         except (yt_dlp.utils.DownloadCancelled, yt_dlp.utils.MaxDownloadsReached):
             return None
         except yt_dlp.utils.DownloadError as e:
@@ -915,7 +931,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             "quiet": True,
             "no_warnings": True,
             "noplaylist": not playlist_mode,
-            "ignoreerrors": True,
+            "ignoreerrors": bool(playlist_mode),
             **cookies_opts(for_url=url),
             **player_client_opts(for_download=True),
         }
@@ -1068,9 +1084,10 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     job["finished_at"] = time.time()
                 append_job_log(job_id, "[!] Descarga abortada y cancelada por el usuario.")
             else:
+                friendly_msg = format_friendly_error(str(e))
                 if job:
-                    job.update({"status": "error", "error": str(e), "finished_at": time.time()})
-                append_job_log(job_id, f"[!] Error en yt-dlp: {e}")
+                    job.update({"status": "error", "error": friendly_msg, "finished_at": time.time()})
+                append_job_log(job_id, f"[!] Error en yt-dlp: {friendly_msg}")
         if is_cancelled:
             return
         raise
@@ -1107,6 +1124,8 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return
             err = str(e)
+            if "error.api.youtube.login" in err:
+                err = "Requiere inicio de sesión (Cobalt no procesa videos con login o restricción de edad)."
             attempts.append({"engine": "Cobalt v11 (API)", "status": "failed", "error": err})
             append_job_log(job_id, f"[!] Cobalt no pudo extraer el stream ({err}). Pasando a siguiente método...")
 
@@ -1153,7 +1172,7 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
-        err = str(e)
+        err = format_friendly_error(str(e))
         attempts.append({"engine": "yt-dlp (Extractor Principal)", "status": "failed", "error": err})
         append_job_log(job_id, f"[!] yt-dlp falló: {err}")
 
