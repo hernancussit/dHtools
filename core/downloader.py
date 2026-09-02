@@ -77,7 +77,7 @@ def get_ytdlp_version():
 
 def run_pip_update():
     return subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp[default]"],
+        [sys.executable, "-m", "pip", "install", "--upgrade", "--pre", "yt-dlp[default]"],
         capture_output=True, text=True, timeout=180,
     )
 
