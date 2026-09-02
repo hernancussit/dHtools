@@ -2319,6 +2319,19 @@ async function fetchQueueState() {
   } catch (e) {}
 }
 
+function formatSeconds(sec) {
+  if (sec === null || sec === undefined) return '';
+  const s = Math.floor(sec);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const remM = m % 60;
+  const remS = s % 60;
+  if (h > 0) {
+    return `${h}:${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`;
+  }
+  return `${remM}:${String(remS).padStart(2, '0')}`;
+}
+
 function renderQueueState(data) {
   const badge = document.getElementById('sidebarQueueBadge');
   const totalQueued = data.total_queued || 0;
@@ -2339,7 +2352,10 @@ function renderQueueState(data) {
     document.getElementById('queueActiveSpeed').textContent = data.active.speed || '';
     const pct = data.active.percent || 0;
     document.getElementById('queueActiveBar').style.width = pct + '%';
-    document.getElementById('queueActiveStatus').textContent = `Estado: ${data.active.status} (${pct}%) - ${data.active.quality || ''}`;
+    const trimInfo = (data.active.start_time !== undefined && data.active.start_time !== null) 
+      ? ` | ✂️ ${formatSeconds(data.active.start_time)} - ${formatSeconds(data.active.end_time)}` 
+      : '';
+    document.getElementById('queueActiveStatus').textContent = `Estado: ${data.active.status} (${pct}%) - ${data.active.quality || ''}${trimInfo}`;
     const btnCancel = document.getElementById('btnCancelActiveJob');
     btnCancel.onclick = () => cancelQueueItem(data.active.job_id);
   } else {
@@ -2361,6 +2377,9 @@ function renderQueueState(data) {
         const isUrlTitle = !rawTitle || rawTitle.startsWith('http://') || rawTitle.startsWith('https://');
         const displayTitle = isUrlTitle ? (item.url || 'Descarga multimedia en espera') : rawTitle;
         const showUrlSub = !isUrlTitle && item.url;
+        const trimBadge = (item.start_time !== undefined && item.start_time !== null)
+          ? `<span class="brand-badge" style="font-size:0.65rem; background:rgba(16,185,129,0.15); color:#10b981;">✂️ ${formatSeconds(item.start_time)} - ${formatSeconds(item.end_time)}</span>`
+          : '';
 
         return `
         <div class="queue-item-row">
@@ -2374,6 +2393,7 @@ function renderQueueState(data) {
               ${showUrlSub ? `<div class="queue-url-sub" style="font-size:0.72rem; color:var(--muted); opacity:0.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;" title="${item.url}">🔗 ${item.url}</div>` : ''}
               <div style="font-size:0.73rem; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:3px; flex-wrap:wrap;">
                 ${item.folder_name ? `<span class="brand-badge" style="font-size:0.65rem; background:rgba(236,72,153,0.15); color:#f472b6;">📁 ${item.folder_name}</span>` : ''}
+                ${trimBadge}
                 <span class="brand-badge" style="font-size:0.65rem;">${item.quality || 'Auto'}</span>
                 <span class="brand-badge" style="font-size:0.65rem; background:rgba(255,255,255,0.05);">${item.engine || 'auto'}</span>
                 <span>👤 ${item.owner || 'admin'}</span>

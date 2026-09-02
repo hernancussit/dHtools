@@ -20,7 +20,7 @@ from core.utils import (
     load_config, safe_filename, enqueue_job, record_download_meta,
     delete_download_meta, load_downloads_meta, save_queue_state,
     safe_download_path, parse_time_to_seconds, cookies_opts,
-    check_user_storage_quota, get_user_storage_used
+    check_user_storage_quota, get_user_storage_used, format_seconds
 )
 from core.downloader import (
     run_download, run_download_cascade, append_job_log, purge_downloads,
@@ -237,6 +237,12 @@ def download():
     job_id = uuid.uuid4().hex
     deezer_arl = (data or {}).get("deezer_arl", "").strip()
 
+    init_log_text = f"[*] Solicitud encolada para descarga en segundo plano ({quality})."
+    if start_time is not None or end_time is not None:
+        st_label = format_seconds(start_time) if start_time is not None else "00:00"
+        et_label = format_seconds(end_time) if end_time is not None else "fin"
+        init_log_text = f"[*] Solicitud encolada con recorte inteligente: {st_label} -> {et_label} ({quality})."
+
     job_spec = {
         "status": "queued",
         "percent": 0,
@@ -251,6 +257,8 @@ def download():
         "url": url,
         "quality": quality,
         "video_format": video_format,
+        "start_time": start_time,
+        "end_time": end_time,
         "subtitles": subtitles,
         "playlist": playlist_mode,
         "selected_indexes": selected_indexes,
@@ -260,11 +268,9 @@ def download():
         "deezer_arl": deezer_arl,
         "folder_name": folder_name,
         "group_id": group_id,
-        "start_time": start_time,
-        "end_time": end_time,
         "user_cloud_sync": user_cloud_sync,
         "created_at": time.time(),
-        "logs": [{"time": time.strftime("%H:%M:%S"), "text": f"[*] Solicitud encolada para descarga en segundo plano ({quality})."}],
+        "logs": [{"time": time.strftime("%H:%M:%S"), "text": init_log_text}],
         "attempts": [],
     }
 
