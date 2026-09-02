@@ -1,4 +1,5 @@
-const CACHE_NAME = 'dhtools-cache-v1';
+// dHtools - Progressive Web App Service Worker (v1.1.0)
+const CACHE_NAME = 'dhtools-cache-v1.1.0';
 
 const ASSETS_TO_CACHE = [
   '/',
