@@ -614,10 +614,21 @@ def format_seconds(seconds) -> str:
 
 
 
-def cookies_opts():
-    if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
-        return {"cookiefile": COOKIES_FILE}
-    return {}
+def cookies_opts(for_url: str = None, force: bool = False):
+    """
+    Returns cookiefile options.
+    For YouTube URLs, cookies are NOT injected upfront unless force=True.
+    YouTube flags logged-in account cookies into the SABR-only streaming experiment,
+    which strips 1080p/720p/480p DASH streams and restricts video downloads to 360p.
+    Cookies will be used as a fallback if an authentication or age-gate error occurs.
+    """
+    if not (os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0):
+        return {}
+    if for_url and not force:
+        u_low = str(for_url).lower()
+        if "youtube.com" in u_low or "youtu.be" in u_low:
+            return {}
+    return {"cookiefile": COOKIES_FILE}
 
 
 def player_client_opts(clients=None, for_download: bool = True):

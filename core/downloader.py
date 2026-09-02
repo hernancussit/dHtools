@@ -14,7 +14,7 @@ import yt_dlp
 from yt_dlp.utils import download_range_func
 
 from core.config import (
-    POT_PROVIDER_URL, PLAYER_CLIENTS_ENV, DOWNLOAD_DIR, COBALT_URL,
+    COOKIES_FILE, POT_PROVIDER_URL, PLAYER_CLIENTS_ENV, DOWNLOAD_DIR, COBALT_URL,
     APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
     CLEANUP_AFTER_HOURS
 )
@@ -313,29 +313,44 @@ def is_permanent_error(err_str: str) -> bool:
 
 
 def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
-    """Prueba combinaciones de clientes en orden:
-    1) default (cadena inteligente de yt-dlp con Deno para JS challenges y bgutil para PO Token)
-    2) web_embedded, tv_downgraded, mweb
-    3) tv
-    4) web
+    """Prueba combinaciones de clientes y credenciales en orden optimizado:
+    Para YouTube:
+    1) default con PO Token + Deno sin cookies (para evitar la degradación a 360p del experimento SABR)
+    2) default con cookies (si existen en el servidor, para videos restringidos/privados o con login)
+    3) mweb (cliente web móvil, alta calidad sin restricciones de SABR en web)
+    4) web_embedded, tv_downgraded
+    5) tv
+    Para otras plataformas:
+    Usa cookies de inmediato si están configuradas.
     """
-    candidates = [
-        ["default"],
-        ["web_embedded", "tv_downgraded", "mweb"],
-        ["tv"],
-        ["web"],
-    ] if download else [
-        ["default"],
-        ["web_embedded", "tv_downgraded", "mweb"],
-    ]
+    is_yt = detect_platform(url) == "YouTube"
+    has_cookies = bool(os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0)
+
+    candidates = []
+    if is_yt:
+        candidates.append((["default"], False))
+        if has_cookies:
+            candidates.append((["default"], True))
+        candidates.append((["mweb"], False))
+        if has_cookies:
+            candidates.append((["mweb"], True))
+        candidates.append((["web_embedded", "tv_downgraded"], False))
+        candidates.append((["tv"], False))
+    else:
+        candidates.append((["default"], has_cookies))
 
     last_exc = None
-    for clients in candidates:
+    for clients, use_ck in candidates:
         if job_id:
             with JOBS_LOCK:
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return None
         opts = dict(ydl_opts_base)
+        if use_ck and has_cookies:
+            opts["cookiefile"] = COOKIES_FILE
+        else:
+            opts.pop("cookiefile", None)
+
         opts["extractor_args"] = player_client_opts(clients, for_download=download)["extractor_args"]
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
@@ -600,7 +615,7 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 "format": "bestaudio/best",
                 "outtmpl": raw_audio_tmpl,
                 "quiet": True,
-                **cookies_opts(),
+                **cookies_opts(for_url="youtube"),
             }
             extract_with_fallback(search_query, ydl_opts, download=True, job_id=job_id)
 
@@ -901,7 +916,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             "no_warnings": True,
             "noplaylist": not playlist_mode,
             "ignoreerrors": True,
-            **cookies_opts(),
+            **cookies_opts(for_url=url),
             **player_client_opts(for_download=True),
         }
 
