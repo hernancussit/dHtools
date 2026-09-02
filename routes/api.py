@@ -260,6 +260,8 @@ def download():
         "deezer_arl": deezer_arl,
         "folder_name": folder_name,
         "group_id": group_id,
+        "start_time": start_time,
+        "end_time": end_time,
         "user_cloud_sync": user_cloud_sync,
         "created_at": time.time(),
         "logs": [{"time": time.strftime("%H:%M:%S"), "text": f"[*] Solicitud encolada para descarga en segundo plano ({quality})."}],
