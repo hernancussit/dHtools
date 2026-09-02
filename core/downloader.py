@@ -15,7 +15,8 @@ from yt_dlp.utils import download_range_func
 
 from core.config import (
     POT_PROVIDER_URL, PLAYER_CLIENTS_ENV, DOWNLOAD_DIR, COBALT_URL,
-    APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES
+    APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
+    CLEANUP_AFTER_HOURS
 )
 from core.state import (
     JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, BATCH_JOBS, BATCH_LOCK,
@@ -29,6 +30,42 @@ from core.utils import (
     format_for_quality, is_audio_quality, parse_time_to_seconds,
     safe_download_path, enqueue_job
 )
+
+QUALITY_FORMAT_MAP = {
+    "best": "bestvideo+bestaudio/best",
+    "2160p": "bestvideo[height<=2160]+bestaudio/best[height<=2160]/best",
+    "1440p": "bestvideo[height<=1440]+bestaudio/best[height<=1440]/best",
+    "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+    "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+    "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
+    "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]/best",
+}
+
+COBALT_QUALITY_MAP = {
+    "best": "max",
+    "2160p": "2160",
+    "1440p": "1440",
+    "1080p": "1080",
+    "720p": "720",
+    "480p": "480",
+}
+
+CONTENT_TYPE_EXT = {
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/ogg": ".ogg",
+    "audio/webm": ".webm",
+}
+
+COBALT_AUDIO_BITRATES = {
+    "audio_128": "128",
+    "audio_192": "256",
+    "audio_256": "256",
+    "audio_320": "320",
+}
+
 
 def get_ytdlp_version():
     try:

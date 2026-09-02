@@ -7,6 +7,7 @@ import requests
 import re
 import ftplib
 import logging
+import yt_dlp
 from flask import Blueprint, request, jsonify, render_template
 
 from core.config import (
