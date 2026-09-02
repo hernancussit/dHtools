@@ -163,7 +163,7 @@ def download():
     start_raw = (data or {}).get("start_time")
     end_raw = (data or {}).get("end_time")
     engine = (data or {}).get("engine", "auto")
-    video_title = (data or {}).get("video_title", "")
+    video_title = (data or {}).get("video_title") or (data or {}).get("title") or ""
     user_cloud_sync = (data or {}).get("user_cloud_sync")
     selected_indexes = (data or {}).get("selected_indexes") or []
     playlist_delivery = (data or {}).get("playlist_delivery", "zip")

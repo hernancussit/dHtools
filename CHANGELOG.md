@@ -27,6 +27,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Conmutador interactivo `[ 🔗 Enlace Único | 📋 Descarga en Lote ]` integrado directamente en Modo Fácil y Modo Avanzado.
   - Procesamiento de lotes con presets rápidos en Modo Fácil y con personalización completa en Modo Avanzado (resoluciones hasta 4K, contenedores MP4/MKV/WebM, subtítulos, motor Cobalt/yt-dlp y sincronización a la nube).
   - Monitor global de progreso de lotes con descarga directa en `.zip` y barra lateral simplificada.
+- **Favicon Oficial Multiplataforma & Endpoint Directo:**
+  - Creación e integración de `favicon.svg` y `favicon.ico` con la identidad oficial (relámpago estilizado con gradiente cian a coral sobre fondo oscuro).
+  - Enlazado en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) y ruta dedicada `/favicon.ico`.
+- **Optimización de Navegación Móvil y Cola Enriquecida:**
+  - Eliminación de desbordes horizontales accidentales (`overflow-x: hidden`) y compactación de la navegación en móviles (cuadrícula 2x2).
+  - Presentación enriquecida en la cola destacando el título real del contenido en negrita y ocultando URLs secundarias en pantallas móviles.
+  - Propagación de títulos pre-inspeccionados a la API para visualización inmediata desde el segundo cero.
 
 ---
 

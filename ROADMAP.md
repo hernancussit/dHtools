@@ -21,17 +21,18 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [x] **Workers en Segundo Plano (Gunicorn WSGI):** Inicialización de hilos concurrentes compatible con servidores de producción.
 - [x] **Homogeneización de Motores:** Badges `● Online` con indicador de latencia en milisegundos en tiempo real y auto-actualizador de Deno JS.
 - [x] **Unificación de Descargas en Lote:** Conmutador interactivo `[ 🔗 Enlace Único | 📋 Descarga en Lote ]` integrado en Modo Fácil y Modo Avanzado con todas las resoluciones y formatos.
-- [ ] 🚨 **[PRIORIDAD ALTA] Optimización Integral de Navegabilidad y Layout Móvil (Smartphones / WebApp):**
-  - Auditoría y ajuste exhaustivo de diseño responsivo para teléfonos celulares en todas las pantallas (`index.html`, `admin.html`, `login.html`, `wiki.html`).
-  - Evitar que tarjetas, paneles de progreso, modales o botones se encimen, se recorten o generen desplazamiento horizontal en pantallas estrechas (320px a 480px).
-  - Estudiar y diseñar navegación móvil optimizada (ej. barra de navegación inferior fija estilo app nativa o menú colapsable) para que el contenido no quede desplazado hacia abajo.
-- [ ] **Visualización Enriquecida en la Cola de Descargas:**
-  - Priorizar el título/nombre del video o canción en los elementos de la cola en lugar de la URL bruta.
-  - Mostrar la URL en tipografía pequeña y atenuada solo si hay espacio disponible en escritorio; ocultarla en móviles para mantener una vista limpia y compacta.
+- [x] 🚨 **Optimización Integral de Navegabilidad y Layout Móvil (Smartphones / WebApp):**
+  - Auditoría y ajuste de diseño responsivo para celulares en todas las vistas (`index.html`, `admin.html`, `login.html`, `wiki.html`).
+  - Navegación en celulares en cuadrícula compacta 2x2, cabecera de bajo perfil y eliminación de desplazamientos horizontales accidentales (`overflow-x: hidden`).
+  - Tarjetas y paneles adaptados con padding ergonómico para pantallas estrechas (320px a 480px).
+- [x] **Visualización Enriquecida en la Cola de Descargas:**
+  - Priorización del título/nombre del video o canción en negrita en lugar de la URL sin procesar.
+  - Subtítulo con URL secundaria pequeña y atenuada en pantallas de escritorio, ocultándose automáticamente en celulares (`.queue-url-sub`).
+  - Propagación inmediata de metadatos de inspección desde el cliente a la API para mostrar el título desde el segundo cero.
+- [x] **Favicon e Identidad de Pestaña:** Integración del favicon oficial (`favicon.svg` y `favicon.ico`) en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) y endpoint directo `/favicon.ico`.
 - [ ] **Descarga Estricta de Fragmentos Recortados (Trimming Optimization):**
   - Configurar descarga estricta por secciones temporales (`download_ranges` / `--download-sections` y pre-seeking con FFmpeg `-ss`) para evitar descargar el video completo cuando solo se solicita un fragmento.
   - Reducción drástica del consumo de ancho de banda, uso de disco temporal y tiempos de espera en recortes de videos largos (podcasts, conciertos, directos).
-- [ ] **Favicon e Identidad de Pestaña:** Integrar favicon oficial (en formatos `.ico`, `.png` y `.svg`) en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) para visualización clara en pestañas del navegador y marcadores.
 - [ ] **Sistema de Cuentas con Correo Electrónico:**
   - Registro de email por usuario para comunicaciones y alertas del sistema.
   - Configuración de servidor **SMTP** desde el Panel de Administración (Gmail, Outlook, Mailgun, Amazon SES o SMTP personalizado) con prueba de envío en vivo.
