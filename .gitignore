@@ -1,8 +1,6 @@
+# Entorno y credenciales sensibles (¡Nunca subir!)
 .env
-downloads/
-__pycache__/
-*.pyc
-.backups/
+.flask_secret
 cookies.txt
 users.json
 config.json
@@ -10,3 +8,27 @@ cloud_sync.json
 downloads_meta.json
 queue_state.json
 rollback_state.json
+
+
+# Archivos de descargas temporales
+downloads/*
+!downloads/.gitkeep
+
+# Backups locales
+.backups/
+*.zip
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Archivos de sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+.agents/
