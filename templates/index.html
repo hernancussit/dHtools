@@ -931,9 +931,14 @@
         </select>
       </div>
 
-      <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="width:100%; font-size:0.78rem; grid-column:1 / -1; margin-top:2px;">
-        🛡️ Seguridad & 2FA
-      </button>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1; margin-top:2px;">
+        <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">
+          🛡️ 2FA
+        </button>
+        <button id="btnOpenTelegramModal" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">
+          ✈️ Telegram
+        </button>
+      </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1;">
         {% if is_admin %}
@@ -2816,6 +2821,97 @@ document.getElementById('formDisable2fa')?.addEventListener('submit', async (e) 
   }
 });
 
+// Telegram Assistant Modal
+const modalTg = document.getElementById('modalTelegramConfig');
+
+async function loadTelegramStatus() {
+  const statusLabel = document.getElementById('tgStatusLabel');
+  const actionContainer = document.getElementById('tgStatusActionBtn');
+  const setupBox = document.getElementById('tgSetupBox');
+  const linkedBox = document.getElementById('tgLinkedBox');
+  if (!statusLabel || !actionContainer) return;
+
+  try {
+    const res = await fetch('/api/user/telegram-status');
+    const data = await res.json();
+    setupBox.style.display = 'none';
+    linkedBox.style.display = 'none';
+
+    if (data.is_linked) {
+      const userDisplay = data.telegram_username ? `@${data.telegram_username}` : `ID: ${data.telegram_chat_id}`;
+      statusLabel.innerHTML = `<span style="color:var(--success);">✅ Conectado</span> <span style="font-size:0.75rem; color:var(--muted);">(${userDisplay})</span>`;
+      actionContainer.innerHTML = '';
+      linkedBox.style.display = 'block';
+    } else {
+      statusLabel.innerHTML = '<span style="color:var(--muted);">⚪ No vinculado</span>';
+      actionContainer.innerHTML = '<button type="button" id="btnStartSetupTg" class="btn btn-primary btn-sm" style="font-size:0.78rem;">🚀 Vincular</button>';
+      document.getElementById('btnStartSetupTg')?.addEventListener('click', startTelegramSetup);
+    }
+  } catch (e) {
+    statusLabel.textContent = 'Error al consultar Telegram';
+  }
+}
+
+async function startTelegramSetup() {
+  const setupBox = document.getElementById('tgSetupBox');
+  const linkedBox = document.getElementById('tgLinkedBox');
+  setupBox.style.display = 'block';
+  linkedBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/user/telegram-token', { method: 'POST' });
+    const data = await res.json();
+    if (data.token) {
+      document.getElementById('tgTokenCode').textContent = data.token;
+      document.getElementById('tgCmdExample').textContent = `/vincular ${data.token}`;
+      const botName = data.bot_username ? `@${data.bot_username}` : 'el bot';
+      document.getElementById('tgBotNameLabel').textContent = botName;
+      const deepLinkBtn = document.getElementById('btnTgDeepLink');
+      if (data.deep_link) {
+        deepLinkBtn.href = data.deep_link;
+        deepLinkBtn.style.display = 'inline-flex';
+      } else {
+        deepLinkBtn.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    alert('Error al generar código de vinculación');
+  }
+}
+
+document.getElementById('btnOpenTelegramModal')?.addEventListener('click', () => {
+  modalTg.style.display = 'flex';
+  loadTelegramStatus();
+});
+
+document.getElementById('btnCloseTelegramModal')?.addEventListener('click', () => {
+  modalTg.style.display = 'none';
+});
+
+modalTg?.addEventListener('click', (e) => {
+  if (e.target === modalTg) modalTg.style.display = 'none';
+});
+
+document.getElementById('btnCopyTgToken')?.addEventListener('click', () => {
+  const tok = document.getElementById('tgTokenCode').textContent;
+  navigator.clipboard.writeText(tok).then(() => alert('Código copiado: ' + tok));
+});
+
+document.getElementById('btnUnlinkTelegram')?.addEventListener('click', async () => {
+  if (confirm('¿Desvincular tu cuenta de Telegram de dHtools?')) {
+    try {
+      const res = await fetch('/api/user/telegram-unlink', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert('Cuenta de Telegram desvinculada.');
+        loadTelegramStatus();
+      }
+    } catch (e) {
+      alert('Error al desvincular.');
+    }
+  }
+});
+
 // Load on start
 fetchQueueState();
 loadRecentDownloads();
@@ -2893,6 +2989,76 @@ setInterval(loadUserQuota, 15000);
     </div>
   </div>
 </div>
+
+<!-- MODAL: ASISTENTE DE TELEGRAM -->
+<div id="modalTelegramConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:480px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; backdrop-filter:blur(16px);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+        <span>🤖</span> Asistente de Telegram
+      </h3>
+      <button type="button" id="btnCloseTelegramModal" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+
+    <div id="tgStatusBox" style="background:var(--bg-input); padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:0.8rem; color:var(--muted);">Estado de vinculación:</div>
+        <strong id="tgStatusLabel" style="font-size:0.95rem;">Consultando...</strong>
+      </div>
+      <div id="tgStatusActionBtn"></div>
+    </div>
+
+    <!-- PASO DE VINCULACION -->
+    <div id="tgSetupBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Conectá tu cuenta de Telegram para enviar enlaces de descarga por chat, ver tus descargas recientes y recibir tus archivos directamente en el celular.
+      </p>
+
+      <div style="background:#090e1a; padding:14px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px; text-align:center;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:6px;">Tu código de vinculación temporal (válido 10 min):</div>
+        <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:10px;">
+          <code id="tgTokenCode" style="font-size:1.35rem; font-weight:800; color:var(--accent-blue); letter-spacing:2px;">DHT-......</code>
+          <button type="button" id="btnCopyTgToken" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.74rem;">📋 Copiar</button>
+        </div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">
+          O abrí el enlace directo para iniciar el bot con 1 clic:
+        </div>
+        <a id="btnTgDeepLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; padding:8px 14px;">
+          ✈️ Abrir Bot en Telegram
+        </a>
+      </div>
+
+      <div style="font-size:0.8rem; color:var(--muted); line-height:1.5;">
+        <strong>Instrucciones:</strong>
+        <ol style="margin:6px 0 0 0; padding-left:18px;">
+          <li>Abrí el bot en Telegram (<span id="tgBotNameLabel" style="color:var(--accent-blue); font-weight:600;">@bot</span>).</li>
+          <li>Enviá el comando: <code id="tgCmdExample" style="color:var(--text); font-weight:600;">/vincular DHT-......</code></li>
+          <li>¡Listo! Tu cuenta quedará vinculada al instante.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- CUENTA VINCULADA -->
+    <div id="tgLinkedBox" style="display:none;">
+      <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+        Tu cuenta está conectada con Telegram. Podés enviar enlaces directamente al bot para descargarlos o consultar tus archivos.
+      </p>
+      <div style="background:rgba(16, 185, 129, 0.1); border:1px solid var(--success); padding:12px; border-radius:8px; margin-bottom:16px;">
+        <div style="font-size:0.82rem; color:var(--success); font-weight:600;">✨ Comandos disponibles en Telegram:</div>
+        <ul style="margin:6px 0 0 0; padding-left:18px; font-size:0.8rem; color:var(--text);">
+          <li><code>🔗 Enlace</code>: Enviá cualquier video/canción para descargarlo con botones de calidad.</li>
+          <li><code>/descargas</code>: Explorá tus descargas y reenviátelas al chat.</li>
+          <li><code>/cola</code>: Consultá tareas en segundo plano.</li>
+          <li><code>/cuota</code>: Verificá tu almacenamiento en disco.</li>
+        </ul>
+      </div>
+      <button type="button" id="btnUnlinkTelegram" class="btn btn-danger btn-sm" style="width:100%;">
+        🔌 Desvincular Cuenta de Telegram
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
+
 
