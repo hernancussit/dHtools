@@ -1798,7 +1798,7 @@ document.getElementById('btnSaveTelegramQuick')?.addEventListener('click', async
     });
     const data = await res.json();
     showToast('Configuración de Telegram guardada y bot activado.', 'success');
-    loadTelegramBotStatus();
+    loadAdminTelegramBotStatus();
   } catch (e) {
     showToast('Error al guardar Telegram: ' + e.message, 'error');
   }
@@ -1815,6 +1815,7 @@ async function testCloudService(service, configObj) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     showToast(data.message || `Prueba de ${service} exitosa`, 'success');
+    if (service === 'telegram') loadAdminTelegramBotStatus();
   } catch (e) {
     showToast(e.message, 'error');
   }
