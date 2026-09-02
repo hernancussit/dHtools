@@ -19,7 +19,7 @@ from core.utils import (
     load_config, save_config, get_disk_status, get_ram_status,
     load_cloud_config, save_cloud_config, safe_download_path, format_bytes
 )
-from core.downloader import restart_process_soon, sync_to_cloud
+from core.downloader import restart_process_soon, sync_to_cloud, get_ytdlp_version
 from routes.auth import (
     require_admin, load_users, save_users, hash_password
 )
@@ -32,6 +32,8 @@ def wiki_page():
     return render_template("wiki.html", version=APP_VERSION, config=cfg)
 
 
+# ==================== ADMIN PANEL & API ====================
+
 @admin_bp.route("/admin")
 @require_admin
 def admin_panel():
@@ -42,6 +44,20 @@ def admin_panel():
 @admin_bp.route("/api/admin/services-status")
 @require_admin
 def admin_services_status():
+    # 1. yt-dlp check and latency
+    ytdlp_ver = get_ytdlp_version()
+    ytdlp_ok = False
+    ytdlp_lat = 0
+    try:
+        t0 = time.time()
+        r = requests.get("https://pypi.org/pypi/yt-dlp/json", headers={"User-Agent": "dHtools"}, timeout=3)
+        ytdlp_lat = round((time.time() - t0) * 1000)
+        ytdlp_ok = (r.status_code == 200)
+    except Exception:
+        if ytdlp_ver and ytdlp_ver != "desconocida":
+            ytdlp_ok = True
+
+    # 2. PoToken Provider
     pot_ok = False
     pot_lat = 0
     try:
@@ -52,21 +68,32 @@ def admin_services_status():
     except Exception:
         pass
 
+    # 3. Cobalt Official container
     cobalt_ok = False
     cobalt_lat = 0
+    cobalt_ver = ""
     try:
         t0 = time.time()
-        requests.get(COBALT_URL, timeout=3)
+        cr = requests.get(COBALT_URL, timeout=3)
         cobalt_lat = round((time.time() - t0) * 1000)
-        cobalt_ok = True
+        cobalt_ok = (cr.status_code < 500)
+        if cobalt_ok:
+            try:
+                cobalt_ver = cr.json().get("version", "")
+            except Exception:
+                pass
     except Exception:
         pass
 
+    # 4. Deno JS Engine
     deno_path = shutil.which("deno") or "/usr/local/bin/deno"
     deno_installed = False
     deno_ver = ""
+    deno_lat = 0
     try:
+        t0 = time.time()
         dr = subprocess.run([deno_path, "--version"], capture_output=True, text=True, timeout=3)
+        deno_lat = round((time.time() - t0) * 1000)
         if dr.returncode == 0:
             deno_installed = True
             deno_ver = dr.stdout.splitlines()[0]
@@ -76,12 +103,62 @@ def admin_services_status():
     uptime_s = round(time.time() - START_TIME)
     return jsonify({
         "app": {"version": APP_VERSION, "uptime_seconds": uptime_s},
+        "ytdlp": {"online": ytdlp_ok, "version": ytdlp_ver, "latency_ms": ytdlp_lat},
+        "cobalt": {"online": cobalt_ok, "version": cobalt_ver, "latency_ms": cobalt_lat},
+        "deno": {"online": deno_installed, "installed": deno_installed, "available": deno_installed, "version": deno_ver, "latency_ms": deno_lat},
         "potprovider": {"online": pot_ok, "latency_ms": pot_lat},
-        "cobalt": {"online": cobalt_ok, "latency_ms": cobalt_lat},
-        "deno": {"installed": deno_installed, "available": deno_installed, "version": deno_ver},
         "disk": get_disk_status(),
         "ram": get_ram_status(),
     })
+
+
+@admin_bp.route("/api/admin/check-deno")
+@require_admin
+def admin_check_deno():
+    deno_path = shutil.which("deno") or "/usr/local/bin/deno"
+    curr = "desconocida"
+    latest = curr
+    has_update = False
+    try:
+        dr = subprocess.run([deno_path, "--version"], capture_output=True, text=True, timeout=3)
+        if dr.returncode == 0:
+            parts = dr.stdout.split()
+            if len(parts) >= 2:
+                curr = parts[1]
+    except Exception:
+        pass
+
+    try:
+        r = requests.get("https://api.github.com/repos/denoland/deno/releases/latest", headers={"User-Agent": "dHtools"}, timeout=4)
+        if r.status_code == 200:
+            tag = r.json().get("tag_name", "").lstrip("v")
+            if tag:
+                latest = tag
+                if latest != curr and curr != "desconocida":
+                    has_update = True
+    except Exception:
+        pass
+
+    return jsonify({
+        "current_version": curr,
+        "latest_version": latest,
+        "update_available": has_update,
+    })
+
+
+@admin_bp.route("/api/admin/update-deno", methods=["POST"])
+@require_admin
+def admin_update_deno():
+    deno_path = shutil.which("deno") or "/usr/local/bin/deno"
+    try:
+        res = subprocess.run([deno_path, "upgrade"], capture_output=True, text=True, timeout=120)
+        out = (res.stdout or "") + (res.stderr or "")
+        return jsonify({
+            "success": (res.returncode == 0),
+            "message": out.strip() or "Comando deno upgrade ejecutado."
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error al ejecutar actualización de Deno: {e}"}), 500
 
 
 @admin_bp.route("/api/admin/test-deno", methods=["POST"])
@@ -317,10 +394,12 @@ def admin_check_updates():
     latest = curr
     has_update = False
     try:
-        r = requests.get("https://pypi.org/pypi/yt-dlp/json", timeout=4)
+        r = requests.get("https://pypi.org/pypi/yt-dlp/json", headers={"User-Agent": "dHtools"}, timeout=4)
         if r.status_code == 200:
             latest = r.json().get("info", {}).get("version", curr)
-            if latest and latest != curr:
+            def _v_tuple(v):
+                return tuple(int(x) for x in re.findall(r"\d+", str(v)))
+            if latest and _v_tuple(latest) > _v_tuple(curr):
                 has_update = True
     except Exception:
         pass

@@ -523,41 +523,52 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-top:16px;">
           <!-- yt-dlp Card -->
           <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
               <strong>🎯 Motor yt-dlp (Python)</strong>
-              <span id="ytdlpBadgeStatus" class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> PyPI</span>
+              <div style="text-align:right;">
+                <span id="ytdlpBadgeStatus" class="status-badge status-online"><span class="badge-dot" style="background:#10b981;"></span> Online</span>
+                <div id="ytdlpLatency" style="font-size:0.72rem; color:var(--muted); margin-top:2px;">- ms</div>
+              </div>
             </div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="ytdlpVersionLabel">Versión actual: Consultando...</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button id="btnCheckUpdates" class="btn btn-secondary" style="flex:1; min-width:120px;">🔍 Comprobar</button>
-              <button id="btnUpdateYtdlp" class="btn btn-primary" style="flex:1; min-width:120px;">⟳ Actualizar</button>
+              <button id="btnCheckUpdates" class="btn btn-secondary" style="flex:1; min-width:110px;">🔍 Comprobar</button>
+              <button id="btnUpdateYtdlp" class="btn btn-primary" style="flex:1; min-width:110px;">⟳ Actualizar</button>
             </div>
             <div id="updateStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
           </div>
 
           <!-- Cobalt Card -->
           <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
               <strong>⚡ Motor Cobalt (Oficial v11)</strong>
-              <span id="cobaltBadgeStatus" class="status-badge">Consultando...</span>
+              <div style="text-align:right;">
+                <span id="cobaltBadgeStatus" class="status-badge"><span class="badge-dot" style="background:#10b981;"></span> Online</span>
+                <div id="cobaltLatency" style="font-size:0.72rem; color:var(--muted); margin-top:2px;">- ms</div>
+              </div>
             </div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="cobaltVersionLabel">Versión en ejecución: Consultando...</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button id="btnCheckCobalt" class="btn btn-secondary" style="flex:1; min-width:120px;">🔍 Comprobar</button>
-              <button id="btnUpdateCobalt" class="btn btn-primary" style="flex:1; min-width:120px;">⟳ Verificar / Ping</button>
+              <button id="btnCheckCobalt" class="btn btn-secondary" style="flex:1; min-width:110px;">🔍 Comprobar</button>
+              <button id="btnUpdateCobalt" class="btn btn-primary" style="flex:1; min-width:110px;">⟳ Test / Ping</button>
             </div>
             <div id="cobaltStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
           </div>
 
           <!-- Deno JS Engine Card -->
           <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
               <strong>🦕 Motor Deno JS (Extractor)</strong>
-              <span id="denoBadgeStatus" class="status-badge">Consultando...</span>
+              <div style="text-align:right;">
+                <span id="denoBadgeStatus" class="status-badge"><span class="badge-dot" style="background:#10b981;"></span> Online</span>
+                <div id="denoLatency" style="font-size:0.72rem; color:var(--muted); margin-top:2px;">- ms</div>
+              </div>
             </div>
             <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="denoVersionLabel">Versión en ejecución: Consultando...</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button id="btnTestDeno" class="btn btn-primary" style="flex:1; min-width:120px;">🧪 Probar Deno JS</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button id="btnCheckDeno" class="btn btn-secondary" style="flex:1; min-width:90px; padding:6px 10px; font-size:0.78rem;">🔍 Comprobar</button>
+              <button id="btnUpdateDeno" class="btn btn-primary" style="flex:1; min-width:90px; padding:6px 10px; font-size:0.78rem;">⟳ Actualizar</button>
+              <button id="btnTestDeno" class="btn btn-secondary" style="flex:1; min-width:90px; padding:6px 10px; font-size:0.78rem;" title="Probar ejecución JS">🧪 Probar</button>
             </div>
             <div id="denoStatusNotice" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
           </div>
@@ -907,48 +918,94 @@ async function loadServicesStatus() {
     const res = await fetch('/api/admin/services-status');
     const data = await res.json();
 
+    // 1.1 PoToken Provider
     const badgePot = document.getElementById('badgePot');
     if (data.potprovider && data.potprovider.online) {
       badgePot.className = 'status-badge status-online';
-      badgePot.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
+      badgePot.innerHTML = `<span class="badge-dot" style="background:#10b981;"></span> Online`;
+      const potLat = document.getElementById('potLatency');
+      if (potLat) potLat.textContent = data.potprovider.latency_ms > 0 ? `${data.potprovider.latency_ms} ms` : '- ms';
     } else {
       badgePot.className = 'status-badge status-offline';
       badgePot.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
     }
 
-    const badgeCobalt = document.getElementById('badgeCobalt');
-    if (data.cobalt && data.cobalt.online) {
-      badgeCobalt.className = 'status-badge status-online';
-      badgeCobalt.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
-    } else {
-      badgeCobalt.className = 'status-badge status-offline';
-      badgeCobalt.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
+    // 1.2 yt-dlp Motor
+    const ytdlpBadge = document.getElementById('ytdlpBadgeStatus');
+    const ytdlpLat = document.getElementById('ytdlpLatency');
+    const ytdlpVer = document.getElementById('ytdlpVersionLabel');
+    if (data.ytdlp) {
+      if (data.ytdlp.online) {
+        ytdlpBadge.className = 'status-badge status-online';
+        ytdlpBadge.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
+      } else {
+        ytdlpBadge.className = 'status-badge status-offline';
+        ytdlpBadge.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
+      }
+      if (ytdlpLat) ytdlpLat.textContent = data.ytdlp.latency_ms > 0 ? `${data.ytdlp.latency_ms} ms` : 'Local';
+      if (ytdlpVer && data.ytdlp.version) ytdlpVer.textContent = `Versión actual: v${data.ytdlp.version}`;
     }
 
+    // 1.3 Cobalt Motor
+    const badgeCobalt = document.getElementById('badgeCobalt');
+    const cobaltBadge = document.getElementById('cobaltBadgeStatus');
+    const cobaltLat = document.getElementById('cobaltLatency');
+    const cobaltVer = document.getElementById('cobaltVersionLabel');
+    if (data.cobalt && data.cobalt.online) {
+      if (badgeCobalt) {
+        badgeCobalt.className = 'status-badge status-online';
+        badgeCobalt.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
+      }
+      if (cobaltBadge) {
+        cobaltBadge.className = 'status-badge status-online';
+        cobaltBadge.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
+      }
+      if (cobaltLat) cobaltLat.textContent = data.cobalt.latency_ms > 0 ? `${data.cobalt.latency_ms} ms` : '- ms';
+      if (cobaltVer && data.cobalt.version) cobaltVer.textContent = `Versión en ejecución: v${data.cobalt.version}`;
+    } else {
+      if (badgeCobalt) {
+        badgeCobalt.className = 'status-badge status-offline';
+        badgeCobalt.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
+      }
+      if (cobaltBadge) {
+        cobaltBadge.className = 'status-badge status-offline';
+        cobaltBadge.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
+      }
+      if (cobaltLat) cobaltLat.textContent = 'Sin respuesta';
+    }
+
+    // 1.4 Deno JS Motor
     const badgeDeno = document.getElementById('badgeDeno');
     const statDenoInfo = document.getElementById('statDenoInfo');
     const denoVersionLabel = document.getElementById('denoVersionLabel');
     const denoBadgeStatus = document.getElementById('denoBadgeStatus');
+    const denoLat = document.getElementById('denoLatency');
 
     if (data.deno && (data.deno.installed || data.deno.available)) {
       const verText = data.deno.version || 'v2.9.5';
-      badgeDeno.className = 'status-badge status-online';
-      badgeDeno.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Disponible';
+      if (badgeDeno) {
+        badgeDeno.className = 'status-badge status-online';
+        badgeDeno.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Disponible';
+      }
       if (statDenoInfo) statDenoInfo.textContent = verText;
       if (denoVersionLabel) denoVersionLabel.textContent = `Versión en ejecución: ${verText}`;
       if (denoBadgeStatus) {
         denoBadgeStatus.className = 'status-badge status-online';
         denoBadgeStatus.innerHTML = '<span class="badge-dot" style="background:#10b981;"></span> Online';
       }
+      if (denoLat) denoLat.textContent = data.deno.latency_ms > 0 ? `${data.deno.latency_ms} ms` : 'Local';
     } else {
-      badgeDeno.className = 'status-badge status-offline';
-      badgeDeno.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> No instalado';
+      if (badgeDeno) {
+        badgeDeno.className = 'status-badge status-offline';
+        badgeDeno.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> No instalado';
+      }
       if (statDenoInfo) statDenoInfo.textContent = 'No detectado';
       if (denoVersionLabel) denoVersionLabel.textContent = 'Estado: No instalado';
       if (denoBadgeStatus) {
         denoBadgeStatus.className = 'status-badge status-offline';
         denoBadgeStatus.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
       }
+      if (denoLat) denoLat.textContent = '- ms';
     }
 
     if (data.disk) {
@@ -1166,6 +1223,53 @@ document.getElementById('btnTestDeno')?.addEventListener('click', async () => {
     showToast('Error: ' + e.message, 'error');
   }
 });
+
+document.getElementById('btnCheckDeno')?.addEventListener('click', async () => {
+  const notice = document.getElementById('denoStatusNotice');
+  notice.style.display = 'block';
+  notice.style.background = 'var(--bg-input)';
+  notice.style.border = '1px solid var(--border)';
+  notice.style.color = 'var(--text)';
+  notice.textContent = '⏳ Consultando repositorio oficial de Deno en GitHub...';
+  try {
+    const res = await fetch('/api/admin/check-deno');
+    const data = await res.json();
+    if (data.update_available) {
+      notice.style.background = 'rgba(245, 158, 11, 0.15)';
+      notice.style.border = '1px solid var(--warning)';
+      notice.style.color = 'var(--warning)';
+      notice.innerHTML = `⚠️ <strong>Nueva versión de Deno disponible:</strong> v${data.latest_version} (Instalada: v${data.current_version}). Hacé clic en "Actualizar".`;
+    } else {
+      notice.style.background = 'rgba(16, 185, 129, 0.15)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--success)';
+      notice.innerHTML = `✅ <strong>Deno al día:</strong> Tenés instalada la versión más reciente (v${data.current_version}).`;
+    }
+  } catch (e) {
+    notice.style.background = 'rgba(239, 68, 68, 0.15)';
+    notice.style.border = '1px solid var(--danger)';
+    notice.style.color = 'var(--danger)';
+    notice.textContent = 'Error al comprobar Deno: ' + e.message;
+  }
+});
+
+document.getElementById('btnUpdateDeno')?.addEventListener('click', async () => {
+  const box = document.getElementById('engineLogsBox');
+  box.style.display = 'block';
+  box.textContent = '[*] Ejecutando deno upgrade en el servidor...\n';
+  showToast('Actualizando motor Deno JS...', 'success');
+  try {
+    const res = await fetch('/api/admin/update-deno', { method: 'POST' });
+    const data = await res.json();
+    box.textContent += `[+] ${data.message}\n`;
+    loadServicesStatus();
+    showToast(data.message, data.success ? 'success' : 'info');
+  } catch (e) {
+    box.textContent += `[!] Error: ${e.message}\n`;
+    showToast('Error al actualizar Deno: ' + e.message, 'error');
+  }
+});
+
 
 document.getElementById('btnTestEngines').addEventListener('click', async () => {
   const box = document.getElementById('engineLogsBox');
