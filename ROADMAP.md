@@ -4,38 +4,81 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-## 🎯 Versión Actual: `v1.1.0` (Estable)
+## 🎯 Versión Actual: `v1.1.0` (Lanzamiento Estable)
 - [x] **Motor en Cascada Inteligente:** Integración de **yt-dlp**, **Cobalt v11** y motor musical especializado (**Deezer / Spotify**) con conmutación por error transparente (*fallback*).
 - [x] **Suite de Audio Hi-Fi:** Extracción directa con carátulas en alta resolución y metadatos ID3 automáticos en calidades `128 kbps`, `192 kbps`, `256 kbps` y `320 kbps (CBR MP3)`.
 - [x] **Playlists y Colecciones:** Agrupación automática en carpetas virtuales, descarga individual o empaquetado directo en `.zip`.
 - [x] **Seguridad & Blindaje:** Protección contra fuerza bruta con tarpit, validación estricta de URLs contra RCE y resolución de rutas segura contra *Path Traversal*.
 - [x] **Evasión Antibot Automática:** Integración de `pot-provider` (PoTokens) y runtime `Deno` para resolución de desafíos JavaScript sin requerir inicio de sesión obligatorio.
 - [x] **Panel de Administración Web:** Gestión de usuarios con roles (`admin` / `downloader`), actualización de motores en 1 clic, selector de canales (`main` vs `dev`) y rollback instantáneo.
-- [x] **Sincronización en la Nube (Cloud Sync):** Exportación automática a Nextcloud (WebDAV), FTP, Telegram Bot y Webhooks HTTP.
 - [x] **Gestor Seguro de Cookies:** Carga y validación previa obligatoria de `cookies.txt` en formato Netscape para videos restringidos (+18 / miembros).
 - [x] **Configuraciones de Proxy Universales:** Plantillas listas para Nginx, HestiaCP, cPanel/Apache y Caddy en `proxy-configs/`.
 
 ---
 
-## 🚀 Próximo Hito: `v1.2.0` (En Planificación)
-- [ ] **Aceleración por Hardware (GPU Encoding):**
-  - Soporte opcional para codificación acelerada por hardware mediante NVIDIA NVENC, Intel QuickSync y VAAPI en Docker para acelerar uniones de video 4K y conversiones de formato.
-- [ ] **Descargas Programadas (Cron / Time Scheduler):**
-  - Posibilidad de programar descargas pesadas en horarios de menor consumo de red (ej. de madrugada).
-- [ ] **Notificaciones Web Push Nativas:**
-  - Envío de notificaciones directas al navegador / PWA cuando una descarga o lote extenso finalice en segundo plano.
-- [ ] **Límite de Ancho de Banda Configurable:**
-  - Opción para restringir la velocidad máxima de descarga de `yt-dlp` desde el Panel de Administración para no saturar conexiones domésticas o VPS compartidos.
+## 🎯 Versión `v1.2.0` — Gestión de Usuarios Avanzada, SMTP & Seguridad (En Planificación)
+- [ ] **Sistema de Cuentas con Correo Electrónico:**
+  - Registro de email por usuario para comunicaciones y alertas del sistema.
+  - Configuración de servidor **SMTP** desde el Panel de Administración (Gmail, Outlook, Mailgun, Amazon SES o SMTP personalizado) con prueba de envío en vivo.
+- [ ] **Recuperación Segura de Contraseñas:**
+  - Flujo de restablecimiento de contraseña mediante tokens criptográficos temporales de un solo uso enviados por correo electrónico.
+- [ ] **Autenticación de Dos Factores (2FA / TOTP):**
+  - Soporte para aplicaciones de autenticación estándar (Google Authenticator, Authy, Aegis, Bitwarden).
+  - Asistente de configuración con código QR y códigos de recuperación de respaldo (*backup codes*).
+- [ ] **Control de Cuotas y Auditoría de Sesiones:**
+  - Asignación de límites de almacenamiento en disco por usuario (ej. 5 GB máx. por cuenta).
+  - Límite configurable de descargas simultáneas y descargas diarias por rol.
+  - Monitor de sesiones activas con visualización de IP/dispositivo y botón de revocación remota de accesos.
 
 ---
 
-## 🔮 Futuras Ampliaciones (`v1.3.0+`)
+## 🎯 Versión `v1.3.0` — Conectores Cloud con Presets Privados por Usuario (Cloud Storage Hub)
+- [ ] **Gestor de Presets de Nube Personales:**
+  - Cada usuario podrá registrar y almacenar múltiples perfiles/presets de almacenamiento (ej. *"Mi Google Drive Personal"*, *"FTP de Trabajo"*, *"OneDrive Backup"*, *"Canal Telegram"*).
+  - Selector rápido de destino en la interfaz de descargas para enviar archivos terminados al preset elegido con 1 clic.
+- [ ] **Privacidad y Aislamiento Estricto de Credenciales:**
+  - Aislamiento total de credenciales por usuario: ningún usuario podrá ver, editar ni utilizar los accesos a la nube configurados por otro.
+  - Cifrado seguro de tokens OAuth2, contraseñas de FTP y claves de API en el servidor.
+- [ ] **Herramienta de Prueba de Conexión en 1 Clic:**
+  - Validación de conectividad y permisos de escritura en la nube antes de guardar cualquier preset.
+- [ ] **Integración Directa con Proveedores Principales:**
+  - **Google Drive:** Autenticación OAuth2 / Service Account con soporte para carpetas específicas y Unidades Compartidas (*Shared Drives*).
+  - **Microsoft OneDrive / SharePoint:** Conexión con cuentas personales de Microsoft y cuentas educativas / corporativas de Microsoft 365.
+  - **Dropbox:** Conexión vía API oficial para subida automática de archivos y creación de carpetas de colección.
+  - **Amazon S3 / MinIO / Backblaze B2 / Cloudflare R2:** Conector universal para buckets compatibles con S3.
+  - **Nextcloud / WebDAV & Servidores FTP:** Integración mejorada con compatibilidad para estructuras de carpetas anidadas.
+  - **Telegram Bot Uploader:** Envío automático de archivos y colecciones como mensajes multimedia directos.
+- [ ] **Modo de Sincronización "Subir y Mover" (Offload):**
+  - Opción para subir el archivo terminado a la nube y eliminarlo del disco del VPS inmediatamente, reduciendo el consumo de almacenamiento en servidores pequeños.
+
+---
+
+## 🎯 Versión `v1.4.0` — Taller Multimedia, Conversor de Formatos & Edición (Media Studio)
+- [ ] **Conversor Universal de Formatos (Video & Audio):**
+  - **Video:** `MP4` (H.264 / H.265), `MKV`, `WebM` (VP9 / AV1), `AVI`, `MOV` y generación de **GIFs animados** a partir de fragmentos de video.
+  - **Audio:** `MP3` (320/256/192/128 kbps CBR/VBR), `FLAC` (Hi-Res sin pérdida), `WAV`, `AAC`, `M4A`, `Opus` y `OGG`.
+- [ ] **Compresor Inteligente para Redes Sociales:**
+  - Perfiles predefinidos de reducción de peso con preservación visual de calidad (*CRF Rate Control*) para compartir archivos fácilmente por WhatsApp, Telegram o Discord (ej. "Comprimir a menos de 25 MB").
+- [ ] **Editor y Recortador Visual Integrado:**
+  - Línea de tiempo interactiva (*timeline*) para recortar inicios y finales de videos y canciones antes o después de la descarga.
+  - **Extractor de Pistas:** Separar la pista de audio o extraer subtítulos de videos existentes sin recodificar.
+  - **Unión de Archivos (Merge / Concatenación):** Combinar múltiples pistas o videos en un único archivo continuo.
+- [ ] **Normalizador de Potencia Acústica (EBU R128):**
+  - Nivelación automática de volumen para que todas las canciones de un álbum o lista suenen con la misma intensidad sonora sin saturación.
+
+---
+
+## 🎯 Versión `v2.0.0` — Experiencia de Usuario, Búsqueda, Scheduler & Aceleración GPU
 - [ ] **Buscador Multimedia Integrado:**
-  - Buscador directo en la interfaz para encontrar canciones y videos sin necesidad de copiar y pegar enlaces externos.
-- [ ] **Reproductor Web Integrado:**
-  - Vista previa y reproducción directa de audio y video desde la sección "Mis Descargas" antes de bajar el archivo a la PC.
-- [ ] **Soporte para Plugins Comunitarios:**
-  - Arquitectura modular para permitir a la comunidad añadir extractores o destinos de sincronización en la nube personalizados.
+  - Búsqueda directa de videos y canciones dentro de la interfaz sin necesidad de abrir plataformas externas para copiar enlaces.
+- [ ] **Reproductor Web Integrado con Cola de Reproducción:**
+  - Reproductor nativo de audio y video para previsualizar y reproducir archivos multimedia directamente desde la sección "Mis Descargas".
+- [ ] **Descargas Programadas (Task Scheduler / Cron):**
+  - Programación de descargas masivas o playlists extensas en horarios nocturnos de bajo consumo de red.
+- [ ] **Notificaciones Web Push Nativas:**
+  - Alertas automáticas en navegador y móviles cuando las tareas en segundo plano finalicen.
+- [ ] **Aceleración por Hardware (GPU Encoding):**
+  - Soporte opcional para codificación por GPU (NVIDIA NVENC, Intel QuickSync y VAAPI) dentro de Docker.
 
 ---
 
