@@ -341,9 +341,12 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
 
     candidates = []
     if is_yt:
-        candidates.append((["default"], False))
+        # Use explicit clients instead of "default" to prevent yt-dlp from silently falling back to 360p ios/android
+        candidates.append((["tv_embedded"], False))
+        candidates.append((["web"], False))
         if has_cookies:
-            candidates.append((["default"], True))
+            candidates.append((["web"], True))
+            candidates.append((["tv_embedded"], True))  # May ignore cookies, but safe to try
         candidates.append((["mweb"], False))
         if has_cookies:
             candidates.append((["mweb"], True))
