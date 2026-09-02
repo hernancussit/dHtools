@@ -285,10 +285,11 @@
           <li><a href="#section-spotify" class="sidebar-link">4. Spotify (Audio Matching)</a></li>
           <li><a href="#section-social" class="sidebar-link">5. Redes Sociales</a></li>
           <li><a href="#section-batch" class="sidebar-link">6. Cola por Lotes (Batch Queue)</a></li>
-          <li><a href="#section-cloud" class="sidebar-link">7. Sincronización en la Nube</a></li>
-          <li><a href="#section-storage" class="sidebar-link">8. Almacenamiento & Purga</a></li>
-          <li><a href="#section-security" class="sidebar-link">9. Seguridad y Roles (RBAC)</a></li>
-          <li><a href="#section-faq" class="sidebar-link">10. Preguntas Frecuentes (FAQ)</a></li>
+          <li><a href="#section-cloud" class="sidebar-link">7. Sincronización en la Nube & Presets</a></li>
+          <li><a href="#section-telegram" class="sidebar-link">8. Asistente Telegram Bot Hub</a></li>
+          <li><a href="#section-storage" class="sidebar-link">9. Almacenamiento & Purga</a></li>
+          <li><a href="#section-security" class="sidebar-link">10. Seguridad y Roles (RBAC)</a></li>
+          <li><a href="#section-faq" class="sidebar-link">11. Preguntas Frecuentes (FAQ)</a></li>
         </ul>
       </div>
 
@@ -409,18 +410,51 @@
 }</code></pre>
         <p>Al completarse el lote, el botón <strong>"📦 Descargar Todo (.ZIP)"</strong> permite descargar todos los archivos comprimidos en un solo paquete.</p>
 
-        <!-- 7. CLOUD SYNC -->
-        <h2 id="section-cloud">☁️ 7. Sincronización en la Nube (Cloud Sync)</h2>
-        <p>Configurable desde <code>/admin</code> para enviar los archivos terminados a:</p>
+        <!-- 7. CLOUD SYNC & PRESETS -->
+        <h2 id="section-cloud">☁️ 7. Sincronización en la Nube & Presets Privados</h2>
+        <p>dHtools permite reenviar automáticamente los archivos terminados a almacenamiento remoto sin consumir espacio ni ancho de banda local:</p>
         <ul>
-          <li><strong>Nextcloud / ownCloud / WebDAV:</strong> Subida directa mediante protocolo WebDAV.</li>
+          <li><strong>Presets de Almacenamiento Privados por Usuario:</strong> Cada usuario puede almacenar múltiples perfiles (ej. <em>"Mi Nextcloud Personal"</em> o <em>"FTP de Trabajo"</em>) aislados en su cuenta en <code>users.json</code> con selector en 1 clic en el Modo Avanzado.</li>
+          <li><strong>Herramienta de Validación en 1 Clic:</strong> Botones para probar la conectividad de WebDAV y FTP antes de guardar las credenciales.</li>
+          <li><strong>Nextcloud / ownCloud / WebDAV:</strong> Subida directa mediante protocolo WebDAV con soporte para App Passwords.</li>
           <li><strong>Servidor FTP:</strong> Subida automatizada a servidores remotos.</li>
-          <li><strong>Telegram Bot Uploader:</strong> Envío directo a chats/canales de Telegram (hasta 50 MB por archivo).</li>
           <li><strong>Webhook HTTP:</strong> Disparo de notificaciones JSON para integraciones con n8n, Make o Zapier.</li>
         </ul>
 
-        <!-- 8. STORAGE & QUOTAS -->
-        <h2 id="section-storage">💾 8. Almacenamiento, Cuotas de Usuario & Auto-Purga</h2>
+        <!-- 8. TELEGRAM BOT HUB -->
+        <h2 id="section-telegram">🤖 8. Asistente Interactivo de Telegram (Telegram Bot Hub)</h2>
+        <p>El <strong>Telegram Bot Hub</strong> permite controlar y solicitar descargas directamente desde un chat de Telegram mediante Long-Polling autónomo (sin necesidad de abrir puertos entrantes ni configurar certificados SSL dedicados):</p>
+        
+        <div class="callout callout-warning">
+          <strong>⚠️ Importante sobre Despliegues en Múltiples VPS:</strong><br>
+          Si alguien más instala dHtools en otro servidor VPS, <strong>debe crear su propio bot en @BotFather</strong>. La API de Telegram no permite que dos servidores hagan Long-Polling con el mismo token (arroja <code>409 Conflict</code>). Además, tener tu propio bot garantiza que tus descargas y enlaces sean 100% privados y se guarden en tu propio servidor.
+        </div>
+
+        <h3>Paso a paso: Crear tu Bot en 30 Segundos</h3>
+        <ol>
+          <li>Buscá a <strong>@BotFather</strong> en Telegram y enviá <code>/newbot</code>.</li>
+          <li>Escribí un nombre para tu bot y un usuario terminado en <code>bot</code> (ej. <code>midhtools_bot</code>).</li>
+          <li>Copiá el <strong>HTTP API Token</strong> entregado por @BotFather.</li>
+          <li>Ingresá a tu panel de dHtools en <code>/admin</code> -> pestaña <strong>Cloud Sync / Telegram Bot</strong>, pegá el token y tildá <strong>Habilitar Bot</strong>.</li>
+        </ol>
+
+        <h3>Vinculación Segura (Telegram Connect)</h3>
+        <p>Para respetar las cuotas de almacenamiento y el aislamiento por usuario:</p>
+        <ul>
+          <li>Hacé clic en el botón <strong>✈️ Telegram</strong> en la barra lateral web para generar un token temporal de 6 dígitos (ej. <code>DHT-715198</code>).</li>
+          <li>Pulsá <strong>"✈️ Abrir Bot en Telegram"</strong> o enviá <code>/vincular DHT-XXXXXX</code> al bot.</li>
+        </ul>
+
+        <h3>Descargas Interactivas & Comandos</h3>
+        <ul>
+          <li><strong>Enviar enlace al chat:</strong> El bot inspecciona el video/audio y despliega un menú táctil de calidades (<code>1080p</code>, <code>720p</code>, <code>MP3 320k</code>, <code>FLAC</code>).</li>
+          <li><strong>Progreso en vivo:</strong> El mensaje se edita en tiempo real con una barra visual de descarga y velocidad.</li>
+          <li><strong>Entrega inteligente:</strong> Si el archivo pesa &le; 50 MB se envía directamente al chat; si supera 50 MB, adjunta un enlace web seguro.</li>
+          <li><strong>Comandos:</strong> <code>/descargas</code> (con botón para reenviar archivo al chat), <code>/cola</code> (monitoreo y cancelación), <code>/cuota</code> (almacenamiento en disco), <code>/desvincular</code> y <code>/ayuda</code>.</li>
+        </ul>
+
+        <!-- 9. STORAGE & QUOTAS -->
+        <h2 id="section-storage">💾 9. Almacenamiento, Cuotas de Usuario & Auto-Purga</h2>
         <ul>
           <li><strong>Control de Cuotas por Usuario:</strong> Asignación de cuotas máximas de almacenamiento en disco en <code>users.json</code> (ej. 5 GB, 10 GB o ilimitada) con bloqueo preventivo y barra de progreso en el panel lateral.</li>
           <li><strong>Retención Programada:</strong> Limpieza de archivos que superen las horas configuradas en <code>config.json</code> (por defecto 24h).</li>
@@ -428,8 +462,8 @@
           <li><strong>Descargas Recientes:</strong> Historial en servidor disponible para re-descargar sin reprocesar.</li>
         </ul>
 
-        <!-- 9. SECURITY & 2FA -->
-        <h2 id="section-security">🔒 9. Seguridad, 2FA (TOTP), Sesiones & Auditoría</h2>
+        <!-- 10. SECURITY & 2FA -->
+        <h2 id="section-security">🔒 10. Seguridad, 2FA (TOTP), Sesiones & Auditoría</h2>
         <ul>
           <li><strong>Autenticación en Dos Pasos (2FA / TOTP):</strong> Módulo nativo RFC 6238 en <code>core/totp.py</code> compatible con Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc., con QR dinámico y 8 códigos de recuperación de respaldo.</li>
           <li><strong>Contraseñas con PBKDF2-SHA256:</strong> Hashing criptográfico robusto con sal única por usuario y protección contra fuerza bruta por IP (*tarpit*).</li>
@@ -444,8 +478,11 @@
           <li><strong>Privacidad:</strong> Cabeceras <code>X-Robots-Tag: noindex, nofollow</code> para prevenir indexación en motores de búsqueda.</li>
         </ul>
 
-        <!-- 10. FAQ -->
-        <h2 id="section-faq">❓ 10. Preguntas Frecuentes (FAQ)</h2>
+        <!-- 11. FAQ -->
+        <h2 id="section-faq">❓ 11. Preguntas Frecuentes (FAQ)</h2>
+        <h3>¿Si instalo dHtools en otro VPS tengo que usar el mismo Bot de Telegram o crear uno nuevo?</h3>
+        <p><strong>Debés crear tu propio bot en @BotFather.</strong> Telegram no admite que dos servidores consulten con el mismo token (error 409 Conflict). Además, tener tu propio bot garantiza que tus descargas y credenciales sean 100% privadas en tu propio servidor.</p>
+
         <h3>¿Qué hacer si un video de YouTube arroja error de bot o descarga solo en 360p?</h3>
         <p>Andá a <code>/admin</code> -> pestaña <strong>Actualizador de Motores</strong> y pulsá <strong>"⟳ Actualizar yt-dlp Ahora"</strong>. Si YouTube activó el experimento SABR en tu sesión de cookies, podés subir un <code>cookies.txt</code> de otra cuenta o configurar un Proxy Residencial en la pestaña <strong>Proxy</strong>.</p>
         
@@ -454,6 +491,7 @@
 
         <h3>¿Se pueden descargar álbumes enteros de Spotify o Deezer?</h3>
         <p>Sí. Marcando la casilla de playlist o pegando el enlace en la cola de lotes, el sistema procesa todas las canciones y las empaqueta en un archivo <code>.zip</code>.</p>
+
       </div>
     </div>
   </div>

@@ -19,13 +19,21 @@ Documentación técnica detallada sobre el funcionamiento interno, componentes, 
    - [Redes Sociales (TikTok, Instagram, Facebook, Twitch, Kick, X)](#45-redes-sociales)
    - [Gestión y Ciclo de Vida de Cookies de YouTube](#46-gestión-y-ciclo-de-vida-de-cookies-de-youtube)
 5. [Motor de Cola por Lotes (Batch Queue)](#5-motor-de-cola-por-lotes-batch-queue)
-6. [Módulo de Sincronización en la Nube (Cloud Sync)](#6-módulo-de-sincronización-en-la-nube-cloud-sync)
-7. [Gestión de Almacenamiento, Cuotas de Usuario & Auto-Purga](#7-gestión-de-almacenamiento-cuotas-de-usuario--auto-purga)
-8. [Seguridad, 2FA (TOTP), Sesiones & Auditoría](#8-seguridad-2fa-totp-sesiones--auditoría)
-   - [Autenticación de Dos Factores (RFC 6238)](#81-autenticación-de-dos-factores-rfc-6238)
-   - [Servidor SMTP & Recuperación de Contraseña](#82-servidor-smtp--recuperación-de-contraseña)
-   - [Telemetría y Revocación Remota de Sesiones](#83-telemetría-y-revocación-remota-de-sesiones)
-9. [Preguntas Frecuentes & Diagnóstico (FAQ)](#9-preguntas-frecuentes--diagnóstico-faq)
+6. [Módulo de Sincronización en la Nube & Presets Privados](#6-módulo-de-sincronización-en-la-nube--presets-privados)
+7. [Asistente Interactivo de Telegram (Telegram Bot Hub)](#7-asistente-interactivo-de-telegram-telegram-bot-hub)
+   - [Arquitectura Long-Polling](#71-arquitectura-long-polling)
+   - [¿Cada VPS necesita su propio Bot? (Error 409 Conflict)](#72-por-qué-cada-servidor-debe-crear-su-propio-bot)
+   - [Guía Rápida: Crear tu Bot con @BotFather](#73-guía-rápida-crear-tu-propio-bot-en-30-segundos)
+   - [Vinculación Segura de Cuentas (Telegram Connect)](#74-vinculación-segura-de-cuentas-telegram-connect)
+   - [Solicitud Interactiva de Descargas](#75-solicitud-interactiva-de-descargas)
+   - [Comandos Disponibles & Reglas de Entrega](#76-comandos-disponibles--reglas-de-entrega)
+8. [Gestión de Almacenamiento, Cuotas de Usuario & Auto-Purga](#8-gestión-de-almacenamiento-cuotas-de-usuario--auto-purga)
+9. [Seguridad, 2FA (TOTP), Sesiones & Auditoría](#9-seguridad-2fa-totp-sesiones--auditoría)
+   - [Autenticación de Dos Factores (RFC 6238)](#91-autenticación-de-dos-factores-rfc-6238)
+   - [Servidor SMTP & Recuperación de Contraseña](#92-servidor-smtp--recuperación-de-contraseña)
+   - [Telemetría y Revocación Remota de Sesiones](#93-telemetría-y-revocación-remota-de-sesiones)
+10. [Preguntas Frecuentes & Diagnóstico (FAQ)](#10-preguntas-frecuentes--diagnóstico-faq)
+
 
 ---
 
@@ -68,13 +76,14 @@ ytsite/
 ├── core/                   # Capa Núcleo: lógica de negocio, estado y utilidades
 │   ├── config.py           # Variables de entorno, constantes y resolución de paths
 │   ├── state.py            # Estado en memoria, locks concurrentes y telemetría
-│   ├── utils.py            # Sanitización, cuotas, hashing PBKDF2 y servidor SMTP
+│   ├── utils.py            # Sanitización, cuotas, presets cloud y servidor SMTP
 │   ├── totp.py             # Criptografía RFC 6238 para 2FA y backup codes
+│   ├── telegram_bot.py     # Asistente interactivo bidireccional y long-polling
 │   └── downloader.py       # Cascada de extracción, workers y multiplexación
 ├── routes/                 # Capa de Controladores (Flask Blueprints)
-│   ├── auth.py             # Login, logout, flujo 2FA y recuperación de clave
-│   ├── admin.py            # Panel de control, sesiones activas, cuotas y Git
-│   ├── api.py              # API REST de descargas, encolamiento y estados
+│   ├── auth.py             # Login, logout, 2FA, reseteo de clave y Telegram connect
+│   ├── admin.py            # Panel de control, sesiones activas, cuotas, bot y Git
+│   ├── api.py              # API REST de descargas, presets de nube y estados
 │   └── ui.py               # Renderizado de vistas HTML, feeds y PWA
 ├── templates/              # Vistas HTML responsivas con diseño de alta fidelidad
 ├── static/                 # Estilos CSS, assets y manifiesto PWA
@@ -93,16 +102,21 @@ ytsite/
   - `QUEUE_LIST` y `QUEUE_LOCK`: Cola secuencial de trabajos en espera.
   - `BATCH_JOBS` y `BATCH_LOCK`: Agrupador de descargas masivas por lotes.
   - `ACTIVE_SESSIONS` y `SESSIONS_LOCK`: Telemetría en tiempo real de sesiones de usuario conectadas.
+  - `TELEGRAM_LINK_TOKENS`: Tokens temporales de emparejamiento de un solo uso para Telegram.
 - **`core/totp.py`**:
   Motor criptográfico puro en Python que implementa **Time-Based One-Time Password (TOTP)** bajo el estándar **RFC 6238** (HMAC-SHA1, ventana de 30 segundos, 6 dígitos numéricos) y generación de 8 códigos alfanuméricos de recuperación de respaldo de un solo uso.
+- **`core/telegram_bot.py`**:
+  Motor autónomo de asistente remoto para Telegram vía **Long-Polling**. Procesa comandos (`/start`, `/vincular`, `/descargas`, `/cola`, `/cuota`), inspección asíncrona de enlaces, menús táctiles interactivos (*Inline Keyboards*), telemetría de progreso en tiempo real y entrega directa de archivos multimedia (<= 50 MB) o enlaces web seguros (> 50 MB).
 - **`core/utils.py`**:
   Colección de funciones de seguridad y utilidades del sistema:
   - Hashing de contraseñas con `pbkdf2:sha256:600000` con sal aleatoria única.
   - Sanitización canónica de rutas (`safe_download_path`) para prevenir *Path Traversal*.
   - Cálculo de cuotas de almacenamiento en disco por usuario (`get_user_storage_used`, `check_user_storage_quota`).
+  - Gestión de perfiles de almacenamiento privados por usuario (`get_user_cloud_presets`, `save_user_cloud_preset`, `delete_user_cloud_preset`).
+  - Herramienta universal de validación de conexiones cloud (`test_cloud_connection`).
   - Envío de correos electrónicos vía SMTP autenticado (`send_system_email`) con soporte para STARTTLS y SSL.
 - **`core/downloader.py`**:
-  Motor integral de extracción y multiplexación. Implementa la cascada inteligente (yt-dlp + Cobalt + Deezer), la inyección de PO Tokens y Deno, la ejecución de recortes temporales estrictos (`download_ranges`) y los hilos en segundo plano (`background_queue_worker`, `cleanup_loop`, `auto_update_loop`).
+  Motor integral de extracción y multiplexación. Implementa la cascada inteligente (yt-dlp + Cobalt + Deezer), la inyección de PO Tokens y Deno, la ejecución de recortes temporales estrictos (`download_ranges`), los hilos en segundo plano (`background_queue_worker`, `cleanup_loop`, `auto_update_loop`) y el hook de notificación de progreso hacia Telegram.
 
 ### 2.3. Capa de Rutas (Blueprints)
 
@@ -226,17 +240,83 @@ Permite procesar múltiples URLs de forma concurrente con monitoreo individual:
 
 ---
 
-## 6. Módulo de Sincronización en la Nube (Cloud Sync)
+## 6. Módulo de Sincronización en la Nube & Presets Privados
 
-Permite reenviar automáticamente los archivos terminados a plataformas remotas sin consumir ancho de banda en la PC del usuario:
-- **Nextcloud / ownCloud / WebDAV:** Envía el archivo por HTTP `PUT` directamente a la carpeta remota configurada.
-- **Servidor FTP:** Se conecta mediante `ftplib` al host y puerto configurados y transfiere el archivo por comando `STOR`.
-- **Telegram Bot Uploader:** Para archivos de hasta 50 MB, el bot envía el video o audio directamente a un chat privado o canal de Telegram con su título como pie de foto.
-- **Webhook HTTP:** Emite una solicitud `POST` JSON con los metadatos del archivo para integración con plataformas de automatización (n8n, Zapier, Make).
+Permite reenviar automáticamente los archivos terminados a plataformas de almacenamiento externas sin saturar el disco del servidor ni consumir ancho de banda local:
+
+### 6.1. Hub de Presets de Nube Privados por Usuario
+- **Almacenamiento Aislado:** Cada usuario puede registrar sus propios perfiles de almacenamiento (ej. *"Mi Nextcloud Personal"*, *"FTP de Trabajo"*) guardados bajo su cuenta en `users.json`. Ningún otro usuario del sistema puede ver, modificar ni reutilizar dichas credenciales.
+- **Selector en 1 Clic:** En el Modo Avanzado de descargas, el usuario puede seleccionar su preset deseado desde un menú desplegable para que el archivo terminado se transmita inmediatamente al finalizar la descarga.
+- **Protocolos Soportados:**
+  - **Nextcloud / ownCloud / WebDAV:** Envía el archivo por HTTP `PUT` directamente a la carpeta remota configurada con soporte para autenticación básica y App Passwords.
+  - **Servidor FTP:** Se conecta mediante `ftplib` al host y puerto configurados y transfiere el archivo por comando `STOR`.
+  - **Webhook HTTP:** Emite una solicitud `POST` JSON con los metadatos del archivo para integración con plataformas de automatización (n8n, Zapier, Make).
+
+### 6.2. Herramienta de Validación en 1 Clic
+Tanto en la interfaz de descargas como en el panel administrativo, los usuarios y administradores disponen de botones `🧪 Probar WebDAV` y `🧪 Probar FTP` que efectúan un handshake de red en vivo contra el servidor remoto antes de guardar el perfil.
 
 ---
 
-## 7. Gestión de Almacenamiento, Cuotas de Usuario & Auto-Purga
+## 7. Asistente Interactivo de Telegram (Telegram Bot Hub)
+
+El **Telegram Bot Hub** transforma dHtools en un asistente multimedia personal accesible directamente desde Telegram, permitiendo solicitar descargas, consultar el historial, monitorear la cola y gestionar el almacenamiento sin abrir el navegador.
+
+### 7.1. Arquitectura Long-Polling
+A diferencia de los bots tradicionales que exigen exponer puertos públicos hacia internet, configurar dominios dedicados y emitir certificados SSL para webhooks, el bot de dHtools funciona mediante **Long-Polling asíncrono**:
+- Un worker continuo en Python consulta periódicamente el endpoint `/getUpdates` de Telegram con un timeout de 20 segundos.
+- Si no hay token configurado o el bot está deshabilitado en `/admin`, el hilo entra en reposo absoluto sin consumir ciclos de CPU ni memoria.
+
+### 7.2. ¿Por qué cada servidor debe crear su propio Bot?
+> [!IMPORTANT]
+> **Si desplegás dHtools en tu propio servidor VPS, debés crear tu propio bot en Telegram.**  
+> Hay dos motivos técnicos y de seguridad fundamentales:
+> 1. **Limitación de Telegram (Error 409 Conflict):** La API de Telegram no admite que dos servidores consulten `getUpdates` con el mismo token simultáneamente. Si dos servidores usan el mismo bot, Telegram responde con `409 Conflict: terminated by other getUpdates request; make sure that only one bot instance is running`, provocando desconexiones y pérdida de mensajes.
+> 2. **Privacidad y Aislamiento de Archivos:** Cada bot interactúa exclusivamente con el disco y la base de datos de su servidor local. Con tu propio bot, tus descargas y enlaces son 100% privados y no se mezclan con ningún otro servidor del mundo.
+
+### 7.3. Guía Rápida: Crear tu propio Bot en 30 Segundos
+1. Abrí tu aplicación de Telegram y buscá al bot oficial **`@BotFather`**.
+2. Enviá el comando `/newbot`.
+3. Ingresá el nombre que querés que tenga tu bot (ej. *Mi dHtools Bot*).
+4. Ingresá un nombre de usuario terminado en `bot` (ej. *midhtools_descargas_bot*).
+5. `@BotFather` te responderá entregándote tu **HTTP API Token** (ej. `7123456789:AAHk...`).
+6. Ingresá a tu panel de dHtools en `/admin` -> pestaña **Cloud Sync / Telegram Bot**, pegá tu token en el campo **Bot Token** y tildá **Habilitar Bot**.
+7. Hacé clic en **Guardar Configuración**. El badge cambiará inmediatamente a `● En Línea (@tu_bot)`.
+
+### 7.4. Vinculación Segura de Cuentas (Telegram Connect)
+Para respetar las cuotas de almacenamiento y el aislamiento multiusuario:
+1. El usuario inicia sesión en la web de dHtools y hace clic en el botón **✈️ Telegram** de la barra lateral.
+2. La plataforma genera un **Token Temporal de Emparejamiento** de 6 dígitos (ej. `DHT-715198`) con expiración estricta de 10 minutos.
+3. El usuario puede hacer clic en **"✈️ Abrir Bot en Telegram"** (que envía automáticamente `/start link_DHT-XXXXXX`) o enviar manualmente `/vincular DHT-XXXXXX` al chat del bot.
+4. El bot asocia el `chat_id` de Telegram con el usuario en `users.json`. A partir de ese momento, todas las solicitudes que reciba respetarán el rol (`admin` o `downloader`) y la cuota de almacenamiento del usuario.
+
+### 7.5. Solicitud Interactiva de Descargas
+- El usuario puede compartir cualquier enlace compatible (YouTube, Spotify, Deezer, TikTok, Instagram, Twitter, etc.) al chat del bot.
+- El bot inspecciona el enlace y responde con un mensaje enriquecido acompañado de botones táctiles (*Inline Keyboards*):
+  - **Video:** `[ 🎬 1080p ]` `[ 🎬 720p ]` `[ 🎬 480p ]`
+  - **Audio:** `[ 🎵 MP3 320k ]` `[ 🎵 MP3 192k ]` `[ 🎵 FLAC ]`
+- Al pulsar un botón, la tarea se añade a la cola de dHtools.
+- Durante la descarga, el hook de progreso edita periódicamente el mensaje en el chat con una barra de avance dinámica:  
+  `⚡ Descargando: Bohemian Rhapsody`  
+  `[████████░░░░] 65% | 5.2 MB/s | ETA: 12s`
+
+### 7.6. Comandos Disponibles & Reglas de Entrega
+| Comando | Función |
+| :--- | :--- |
+| `/start` | Mensaje de bienvenida, estado de vinculación o auto-emparejamiento con deep-link. |
+| `/vincular <token>` | Canjea un token temporal generado en la web para asociar la cuenta. |
+| `/desvincular` | Desconecta la cuenta de Telegram de la plataforma web. |
+| `/descargas` | Lista las últimas 5 descargas del usuario con botón para recibir el archivo en el chat. |
+| `/cola` | Muestra trabajos activos y pendientes con botón interactivo para cancelar. |
+| `/cuota` | Informa el almacenamiento en disco consumido vs. cuota asignada. |
+| `/ayuda` | Despliega el resumen de comandos y capacidades del bot. |
+
+**Reglas de Entrega:**
+- **Archivos de hasta 50 MB:** El bot sube el archivo directamente al chat de Telegram utilizando el método correspondiente (`sendAudio`, `sendVideo` o `sendDocument`).
+- **Archivos mayores a 50 MB:** Telegram impone un límite de 50 MB para subida de bots por la API estándar. En estos casos, el bot notifica que la descarga concluyó exitosamente y adjunta un botón seguro con enlace web directo para descargarlo desde el navegador.
+
+---
+
+## 8. Gestión de Almacenamiento, Cuotas de Usuario & Auto-Purga
 
 Para proteger el disco duro del VPS y controlar el uso por parte de los usuarios:
 1. **Control de Cuotas por Usuario (`quota_gb`):**
@@ -250,26 +330,29 @@ Para proteger el disco duro del VPS y controlar el uso por parte de los usuarios
 
 ---
 
-## 8. Seguridad, 2FA (TOTP), Sesiones & Auditoría
+## 9. Seguridad, 2FA (TOTP), Sesiones & Auditoría
 
-### 8.1. Autenticación de Dos Factores (RFC 6238)
+### 9.1. Autenticación de Dos Factores (RFC 6238)
 - **Opcional por Usuario:** Cada usuario puede activar o desactivar la autenticación en dos pasos desde su modal de seguridad.
 - **Compatibilidad Universal:** Funciona con Google Authenticator, Microsoft Authenticator, Authy, Bitwarden, Aegis, etc.
 - **Asistente Visual:** Muestra un código QR dinámico generado en el cliente y la clave Base32 secreta.
 - **Códigos de Respaldo:** Genera 8 códigos de emergencia de un solo uso para recuperar el acceso si se pierde el dispositivo autenticador.
 
-### 8.2. Servidor SMTP & Recuperación de Contraseña
+### 9.2. Servidor SMTP & Recuperación de Contraseña
 - **Configuración en Panel Admin:** Soporta servidores SMTP estándar (Gmail, Outlook, servidores privados) con cifrado STARTTLS o SSL/TLS.
 - **Recuperación en 1 Clic:** Desde la pantalla de login, los usuarios pueden solicitar un enlace de restablecimiento.
 - **Tokens Criptográficos Seguros:** Genera tokens temporales con expiración estricta de 1 hora.
 
-### 8.3. Telemetría y Revocación Remota de Sesiones
+### 9.3. Telemetría y Revocación Remota de Sesiones
 - **Monitor en Vivo:** El panel de administración muestra todas las sesiones activas en el servidor con su IP de origen, navegador, dispositivo y última hora de actividad.
 - **Revocación Remota:** Los administradores pueden cerrar remotamente cualquier sesión activa sospechosa con un solo clic.
 
 ---
 
-## 9. Preguntas Frecuentes & Diagnóstico (FAQ)
+## 10. Preguntas Frecuentes & Diagnóstico (FAQ)
+
+### ¿Si instalo dHtools en otro VPS tengo que usar el mismo Bot de Telegram o crear uno nuevo?
+**Debés crear tu propio bot en `@BotFather`.** La API de Telegram no permite que dos servidores hagan Long-Polling simultáneo con el mismo token (arroja error `409 Conflict`). Además, tener tu propio bot garantiza que tus descargas y credenciales sean 100% privadas y residan exclusivamente en tu propio servidor.
 
 ### ¿Qué hacer si YouTube empieza a fallar con error "Sign in to confirm you're not a bot"?
 1. Ingresá al panel `/admin` -> pestaña **"🚀 Actualizador de Motores"** y hacé clic en **"⟳ Actualizar yt-dlp Ahora"**.
@@ -279,5 +362,6 @@ Para proteger el disco duro del VPS y controlar el uso por parte de los usuarios
 ### ¿Por qué una descarga en 720p/1080p puede descargarse en 360p?
 Si la cuenta de Google utilizada en `cookies.txt` está enrolada en el experimento **SABR** de YouTube, YouTube oculta las URLs directas de alta definición para esa sesión web. Subir un archivo `cookies.txt` de una cuenta no afectada o configurar un Proxy Residencial en `/admin` resuelve la restricción de inmediato.
 
-### ¿Puedo descargar playlists de 100 canciones a la vez?
+### ¿Se pueden descargar playlists de 100 canciones a la vez?
 Sí. El sistema procesa cada elemento en cola y los entrega empaquetados en un archivo comprimido `.zip` con todos los nombres de archivo sanitizados y metadatos incrustados.
+

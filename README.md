@@ -37,7 +37,8 @@ Está construida con una **arquitectura modular de Flask Blueprints**, diseñada
 - **Selector de Canales:** Alterná entre la rama estable (`main`) y la rama de desarrollo (`dev`) directamente desde la interfaz.
 - **Rollback Seguro:** Restauración inmediata a la versión anterior con un solo clic si algo falla.
 - **Gestión Multiusuario:** Creación de usuarios con roles `Admin` y `Downloader`, cambio de contraseñas, asignación de cuotas, suspensión de cuentas y purga selectiva de descargas.
-- **Sincronización en la Nube (Cloud Sync):** Exportación automática a Nextcloud/ownCloud vía **WebDAV**, canales/grupos de **Telegram Bot** y servidores **FTP**.
+- **🤖 Asistente Interactivo de Telegram (Telegram Bot Hub):** Solicitá descargas compartiendo enlaces directamente a tu propio bot de Telegram con selección de calidades táctil (*Inline Keyboards*), seguimiento dinámico de progreso en el chat, consulta de historial (`/descargas`), cola (`/cola`) y cuota (`/cuota`), y entrega de archivos multimedia directos (<= 50 MB) o enlaces web seguros.
+- **☁️ Hub de Conectores Cloud con Presets Privados:** Perfiles de almacenamiento personalizados por usuario (Nextcloud/ownCloud vía **WebDAV**, servidores **FTP** y webhooks) con aislamiento total de credenciales y herramienta de validación de conexión en 1 clic.
 - **Monitoreo en Tiempo Real:** Métricas en vivo del uso de CPU, RAM del proyecto vs VPS total y espacio en disco con purga automática configurable.
 
 ---
