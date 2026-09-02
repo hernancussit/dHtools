@@ -4,6 +4,23 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.3.0-dev] - En desarrollo activo (Rama dev)
+
+### 🤖 Asistente Interactivo de Telegram (Telegram Bot Hub)
+- **Motor Long-Polling Autónomo (`core/telegram_bot.py`):**
+  - Worker continuo de segundo plano en Python nativo (`requests`) que consulta la API de Telegram sin requerir webhooks ni certificados SSL dedicados.
+  - Comandos interactivos: `/start`, `/vincular <token>`, `/desvincular`, `/descargas`, `/cola`, `/cuota`, `/ayuda`.
+  - **Solicitud de Nuevas Descargas desde el Chat:** Envío directo de cualquier enlace con inspección previa y menú táctil en línea (*Inline Keyboards*) para elegir resoluciones (`1080p`, `720p`, `480p`) o audio (`MP3 320k`, `MP3 192k`, `FLAC`).
+  - **Monitoreo Dinámico de Progreso:** Barra visual de porcentaje y velocidad que se actualiza periódicamente editando el mensaje en el chat.
+  - **Entrega Inteligente:** Envío automático del archivo al chat para tamaños de hasta 50 MB, o generación de enlace seguro para archivos mayores.
+  - **Vinculación Segura (Telegram Connect):** Generación de tokens de emparejamiento temporales desde el perfil web con aislamiento de archivos por usuario y control de cuotas.
+
+### ☁️ Hub de Conectores Cloud con Presets Privados por Usuario
+- **Gestor de Presets en Servidor (`core/utils.py` & `routes/api.py`):**
+  - Almacenamiento seguro de múltiples perfiles de almacenamiento por usuario en `users.json` (`/api/user/cloud-presets`).
+  - Selector rápido de presets en el Modo Avanzado de descargas con carga automática de credenciales.
+  - Herramienta de prueba de conexión en 1 clic para WebDAV y FTP (`/api/user/cloud-presets/test`).
+
 ## [1.2.0] - 2026-09-02
 
 ### 🚀 Lanzamiento Estable v1.2.0

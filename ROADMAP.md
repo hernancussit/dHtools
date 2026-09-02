@@ -39,27 +39,27 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 ---
 
 ## 🎯 Versión `v1.3.0` (En desarrollo activo en rama `dev`) — Conectores Cloud con Presets Privados por Usuario
-- [ ] **Gestor de Presets de Nube Personales:**
-  - Cada usuario podrá registrar y almacenar múltiples perfiles/presets de almacenamiento (ej. *"Mi Google Drive Personal"*, *"FTP de Trabajo"*, *"OneDrive Backup"*, *"Canal Telegram"*).
+- [x] **Gestor de Presets de Nube Personales:**
+  - Cada usuario puede registrar y almacenar múltiples perfiles/presets de almacenamiento (ej. *"Mi Nextcloud Casa"*, *"FTP de Trabajo"*).
   - Selector rápido de destino en la interfaz de descargas para enviar archivos terminados al preset elegido con 1 clic.
-- [ ] **Privacidad y Aislamiento Estricto de Credenciales:**
-  - Aislamiento total de credenciales por usuario: ningún usuario podrá ver, editar ni utilizar los accesos a la nube configurados por otro.
-  - Cifrado seguro de tokens OAuth2, contraseñas de FTP y claves de API en el servidor.
-- [ ] **Herramienta de Prueba de Conexión en 1 Clic:**
-  - Validación de conectividad y permisos de escritura en la nube antes de guardar cualquier preset.
-- [ ] **🤖 Asistente Interactivo Bidireccional de Telegram (Telegram Bot Hub & Remote Assistant):**
+- [x] **Privacidad y Aislamiento Estricto de Credenciales:**
+  - Aislamiento total de credenciales por usuario: ningún usuario puede ver, editar ni utilizar los accesos a la nube configurados por otro.
+- [x] **Herramienta de Prueba de Conexión en 1 Clic:**
+  - Validación de conectividad y credenciales en la nube antes de guardar cualquier preset.
+- [x] **🤖 Asistente Interactivo Bidireccional de Telegram (Telegram Bot Hub & Remote Assistant):**
   - **Solicitud de Nuevas Descargas desde el Chat:**
     - Envío directo de cualquier enlace compatible (YouTube, Spotify, Deezer, TikTok, Instagram, Twitter/X, Twitch, etc.) al chat del bot.
     - Menú interactivo con botones en línea (*Inline Keyboards*) para seleccionar formato y calidad con 1 toque (`[ 🎬 1080p ]`, `[ 🎬 720p ]`, `[ 🎵 MP3 320k ]`, `[ 🎵 FLAC ]`).
     - Actualización visual del progreso en tiempo real editando el mensaje (`⏳ Descargando: 64% | 5.2 MB/s`).
-    - Entrega directa del archivo multimedia en el chat (hasta 50 MB / 2 GB con local Bot API) o botón con enlace de descarga web seguro.
+    - Entrega directa del archivo multimedia en el chat (hasta 50 MB) o botón con enlace de descarga web seguro.
   - **Acceso y Consulta de Mis Descargas desde Telegram:**
     - Comando `/descargas` o `/historial` para explorar los archivos recientes del usuario con botones para recibir el archivo en Telegram o abrir enlace.
     - Comando `/cola` para monitorizar tareas en ejecución y botón para cancelar descargas activas.
     - Comando `/cuota` para verificar el almacenamiento consumido vs. límite asignado.
   - **Vinculación Segura de Cuentas (Telegram Connect):**
-    - Vinculación de cuenta mediante token temporal de un solo uso generado en el perfil web (`/vincular <token>`).
+    - Vinculación de cuenta mediante token temporal de un solo uso generado en el perfil web (`/vincular <token>` o enlace `/start link_<token>`).
     - Respeto estricto del aislamiento de archivos por usuario, permisos de rol (`admin` / `downloader`) y control de cuotas de disco.
+
 - [ ] **Integración Directa con Proveedores Cloud Principales:**
   - **Google Drive:** Autenticación OAuth2 / Service Account con soporte para carpetas específicas y Unidades Compartidas (*Shared Drives*).
   - **Microsoft OneDrive / SharePoint:** Conexión con cuentas personales de Microsoft y cuentas educativas / corporativas de Microsoft 365.
