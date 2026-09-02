@@ -419,21 +419,25 @@
           <li><strong>Webhook HTTP:</strong> Disparo de notificaciones JSON para integraciones con n8n, Make o Zapier.</li>
         </ul>
 
-        <!-- 8. STORAGE -->
-        <h2 id="section-storage">💾 8. Almacenamiento & Purga Automática</h2>
+        <!-- 8. STORAGE & QUOTAS -->
+        <h2 id="section-storage">💾 8. Almacenamiento, Cuotas de Usuario & Auto-Purga</h2>
         <ul>
+          <li><strong>Control de Cuotas por Usuario:</strong> Asignación de cuotas máximas de almacenamiento en disco en <code>users.json</code> (ej. 5 GB, 10 GB o ilimitada) con bloqueo preventivo y barra de progreso en el panel lateral.</li>
           <li><strong>Retención Programada:</strong> Limpieza de archivos que superen las horas configuradas en <code>config.json</code> (por defecto 24h).</li>
           <li><strong>Auto-purga de Emergencia:</strong> Activación automática si el disco supera el 85% de uso o si quedan menos de 2 GB libres.</li>
           <li><strong>Descargas Recientes:</strong> Historial en servidor disponible para re-descargar sin reprocesar.</li>
         </ul>
 
-        <!-- 9. SECURITY -->
-        <h2 id="section-security">🔒 9. Seguridad y Roles (RBAC)</h2>
+        <!-- 9. SECURITY & 2FA -->
+        <h2 id="section-security">🔒 9. Seguridad, 2FA (TOTP), Sesiones & Auditoría</h2>
         <ul>
-          <li><strong>Contraseñas Cifradas:</strong> Hash criptográfico <code>SHA-256</code> con salt único en <code>users.json</code>.</li>
-          <li><strong>Roles de Usuario:</strong>
+          <li><strong>Autenticación en Dos Pasos (2FA / TOTP):</strong> Módulo nativo RFC 6238 en <code>core/totp.py</code> compatible con Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc., con QR dinámico y 8 códigos de recuperación de respaldo.</li>
+          <li><strong>Contraseñas con PBKDF2-SHA256:</strong> Hashing criptográfico robusto con sal única por usuario y protección contra fuerza bruta por IP (*tarpit*).</li>
+          <li><strong>Auditoría de Sesiones Activas:</strong> Telemetría en tiempo real de sesiones conectadas (IP, navegador, dispositivo) con capacidad de revocación remota instantánea desde <code>/admin</code>.</li>
+          <li><strong>Servidor SMTP & Recuperación de Claves:</strong> Tokens temporales de un solo uso con validez de 1 hora para restablecimiento seguro de contraseñas.</li>
+          <li><strong>Roles de Usuario (RBAC):</strong>
             <ul>
-              <li><code>admin</code>: Acceso total al panel <code>/admin</code>, configuración, cookies y usuarios.</li>
+              <li><code>admin</code>: Acceso total al panel <code>/admin</code>, configuración, cookies, cuotas y usuarios.</li>
               <li><code>downloader</code>: Acceso exclusivo a la interfaz de descargas (bloqueado con <code>403 Forbidden</code> en <code>/admin</code>).</li>
             </ul>
           </li>
@@ -442,9 +446,12 @@
 
         <!-- 10. FAQ -->
         <h2 id="section-faq">❓ 10. Preguntas Frecuentes (FAQ)</h2>
-        <h3>¿Qué hacer si un video de YouTube arroja error de bot?</h3>
-        <p>Andá a <code>/admin</code> -> pestaña <strong>Actualizador de Motores</strong> y pulsá <strong>"⟳ Actualizar yt-dlp Ahora"</strong>. Si persiste, cargá una sesión en la pestaña <strong>Cookies</strong>.</p>
+        <h3>¿Qué hacer si un video de YouTube arroja error de bot o descarga solo en 360p?</h3>
+        <p>Andá a <code>/admin</code> -> pestaña <strong>Actualizador de Motores</strong> y pulsá <strong>"⟳ Actualizar yt-dlp Ahora"</strong>. Si YouTube activó el experimento SABR en tu sesión de cookies, podés subir un <code>cookies.txt</code> de otra cuenta o configurar un Proxy Residencial en la pestaña <strong>Proxy</strong>.</p>
         
+        <h3>¿Se pueden descargar fragmentos de video sin bajar el archivo completo?</h3>
+        <p>Sí. En el Modo Avanzado, podés indicar el tiempo de inicio y fin (ej. <code>5:47:31</code> a <code>5:49:31</code>) y el motor transferirá únicamente el intervalo solicitado en segundos sin descargar el stream completo.</p>
+
         <h3>¿Se pueden descargar álbumes enteros de Spotify o Deezer?</h3>
         <p>Sí. Marcando la casilla de playlist o pegando el enlace en la cola de lotes, el sistema procesa todas las canciones y las empaqueta en un archivo <code>.zip</code>.</p>
       </div>

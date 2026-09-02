@@ -4,19 +4,7 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-## 🎯 Versión Estable Actual: `v1.1.1`
-- [x] **Parche Crítico de Seguridad (v1.1.1):** Hashing de contraseñas con PBKDF2-SHA256, retiro del volumen SSH de Docker, protección contra *open redirect* y aislamiento de descargas por usuario.
-- [x] **Motor en Cascada Inteligente:** Integración de **yt-dlp**, **Cobalt v11** y motor musical especializado (**Deezer / Spotify**) con conmutación por error transparente (*fallback*).
-- [x] **Suite de Audio Hi-Fi:** Extracción directa con carátulas en alta resolución y metadatos ID3 automáticos en calidades `128 kbps`, `192 kbps`, `256 kbps` y `320 kbps (CBR MP3)`.
-- [x] **Playlists y Colecciones:** Agrupación automática en carpetas virtuales, descarga individual o empaquetado directo en `.zip`.
-- [x] **Evasión Antibot Automática:** Integración de `pot-provider` (PoTokens) y runtime `Deno` para resolución de desafíos JavaScript sin requerir inicio de sesión obligatorio.
-- [x] **Panel de Administración Web:** Gestión de usuarios con roles (`admin` / `downloader`), actualización de motores en 1 clic, selector de canales (`main` vs `dev`) y rollback instantáneo.
-- [x] **Gestor Seguro de Cookies:** Carga y validación previa obligatoria de `cookies.txt` en formato Netscape para videos restringidos (+18 / miembros).
-- [x] **Configuraciones de Proxy Universales:** Plantillas listas para Nginx, HestiaCP, cPanel/Apache y Caddy en `proxy-configs/`.
-
----
-
-## 🎯 Versión `v1.2.0` (En desarrollo activo en rama `dev`)
+## 🎯 Versión Estable Actual: `v1.2.0`
 - [x] **Arquitectura Modular (Flask Blueprints):** Monolito desacoplado al 100% en módulos independientes (`core/` y `routes/`).
 - [x] **Workers en Segundo Plano (Gunicorn WSGI):** Inicialización de hilos concurrentes compatible con servidores de producción.
 - [x] **Homogeneización de Motores:** Badges `● Online` con indicador de latencia en milisegundos en tiempo real y auto-actualizador de Deno JS.
@@ -50,7 +38,7 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-## 🎯 Versión `v1.3.0` — Conectores Cloud con Presets Privados por Usuario (Cloud Storage Hub)
+## 🎯 Versión `v1.3.0` (En desarrollo activo en rama `dev`) — Conectores Cloud con Presets Privados por Usuario
 - [ ] **Gestor de Presets de Nube Personales:**
   - Cada usuario podrá registrar y almacenar múltiples perfiles/presets de almacenamiento (ej. *"Mi Google Drive Personal"*, *"FTP de Trabajo"*, *"OneDrive Backup"*, *"Canal Telegram"*).
   - Selector rápido de destino en la interfaz de descargas para enviar archivos terminados al preset elegido con 1 clic.
