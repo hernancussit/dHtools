@@ -26,14 +26,23 @@ def index():
     is_admin = (user.get("role") == "admin")
     from core.telegram_bot import telegram_bot
     telegram_enabled = telegram_bot.is_enabled() and bool(telegram_bot.get_token())
+    from core.utils import get_git_info
+    git_info = get_git_info()
+    branch = git_info.get("branch") or "dev"
+
+    raw_ver = APP_VERSION.split("-")[0]
+    display_version = f"{raw_ver}-{branch}" if branch and branch != "main" else raw_ver
+
     return render_template(
         "index.html",
-        version=APP_VERSION,
+        version=display_version,
+        branch=branch,
         config=cfg,
         is_admin=is_admin,
         username=user.get("username", "admin"),
         telegram_enabled=telegram_enabled,
     )
+
 
 
 @ui_bp.route("/manifest.json")

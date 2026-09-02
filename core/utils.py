@@ -6,6 +6,7 @@ import shutil
 import logging
 import urllib.parse
 import smtplib
+import subprocess
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from flask import send_file
@@ -243,6 +244,51 @@ def delete_user_cloud_preset(username: str, preset_id: str) -> bool:
         save_users(users)
         return True
     return False
+
+
+def get_git_info() -> dict:
+    """Extracts branch, commit, and tag info from git."""
+    is_repo = False
+    branch = "main"
+    commit = "unknown"
+    commit_date = ""
+    tag = ""
+    remote_repo = "hernancussit/dHtools"
+    try:
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
+
+        r = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip() == "true":
+            is_repo = True
+            br = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, timeout=3)
+            branch = br.stdout.strip() or "main"
+
+            cm = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, timeout=3)
+            commit = cm.stdout.strip() or "unknown"
+
+            cd = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=short"], capture_output=True, text=True, timeout=3)
+            commit_date = cd.stdout.strip()
+
+            tg = subprocess.run(["git", "describe", "--tags", "--always"], capture_output=True, text=True, timeout=3)
+            tag = tg.stdout.strip()
+
+            rem = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, timeout=3)
+            if rem.returncode == 0 and rem.stdout.strip():
+                rem_str = rem.stdout.strip()
+                m = re.search(r"github\.com[:/]([^/]+/[^/.]+)", rem_str)
+                if m:
+                    remote_repo = m.group(1)
+    except Exception:
+        pass
+    return {
+        "is_repo": is_repo,
+        "branch": branch,
+        "commit": commit,
+        "commit_date": commit_date,
+        "tag": tag,
+        "remote_repo": remote_repo,
+    }
 
 
 def test_cloud_connection(service: str, config: dict) -> tuple[bool, str]:
