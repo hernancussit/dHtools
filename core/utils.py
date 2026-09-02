@@ -5,6 +5,9 @@ import re
 import shutil
 import logging
 import urllib.parse
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from flask import send_file
 
 from core.config import (
@@ -76,12 +79,26 @@ def load_config() -> dict:
         "cleanup_after_hours": CLEANUP_AFTER_HOURS,
         "disk_emergency_threshold": DISK_EMERGENCY_THRESHOLD_PERCENT,
         "default_engine": "ytdlp",
+        "smtp": {
+            "enabled": False,
+            "host": "",
+            "port": 587,
+            "user": "",
+            "password": "",
+            "from_email": "",
+            "use_tls": True,
+            "use_ssl": False,
+        }
     }
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
-                default_cfg.update(cfg)
+                for k, v in cfg.items():
+                    if k == "smtp" and isinstance(v, dict):
+                        default_cfg["smtp"].update(v)
+                    else:
+                        default_cfg[k] = v
         except Exception:
             pass
     return default_cfg
@@ -90,6 +107,52 @@ def load_config() -> dict:
 def save_config(cfg: dict):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def send_system_email(to_email: str, subject: str, html_content: str, text_content: str = None) -> tuple:
+    """Sends an email using configured SMTP settings. Returns (success, message)."""
+    cfg = load_config()
+    smtp_cfg = cfg.get("smtp", {})
+    if not smtp_cfg.get("enabled"):
+        return False, "El servicio SMTP no está habilitado en la configuración."
+    host = smtp_cfg.get("host", "").strip()
+    port = int(smtp_cfg.get("port") or 587)
+    user = smtp_cfg.get("user", "").strip()
+    password = smtp_cfg.get("password", "").strip()
+    from_email = smtp_cfg.get("from_email", "").strip() or user
+    use_tls = bool(smtp_cfg.get("use_tls", True))
+    use_ssl = bool(smtp_cfg.get("use_ssl", False))
+
+    if not host or not to_email:
+        return False, "Falta el servidor SMTP o la dirección de correo destinataria."
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"dHtools <{from_email}>"
+    msg["To"] = to_email
+
+    if text_content:
+        msg.attach(MIMEText(text_content, "plain", "utf-8"))
+    if html_content:
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+    try:
+        if use_ssl:
+            server = smtplib.SMTP_SSL(host, port, timeout=12)
+        else:
+            server = smtplib.SMTP(host, port, timeout=12)
+            if use_tls:
+                server.starttls()
+
+        if user and password:
+            server.login(user, password)
+
+        server.send_message(msg)
+        server.quit()
+        return True, "Correo enviado correctamente."
+    except Exception as e:
+        return False, f"Error al conectar con el servidor SMTP: {str(e)}"
+
 
 
 def load_cloud_config() -> dict:
@@ -355,6 +418,22 @@ def parse_time_to_seconds(value):
     for p in parts:
         seconds = seconds * 60 + p
     return seconds
+
+
+def format_seconds(seconds) -> str:
+    """Formats numeric seconds to HH:MM:SS or MM:SS string."""
+    if seconds is None:
+        return "00:00"
+    try:
+        s = int(seconds)
+        m, s = divmod(s, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h:02d}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
+    except Exception:
+        return str(seconds)
+
 
 
 def cookies_opts():

@@ -17,7 +17,8 @@ from core.config import (
 from core.state import JOBS_LOCK, JOBS, START_TIME
 from core.utils import (
     load_config, save_config, get_disk_status, get_ram_status,
-    load_cloud_config, save_cloud_config, safe_download_path, format_bytes
+    load_cloud_config, save_cloud_config, safe_download_path, format_bytes,
+    send_system_email, load_downloads_meta, delete_download_meta
 )
 from core.downloader import restart_process_soon, sync_to_cloud, get_ytdlp_version
 from routes.auth import (
@@ -553,6 +554,7 @@ def admin_users():
         password = data.get("password", "")
         role = data.get("role", "downloader")
         status = data.get("status", "active")
+        email = data.get("email", "").strip()
         if not username or not password:
             return jsonify({"error": "Falta usuario o contraseña"}), 400
         if username in users:
@@ -561,6 +563,7 @@ def admin_users():
             "password_hash": hash_password(password),
             "role": role,
             "status": status,
+            "email": email,
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         save_users(users)
@@ -580,6 +583,7 @@ def admin_users():
             "username": u,
             "role": d.get("role", "downloader"),
             "status": d.get("status", "active"),
+            "email": d.get("email", ""),
             "created_at": d.get("created_at", "Inicial"),
             "downloads_count": user_stats.get(u, {}).get("count", 0),
             "downloads_bytes": user_stats.get(u, {}).get("bytes", 0),
@@ -622,8 +626,63 @@ def admin_user_detail(username):
             users[username]["role"] = data["role"]
         if "status" in data and data["status"]:
             users[username]["status"] = data["status"]
+        if "email" in data:
+            users[username]["email"] = str(data["email"]).strip()
         save_users(users)
         return jsonify({"message": f"Usuario '{username}' actualizado exitosamente"})
+
+
+@admin_bp.route("/api/admin/smtp", methods=["GET", "POST"])
+@require_admin
+def admin_smtp():
+    cfg = load_config()
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        smtp_cfg = cfg.get("smtp", {})
+        smtp_cfg["enabled"] = bool(data.get("enabled", False))
+        smtp_cfg["host"] = str(data.get("host", "")).strip()
+        smtp_cfg["port"] = int(data.get("port") or 587)
+        smtp_cfg["user"] = str(data.get("user", "")).strip()
+        if "password" in data and data["password"]:
+            smtp_cfg["password"] = str(data["password"]).strip()
+        smtp_cfg["from_email"] = str(data.get("from_email", "")).strip()
+        smtp_cfg["use_tls"] = bool(data.get("use_tls", True))
+        smtp_cfg["use_ssl"] = bool(data.get("use_ssl", False))
+        cfg["smtp"] = smtp_cfg
+        save_config(cfg)
+        return jsonify({"message": "Configuración SMTP guardada exitosamente."})
+
+    smtp_info = dict(cfg.get("smtp", {}))
+    if smtp_info.get("password"):
+        smtp_info["password_masked"] = True
+        smtp_info["password"] = "••••••••"
+    else:
+        smtp_info["password_masked"] = False
+    return jsonify({"smtp": smtp_info})
+
+
+@admin_bp.route("/api/admin/smtp-test", methods=["POST"])
+@require_admin
+def admin_smtp_test():
+    data = request.get_json(force=True) or {}
+    to_email = data.get("to_email", "").strip()
+    if not to_email:
+        return jsonify({"error": "Ingresá un correo electrónico destinatario para la prueba."}), 400
+
+    html = """
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; border: 1px solid #334155;">
+        <h2 style="color: #38bdf8; margin-top: 0;">⚡ dHtools — Prueba de Servidor SMTP</h2>
+        <p>¡Felicitaciones! La conexión con tu servidor de correo SMTP está configurada y funcionando correctamente.</p>
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+        <p style="font-size: 0.8rem; color: #94a3b8;">Enviado automáticamente desde el Panel de Administración de dHtools.</p>
+    </div>
+    """
+    text = "⚡ dHtools — Prueba de Servidor SMTP\n\n¡Felicitaciones! La conexión con tu servidor de correo SMTP está funcionando correctamente."
+
+    success, msg = send_system_email(to_email, "⚡ dHtools — Prueba de Conexión SMTP", html, text)
+    if not success:
+        return jsonify({"error": msg}), 400
+    return jsonify({"message": f"¡Correo de prueba enviado con éxito a {to_email}!"})
 
 
 @admin_bp.route("/api/admin/users/<username>/toggle-status", methods=["POST"])
