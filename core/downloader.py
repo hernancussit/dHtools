@@ -884,6 +884,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             "noplaylist": not playlist_mode,
             "ignoreerrors": True,
             **cookies_opts(),
+            **player_client_opts(for_download=True),
         }
 
         if selected_indexes and len(selected_indexes) > 0:
@@ -925,35 +926,14 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 })
 
         if start_time is not None or end_time is not None:
-            st_sec = start_time or 0
-            et_sec = end_time
-            st_str = format_seconds(st_sec) if st_sec else "00:00"
-            et_str = format_seconds(et_sec) if et_sec else "fin"
-            append_job_log(job_id, f"[*] Recorte temporal: descargando segmento {st_str} -> {et_str} en calidad máxima solicitada.")
-            append_job_log(job_id, "[*] FFmpeg realizará el corte exacto durante el postprocesado (sin degradar calidad).")
-
-            # Strategy: use download_ranges for segment-based efficient download,
-            # then use force_keyframes_at_cuts so FFmpeg re-encodes at cut points.
-            # Additionally, pass ffmpeg section args via postprocessor_args to handle
-            # the merge step with exact timestamps for DASH streams.
+            st_str = format_seconds(start_time) if start_time else "00:00"
+            et_str = format_seconds(end_time) if end_time else "fin"
+            append_job_log(job_id, f"[*] Recorte temporal inteligente: solicitando rango {st_str} -> {et_str}.")
+            append_job_log(job_id, "[*] Descarga por segmentos activos (sin transferir el video completo).")
             ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
-                None, [(st_sec, et_sec if et_sec is not None else float("inf"))]
+                None, [(start_time or 0, end_time or float("inf"))]
             )
             ydl_opts["force_keyframes_at_cuts"] = True
-
-            # For DASH/bestvideo+bestaudio merges (high quality): instruct ffmpeg's
-            # merge postprocessor to also trim the output. This prevents quality degradation.
-            # yt-dlp postprocessor_args format: {"ffmpeg_i0": [...pre-input args...], "ffmpeg_o": [...output args...]}
-            if not is_audio_quality(quality):
-                ydl_opts.setdefault("postprocessor_args", {})
-                # -ss before input = fast seek (keyframe-accurate)
-                ydl_opts["postprocessor_args"]["ffmpeg_i"] = ["-ss", str(st_sec)]
-                if et_sec is not None:
-                    duration = et_sec - st_sec
-                    # -t after input = duration from seek point
-                    ydl_opts["postprocessor_args"].setdefault("ffmpeg_o", [])
-                    existing = ydl_opts["postprocessor_args"].get("ffmpeg_o", [])
-                    ydl_opts["postprocessor_args"]["ffmpeg_o"] = ["-t", str(duration)] + existing
 
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "cancelled":
