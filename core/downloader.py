@@ -163,22 +163,31 @@ def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_clou
         except Exception as e:
             print(f"[CloudSync FTP Error] {e}")
 
-    # 4. Telegram Bot (Admin Only)
-    tg = cfg.get("telegram", {})
-    if tg.get("enabled") and tg.get("bot_token") and tg.get("chat_id"):
+    # 4. Telegram Bot (Personal upload if job originated from Telegram, or Admin fallback)
+    tg_chat_id = (job_info or {}).get("telegram_chat_id")
+    job_id_val = (job_info or {}).get("job_id") or (job_info or {}).get("id")
+    if tg_chat_id:
         try:
-            token = tg["bot_token"]
-            chat_id = tg["chat_id"]
-            if os.path.getsize(filepath) <= 50 * 1024 * 1024:
-                with open(filepath, "rb") as f:
-                    requests.post(
-                        f"https://api.telegram.org/bot{token}/sendDocument",
-                        data={"chat_id": chat_id, "caption": f"🎬 {filename}"},
-                        files={"document": (filename, f)},
-                        timeout=120,
-                    )
+            from core.telegram_bot import telegram_bot
+            telegram_bot.notify_finished(job_id_val, filepath, filename)
         except Exception as e:
-            print(f"[CloudSync Telegram Error] {e}")
+            print(f"[TelegramBot notify_finished Error] {e}")
+    else:
+        tg = cfg.get("telegram", {})
+        if tg.get("enabled") and tg.get("bot_token") and tg.get("chat_id"):
+            try:
+                token = tg["bot_token"]
+                chat_id = tg["chat_id"]
+                if os.path.getsize(filepath) <= 50 * 1024 * 1024:
+                    with open(filepath, "rb") as f:
+                        requests.post(
+                            f"https://api.telegram.org/bot{token}/sendDocument",
+                            data={"chat_id": chat_id, "caption": f"🎬 {filename}"},
+                            files={"document": (filename, f)},
+                            timeout=120,
+                        )
+            except Exception as e:
+                print(f"[CloudSync Telegram Error] {e}")
 
 
 def purge_downloads(force_all=False):
@@ -859,6 +868,15 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             total_for_pct = job.get("total_count") or 1
             file_fraction = (job.get("file_percent") or 0) / 100
             job["percent"] = min(100, int((job["completed_count"] + file_fraction) / total_for_pct * 100))
+
+            if job.get("telegram_chat_id"):
+                try:
+                    from core.telegram_bot import telegram_bot
+                    from core.utils import format_seconds
+                    eta_s = format_seconds(job.get("eta_seconds")) if job.get("eta_seconds") else None
+                    telegram_bot.notify_progress(job_id, job["percent"], job.get("speed"), eta_s)
+                except Exception:
+                    pass
 
             # Periodic user-friendly console logging
             milestone = job["percent"] // 20

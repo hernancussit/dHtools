@@ -914,3 +914,42 @@ def admin_cloud_sync_test():
             return jsonify({"error": f"Error WebDAV: {e}"}), 400
 
     return jsonify({"error": "Servicio desconocido"}), 400
+
+
+@admin_bp.route("/api/admin/telegram-bot/status", methods=["GET"])
+@require_admin
+def admin_telegram_bot_status():
+    from core.telegram_bot import telegram_bot
+    bot_info = telegram_bot.get_bot_info(force_refresh=True)
+    users = load_users()
+    linked_users = []
+    for uname, udata in users.items():
+        if udata.get("telegram_chat_id"):
+            linked_users.append({
+                "username": uname,
+                "role": udata.get("role", "downloader"),
+                "chat_id": udata.get("telegram_chat_id"),
+                "telegram_username": udata.get("telegram_username") or ""
+            })
+
+    return jsonify({
+        "running": telegram_bot.is_running(),
+        "enabled": telegram_bot.is_enabled(),
+        "bot_info": bot_info,
+        "token_configured": bool(telegram_bot.get_token()),
+        "linked_users": linked_users
+    })
+
+
+@admin_bp.route("/api/admin/telegram-bot/restart", methods=["POST"])
+@require_admin
+def admin_telegram_bot_restart():
+    from core.telegram_bot import telegram_bot
+    telegram_bot.stop()
+    time.sleep(1)
+    telegram_bot.start()
+    return jsonify({
+        "success": True,
+        "running": telegram_bot.is_running(),
+        "message": "Servicio del bot de Telegram reiniciado correctamente."
+    })

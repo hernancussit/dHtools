@@ -16,7 +16,10 @@ from core.config import (
     CLEANUP_AFTER_HOURS, DISK_EMERGENCY_THRESHOLD_PERCENT,
     DISK_EMERGENCY_MIN_FREE_GB, POT_PROVIDER_URL
 )
-from core.state import JOBS_LOCK, JOBS, QUEUE_LIST, QUEUE_LOCK
+from core.state import (
+    JOBS_LOCK, JOBS, QUEUE_LIST, QUEUE_LOCK,
+    TELEGRAM_LINK_TOKENS, TELEGRAM_LINK_LOCK
+)
 
 def validate_media_url(url: str) -> bool:
     """Strictly validates media URLs to prevent command injection, RCE, and protocol smuggling."""
@@ -495,4 +498,83 @@ def check_user_storage_quota(username: str) -> tuple[bool, str]:
     if used_bytes >= quota_bytes:
         return False, f"Has alcanzado tu límite de cuota de almacenamiento ({quota_gb:.1f} GB). Eliminá descargas anteriores desde tu panel para continuar."
     return True, ""
+
+
+def get_user_by_telegram_chat_id(chat_id: int):
+    """Returns (username, user_dict) for a linked Telegram chat_id or (None, None)."""
+    if not chat_id:
+        return None, None
+    from routes.auth import load_users
+    users = load_users()
+    for uname, udata in users.items():
+        if udata.get("telegram_chat_id") == chat_id:
+            return uname, udata
+    return None, None
+
+
+def create_telegram_link_token(username: str) -> str:
+    """Generates a temporary 6-digit link token (valid 10 minutes) for pairing with Telegram."""
+    import random
+    with TELEGRAM_LINK_LOCK:
+        now = time.time()
+        # Clean expired tokens (> 600s)
+        expired = [t for t, data in TELEGRAM_LINK_TOKENS.items() if now - data.get("created_at", 0) > 600]
+        for t in expired:
+            del TELEGRAM_LINK_TOKENS[t]
+
+        token = f"DHT-{random.randint(100000, 999999)}"
+        TELEGRAM_LINK_TOKENS[token] = {
+            "username": username,
+            "created_at": now
+        }
+        return token
+
+
+def consume_telegram_link_token(token: str, chat_id: int, telegram_username: str = "") -> tuple[bool, str]:
+    """Consumes a pairing code and associates the Telegram chat_id with the dHtools username."""
+    from routes.auth import load_users, save_users
+    clean_token = token.strip()
+    if clean_token.startswith("link_"):
+        clean_token = clean_token[5:]
+    if not clean_token.startswith("DHT-") and clean_token.isdigit():
+        clean_token = f"DHT-{clean_token}"
+
+    with TELEGRAM_LINK_LOCK:
+        now = time.time()
+        info = TELEGRAM_LINK_TOKENS.get(clean_token)
+        if not info:
+            return False, "El código de vinculación no existe o ya fue utilizado."
+        if now - info.get("created_at", 0) > 600:
+            del TELEGRAM_LINK_TOKENS[clean_token]
+            return False, "El código de vinculación ha expirado. Generá uno nuevo desde la web."
+
+        username = info["username"]
+        del TELEGRAM_LINK_TOKENS[clean_token]
+
+    users = load_users()
+    if username not in users:
+        return False, "Usuario no encontrado en la plataforma."
+
+    # Unlink any existing user associated with this chat_id
+    for uname, udata in users.items():
+        if udata.get("telegram_chat_id") == chat_id:
+            udata.pop("telegram_chat_id", None)
+            udata.pop("telegram_username", None)
+
+    users[username]["telegram_chat_id"] = chat_id
+    users[username]["telegram_username"] = (telegram_username or "").lstrip("@")
+    save_users(users)
+    return True, username
+
+
+def unlink_user_telegram(username: str) -> bool:
+    """Unlinks Telegram chat_id and username for a dHtools user."""
+    from routes.auth import load_users, save_users
+    users = load_users()
+    if username in users:
+        users[username].pop("telegram_chat_id", None)
+        users[username].pop("telegram_username", None)
+        save_users(users)
+        return True
+    return False
 

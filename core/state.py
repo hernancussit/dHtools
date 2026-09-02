@@ -17,6 +17,14 @@ ACTIVE_WORKER_JOB = None
 ACTIVE_SESSIONS = {}
 ACTIVE_SESSIONS_LOCK = threading.RLock()
 
+# Telegram Bot Hub State
+TELEGRAM_LINK_TOKENS = {}
+TELEGRAM_LINK_LOCK = threading.RLock()
+TELEGRAM_ACTIVE_MESSAGES = {}
+TELEGRAM_ACTIVE_MESSAGES_LOCK = threading.RLock()
+TELEGRAM_MEDIA_CACHE = {}
+TELEGRAM_MEDIA_CACHE_LOCK = threading.RLock()
+
 import time
 START_TIME = time.time()
 

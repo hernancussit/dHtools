@@ -36,7 +36,9 @@ def inject_globals():
         "config": load_config()
     }
 
-# Start background worker threads (queue processor, cleanup, auto-updater)
+from core.telegram_bot import telegram_bot
+
+# Start background worker threads (queue processor, cleanup, auto-updater, telegram bot)
 _threads_started = False
 _threads_lock = threading.Lock()
 
@@ -47,6 +49,7 @@ def start_background_threads():
             threading.Thread(target=background_queue_worker, daemon=True).start()
             threading.Thread(target=cleanup_loop, daemon=True).start()
             threading.Thread(target=auto_update_loop, daemon=True).start()
+            telegram_bot.start()
             _threads_started = True
 
 start_background_threads()

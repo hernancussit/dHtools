@@ -610,3 +610,62 @@ def reset_password():
     save_users(users)
     return jsonify({"message": "¡Contraseña actualizada exitosamente! Ya podés iniciar sesión."})
 
+
+@auth_bp.route("/api/user/telegram-status", methods=["GET"])
+def user_telegram_status():
+    from flask import session
+    current_user = session.get("user")
+    if not current_user:
+        return jsonify({"error": "No autenticado"}), 401
+
+    from core.telegram_bot import telegram_bot
+    bot_info = telegram_bot.get_bot_info()
+    bot_username = bot_info.get("username") if bot_info else None
+
+    users = load_users()
+    user_data = users.get(current_user, {})
+    tg_chat_id = user_data.get("telegram_chat_id")
+    tg_user = user_data.get("telegram_username")
+
+    return jsonify({
+        "is_linked": bool(tg_chat_id),
+        "telegram_chat_id": tg_chat_id,
+        "telegram_username": tg_user,
+        "bot_username": bot_username,
+        "bot_active": telegram_bot.is_running()
+    })
+
+
+@auth_bp.route("/api/user/telegram-token", methods=["POST"])
+def user_telegram_token():
+    from flask import session
+    current_user = session.get("user")
+    if not current_user:
+        return jsonify({"error": "No autenticado"}), 401
+
+    from core.utils import create_telegram_link_token
+    from core.telegram_bot import telegram_bot
+    token = create_telegram_link_token(current_user)
+    bot_info = telegram_bot.get_bot_info()
+    bot_username = bot_info.get("username") if bot_info else None
+    deep_link = f"https://t.me/{bot_username}?start=link_{token}" if bot_username else None
+
+    return jsonify({
+        "success": True,
+        "token": token,
+        "bot_username": bot_username,
+        "deep_link": deep_link
+    })
+
+
+@auth_bp.route("/api/user/telegram-unlink", methods=["POST"])
+def user_telegram_unlink():
+    from flask import session
+    current_user = session.get("user")
+    if not current_user:
+        return jsonify({"error": "No autenticado"}), 401
+
+    from core.utils import unlink_user_telegram
+    unlink_user_telegram(current_user)
+    return jsonify({"success": True, "message": "Cuenta de Telegram desvinculada exitosamente."})
+
