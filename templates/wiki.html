@@ -118,7 +118,11 @@
   }
   @media (max-width: 820px) {
     .layout { grid-template-columns: 1fr; }
-    .sidebar { position: static !important; }
+    .sidebar { position: static !important; max-height: none; }
+    .top-header { flex-direction: column; align-items: stretch; gap: 10px; }
+    .top-header > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; }
+    .content-card { padding: 18px 14px; }
+    table { display: block; overflow-x: auto; max-width: 100%; }
   }
 
   /* Sidebar TOC */
@@ -329,6 +333,31 @@
             </tr>
           </tbody>
         </table>
+
+        <h3>🧩 Arquitectura Modular Interna (Core & Flask Blueprints)</h3>
+        <p>A partir de la versión <code>v1.2.0</code>, el núcleo de la aplicación fue completamente desacoplado del monolito histórico, estructurándose en dos capas independientes de alta mantenibilidad:</p>
+        
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin:14px 0;">
+          <div style="background:var(--bg-input); padding:14px; border-radius:8px; border:1px solid var(--border);">
+            <strong style="color:var(--accent-blue);">📂 Capa Núcleo (<code>core/</code>)</strong>
+            <ul style="margin:8px 0 0 0; padding-left:18px; font-size:0.84rem;">
+              <li><code>config.py</code>: Variables de entorno, constantes globales y rutas canónicas del sistema.</li>
+              <li><code>state.py</code>: Estado volátil de hilos, bloqueos de concurrencia (<code>threading.Lock</code>), colas en segundo plano y métricas.</li>
+              <li><code>downloader.py</code>: Orquestación en cascada de motores (yt-dlp, Cobalt, Deezer), post-procesamiento con FFmpeg y workers asíncronos compatibles con WSGI/Gunicorn.</li>
+              <li><code>utils.py</code>: Sanitización estricta de URLs/rutas, validación de cuotas de disco/RAM, formateadores y cliente de correo SMTP.</li>
+            </ul>
+          </div>
+
+          <div style="background:var(--bg-input); padding:14px; border-radius:8px; border:1px solid var(--border);">
+            <strong style="color:var(--accent-2);">🌐 Capa de Rutas (<code>routes/</code> - Blueprints)</strong>
+            <ul style="margin:8px 0 0 0; padding-left:18px; font-size:0.84rem;">
+              <li><code>auth.py</code>: Control de sesiones, protección global de endpoints, tarpit anti fuerza bruta y recuperación segura de contraseñas con tokens temporales.</li>
+              <li><code>ui.py</code>: Renderizado del dashboard principal, wiki, manifiestos PWA y entrega del favicon oficial.</li>
+              <li><code>api.py</code>: Endpoints de descarga individual, por lotes y playlists, inspección de enlaces y monitoreo de colas.</li>
+              <li><code>admin.py</code>: Panel administrativo, telemetría de servicios, actualizador de motores y configuración de servidor SMTP.</li>
+            </ul>
+          </div>
+        </div>
 
         <!-- 2. YOUTUBE -->
         <h2 id="section-youtube">▶️ 2. YouTube & Proof-of-Origin (PO Tokens)</h2>
