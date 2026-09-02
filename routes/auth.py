@@ -614,7 +614,7 @@ def reset_password():
 @auth_bp.route("/api/user/telegram-status", methods=["GET"])
 def user_telegram_status():
     from flask import session
-    current_user = session.get("user")
+    current_user = getattr(request, "current_username", None) or session.get("username")
     if not current_user:
         return jsonify({"error": "No autenticado"}), 401
 
@@ -639,7 +639,7 @@ def user_telegram_status():
 @auth_bp.route("/api/user/telegram-token", methods=["POST"])
 def user_telegram_token():
     from flask import session
-    current_user = session.get("user")
+    current_user = getattr(request, "current_username", None) or session.get("username")
     if not current_user:
         return jsonify({"error": "No autenticado"}), 401
 
@@ -661,7 +661,7 @@ def user_telegram_token():
 @auth_bp.route("/api/user/telegram-unlink", methods=["POST"])
 def user_telegram_unlink():
     from flask import session
-    current_user = session.get("user")
+    current_user = getattr(request, "current_username", None) or session.get("username")
     if not current_user:
         return jsonify({"error": "No autenticado"}), 401
 
