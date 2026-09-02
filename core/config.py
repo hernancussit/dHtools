@@ -23,7 +23,7 @@ def get_or_create_flask_secret() -> str:
     except Exception as e:
         return secrets.token_hex(32)
 
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.2.0-dev"
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
 
