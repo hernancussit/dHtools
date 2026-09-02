@@ -18,6 +18,7 @@ from core.config import (
     APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
     CLEANUP_AFTER_HOURS
 )
+import core.state
 from core.state import (
     JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, BATCH_JOBS, BATCH_LOCK,
     START_TIME
@@ -1150,10 +1151,12 @@ def background_queue_worker():
                         QUEUE_LIST.remove(jid)
 
         if not job_id:
+            core.state.ACTIVE_WORKER_JOB = None
             ACTIVE_WORKER_JOB = None
             time.sleep(1)
             continue
 
+        core.state.ACTIVE_WORKER_JOB = job_id
         ACTIVE_WORKER_JOB = job_id
         job_copy = None
         with JOBS_LOCK:
@@ -1167,6 +1170,7 @@ def background_queue_worker():
             with QUEUE_LOCK:
                 if job_id in QUEUE_LIST:
                     QUEUE_LIST.remove(job_id)
+            core.state.ACTIVE_WORKER_JOB = None
             ACTIVE_WORKER_JOB = None
             continue
 
@@ -1226,5 +1230,6 @@ def background_queue_worker():
             with QUEUE_LOCK:
                 if job_id in QUEUE_LIST:
                     QUEUE_LIST.remove(job_id)
+            core.state.ACTIVE_WORKER_JOB = None
             ACTIVE_WORKER_JOB = None
             save_queue_state()

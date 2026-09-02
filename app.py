@@ -36,9 +36,21 @@ def inject_globals():
         "config": load_config()
     }
 
+# Start background worker threads (queue processor, cleanup, auto-updater)
+_threads_started = False
+_threads_lock = threading.Lock()
+
+def start_background_threads():
+    global _threads_started
+    with _threads_lock:
+        if not _threads_started:
+            threading.Thread(target=background_queue_worker, daemon=True).start()
+            threading.Thread(target=cleanup_loop, daemon=True).start()
+            threading.Thread(target=auto_update_loop, daemon=True).start()
+            _threads_started = True
+
+start_background_threads()
+
 if __name__ == "__main__":
-    threading.Thread(target=background_queue_worker, daemon=True).start()
-    threading.Thread(target=cleanup_loop, daemon=True).start()
-    threading.Thread(target=auto_update_loop, daemon=True).start()
-    
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+
