@@ -1242,10 +1242,19 @@
 
         <div class="accordion-box">
           <div class="accordion-header" id="advCloudHeader">
-            <span>☁️ Enviar a mi Nube Personal (Nextcloud WebDAV / FTP)</span>
+            <span>☁️ Enviar a mi Nube Personal (Presets WebDAV / FTP)</span>
             <span id="advCloudIcon">▼</span>
           </div>
           <div class="accordion-body" id="advCloudBody">
+            <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <label style="font-size:0.78rem; color:var(--muted); margin:0;">Perfil Guardado:</label>
+              <select id="userCloudPresetSelector" style="flex:1; min-width:180px; padding:6px 10px; font-size:0.8rem;">
+                <option value="">-- Configuración Personal Activa --</option>
+              </select>
+              <button type="button" id="btnSaveCloudPreset" class="btn btn-secondary btn-sm" style="font-size:0.75rem;">💾 Guardar Preset</button>
+              <button type="button" id="btnDeleteCloudPreset" class="btn btn-danger btn-sm" style="font-size:0.75rem; display:none;">🗑️ Borrar</button>
+            </div>
+
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
               <div>
                 <label style="display:flex; align-items:center; gap:6px;">
@@ -1253,7 +1262,8 @@
                 </label>
                 <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="margin-bottom:4px; font-size:0.8rem;">
                 <input type="text" id="userWebdavUser" placeholder="Usuario" style="margin-bottom:4px; font-size:0.8rem;">
-                <input type="password" id="userWebdavPass" placeholder="App Token" style="font-size:0.8rem;">
+                <input type="password" id="userWebdavPass" placeholder="App Token" style="font-size:0.8rem; margin-bottom:4px;">
+                <button type="button" id="btnTestUserWebdav" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px;">🧪 Probar WebDAV</button>
               </div>
               <div>
                 <label style="display:flex; align-items:center; gap:6px;">
@@ -1261,11 +1271,13 @@
                 </label>
                 <input type="text" id="userFtpHost" placeholder="ftp.servidor.com" style="margin-bottom:4px; font-size:0.8rem;">
                 <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="margin-bottom:4px; font-size:0.8rem;">
-                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.8rem;">
+                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.8rem; margin-bottom:4px;">
+                <button type="button" id="btnTestUserFtp" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px;">🧪 Probar FTP</button>
               </div>
             </div>
           </div>
         </div>
+
 
         <!-- PLAYLIST EXPLORER IN ADVANCED MODE -->
         <div class="playlist-explorer" id="advPlaylistExplorer" style="display:none; margin-top:14px;">
@@ -1524,6 +1536,149 @@ function saveUserCloudSettings() {
   if (el) el.addEventListener('input', saveUserCloudSettings);
 });
 loadUserCloudSettings();
+
+// User Cloud Presets Hub Management
+let loadedCloudPresets = [];
+const presetSelector = document.getElementById('userCloudPresetSelector');
+const btnDeletePreset = document.getElementById('btnDeleteCloudPreset');
+
+async function loadUserCloudPresets() {
+  if (!presetSelector) return;
+  try {
+    const res = await fetch('/api/user/cloud-presets');
+    const data = await res.json();
+    loadedCloudPresets = data.presets || [];
+    presetSelector.innerHTML = '<option value="">-- Configuración Personal Activa --</option>';
+    loadedCloudPresets.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.type === 'webdav' ? '☁️' : '📁'} ${p.name}`;
+      presetSelector.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+presetSelector?.addEventListener('change', () => {
+  const chosenId = presetSelector.value;
+  if (!chosenId) {
+    if (btnDeletePreset) btnDeletePreset.style.display = 'none';
+    loadUserCloudSettings();
+    return;
+  }
+  const preset = loadedCloudPresets.find(p => p.id === chosenId);
+  if (!preset) return;
+  if (btnDeletePreset) btnDeletePreset.style.display = 'inline-block';
+
+  if (preset.type === 'webdav') {
+    userWebdavEnabled.checked = true;
+    userWebdavUrl.value = preset.config.url || '';
+    userWebdavUser.value = preset.config.username || '';
+    userWebdavPass.value = preset.config.password || '';
+    userFtpEnabled.checked = false;
+  } else if (preset.type === 'ftp') {
+    userFtpEnabled.checked = true;
+    userFtpHost.value = preset.config.host || '';
+    userFtpUser.value = preset.config.username || '';
+    userFtpPass.value = preset.config.password || '';
+    userWebdavEnabled.checked = false;
+  }
+  saveUserCloudSettings();
+});
+
+document.getElementById('btnSaveCloudPreset')?.addEventListener('click', async () => {
+  const name = prompt('Ingresá un nombre para este preset (ej. "Mi Nextcloud Casa" o "FTP de Trabajo"):');
+  if (!name || !name.trim()) return;
+
+  const isWebdav = userWebdavEnabled && userWebdavEnabled.checked;
+  const isFtp = userFtpEnabled && userFtpEnabled.checked;
+  if (!isWebdav && !isFtp) {
+    alert('Activá al menos WebDAV o FTP con sus datos antes de guardar.');
+    return;
+  }
+
+  const payload = {
+    name: name.trim(),
+    type: isWebdav ? 'webdav' : 'ftp',
+    config: isWebdav ? {
+      url: userWebdavUrl.value.trim(),
+      username: userWebdavUser.value.trim(),
+      password: userWebdavPass.value
+    } : {
+      host: userFtpHost.value.trim(),
+      username: userFtpUser.value.trim(),
+      password: userFtpPass.value
+    }
+  };
+
+  try {
+    const res = await fetch('/api/user/cloud-presets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Preset "${name}" guardado exitosamente.`, 'success');
+      await loadUserCloudPresets();
+      if (presetSelector && data.preset) presetSelector.value = data.preset.id;
+      if (btnDeletePreset) btnDeletePreset.style.display = 'inline-block';
+    }
+  } catch (e) {
+    showToast('Error al guardar preset: ' + e.message, 'error');
+  }
+});
+
+btnDeletePreset?.addEventListener('click', async () => {
+  const chosenId = presetSelector?.value;
+  if (!chosenId) return;
+  if (confirm('¿Eliminar este preset de almacenamiento en la nube?')) {
+    try {
+      const res = await fetch(`/api/user/cloud-presets/${chosenId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Preset eliminado.', 'info');
+        btnDeletePreset.style.display = 'none';
+        await loadUserCloudPresets();
+      }
+    } catch (e) {
+      showToast('Error al eliminar preset', 'error');
+    }
+  }
+});
+
+async function testUserCloudPreset(service, config) {
+  try {
+    showToast(`Probando conexión con ${service}...`, 'info', 0);
+    const res = await fetch('/api/user/cloud-presets/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service, config })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(data.message || `Prueba de ${service} exitosa!`, 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+document.getElementById('btnTestUserWebdav')?.addEventListener('click', () => {
+  testUserCloudPreset('webdav', {
+    url: userWebdavUrl.value.trim(),
+    username: userWebdavUser.value.trim(),
+    password: userWebdavPass.value
+  });
+});
+
+document.getElementById('btnTestUserFtp')?.addEventListener('click', () => {
+  testUserCloudPreset('ftp', {
+    host: userFtpHost.value.trim(),
+    username: userFtpUser.value.trim(),
+    password: userFtpPass.value
+  });
+});
+
+loadUserCloudPresets();
 
 // Accordion helper
 function setupAccordion(headerId, bodyId, iconId) {

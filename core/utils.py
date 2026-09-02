@@ -183,6 +183,130 @@ def save_cloud_config(cfg: dict):
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
+def get_user_cloud_presets(username: str) -> list:
+    """Returns the list of saved cloud presets for a user."""
+    if not username:
+        return []
+    from routes.auth import load_users
+    users = load_users()
+    user = users.get(username, {})
+    return user.get("cloud_presets", [])
+
+
+def save_user_cloud_preset(username: str, preset_dict: dict) -> tuple[bool, dict]:
+    """Saves or updates a user cloud preset."""
+    if not username or not preset_dict:
+        return False, {}
+    import uuid
+    from routes.auth import load_users, save_users
+    users = load_users()
+    if username not in users:
+        return False, {}
+
+    presets = users[username].get("cloud_presets", [])
+    preset_id = preset_dict.get("id") or uuid.uuid4().hex[:10]
+    preset_dict["id"] = preset_id
+    preset_dict["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    found = False
+    for i, p in enumerate(presets):
+        if p.get("id") == preset_id:
+            presets[i] = preset_dict
+            found = True
+            break
+    if not found:
+        presets.append(preset_dict)
+
+    users[username]["cloud_presets"] = presets
+    save_users(users)
+    return True, preset_dict
+
+
+def delete_user_cloud_preset(username: str, preset_id: str) -> bool:
+    """Deletes a user cloud preset."""
+    if not username or not preset_id:
+        return False
+    from routes.auth import load_users, save_users
+    users = load_users()
+    if username not in users:
+        return False
+
+    presets = users[username].get("cloud_presets", [])
+    new_presets = [p for p in presets if p.get("id") != preset_id]
+    if len(new_presets) != len(presets):
+        users[username]["cloud_presets"] = new_presets
+        save_users(users)
+        return True
+    return False
+
+
+def test_cloud_connection(service: str, config: dict) -> tuple[bool, str]:
+    """Tests cloud connection for a given service and config."""
+    import ftplib
+    import requests
+    service = (service or "").lower()
+    if service == "webhook":
+        url = config.get("url")
+        if not url:
+            return False, "Falta URL Webhook"
+        try:
+            r = requests.post(url, json={"test": True, "message": "dHtools test"}, timeout=6)
+            return True, f"Webhook respondió HTTP {r.status_code}"
+        except Exception as e:
+            return False, f"Error Webhook: {e}"
+
+    if service == "telegram":
+        token = config.get("bot_token")
+        chat_id = config.get("chat_id")
+        if not token or not chat_id:
+            return False, "Falta Bot Token o Chat ID"
+        try:
+            r = requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": "✅ Prueba de conexión de dHtools exitosa!"},
+                timeout=8,
+            )
+            res = r.json()
+            if res.get("ok"):
+                return True, "Mensaje de prueba enviado a Telegram correctamente"
+            return False, res.get("description", "Error de Telegram")
+        except Exception as e:
+            return False, f"Error Telegram: {e}"
+
+    if service == "ftp":
+        host = config.get("host")
+        port = int(config.get("port", 21))
+        user = config.get("username", "anonymous")
+        pwd = config.get("password", "")
+        if not host:
+            return False, "Falta host FTP"
+        try:
+            ftp = ftplib.FTP()
+            ftp.connect(host, port, timeout=8)
+            ftp.login(user, pwd)
+            ftp.quit()
+            return True, "Conexión FTP exitosa"
+        except Exception as e:
+            return False, f"Error FTP: {e}"
+
+    if service == "webdav":
+        url = config.get("url")
+        if not url:
+            return False, "Falta URL WebDAV"
+        try:
+            auth = (config.get("username", ""), config.get("password", "")) if config.get("username") else None
+            r = requests.request("PROPFIND", url, auth=auth, headers={"Depth": "0"}, timeout=8)
+            if r.status_code in (200, 207, 301, 302, 401):
+                if r.status_code == 401:
+                    return False, "Autenticación WebDAV fallida (401)"
+                return True, f"Servidor WebDAV respondió HTTP {r.status_code}"
+            return False, f"WebDAV respondió HTTP {r.status_code}"
+        except Exception as e:
+            return False, f"Error WebDAV: {e}"
+
+    return False, "Servicio desconocido"
+
+
 def load_downloads_meta() -> dict:
     if os.path.exists(DOWNLOADS_META_FILE):
         try:
