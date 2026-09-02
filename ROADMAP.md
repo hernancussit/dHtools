@@ -47,13 +47,25 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - Cifrado seguro de tokens OAuth2, contraseñas de FTP y claves de API en el servidor.
 - [ ] **Herramienta de Prueba de Conexión en 1 Clic:**
   - Validación de conectividad y permisos de escritura en la nube antes de guardar cualquier preset.
-- [ ] **Integración Directa con Proveedores Principales:**
+- [ ] **🤖 Asistente Interactivo Bidireccional de Telegram (Telegram Bot Hub & Remote Assistant):**
+  - **Solicitud de Nuevas Descargas desde el Chat:**
+    - Envío directo de cualquier enlace compatible (YouTube, Spotify, Deezer, TikTok, Instagram, Twitter/X, Twitch, etc.) al chat del bot.
+    - Menú interactivo con botones en línea (*Inline Keyboards*) para seleccionar formato y calidad con 1 toque (`[ 🎬 1080p ]`, `[ 🎬 720p ]`, `[ 🎵 MP3 320k ]`, `[ 🎵 FLAC ]`).
+    - Actualización visual del progreso en tiempo real editando el mensaje (`⏳ Descargando: 64% | 5.2 MB/s`).
+    - Entrega directa del archivo multimedia en el chat (hasta 50 MB / 2 GB con local Bot API) o botón con enlace de descarga web seguro.
+  - **Acceso y Consulta de Mis Descargas desde Telegram:**
+    - Comando `/descargas` o `/historial` para explorar los archivos recientes del usuario con botones para recibir el archivo en Telegram o abrir enlace.
+    - Comando `/cola` para monitorizar tareas en ejecución y botón para cancelar descargas activas.
+    - Comando `/cuota` para verificar el almacenamiento consumido vs. límite asignado.
+  - **Vinculación Segura de Cuentas (Telegram Connect):**
+    - Vinculación de cuenta mediante token temporal de un solo uso generado en el perfil web (`/vincular <token>`).
+    - Respeto estricto del aislamiento de archivos por usuario, permisos de rol (`admin` / `downloader`) y control de cuotas de disco.
+- [ ] **Integración Directa con Proveedores Cloud Principales:**
   - **Google Drive:** Autenticación OAuth2 / Service Account con soporte para carpetas específicas y Unidades Compartidas (*Shared Drives*).
   - **Microsoft OneDrive / SharePoint:** Conexión con cuentas personales de Microsoft y cuentas educativas / corporativas de Microsoft 365.
   - **Dropbox:** Conexión vía API oficial para subida automática de archivos y creación de carpetas de colección.
   - **Amazon S3 / MinIO / Backblaze B2 / Cloudflare R2:** Conector universal para buckets compatibles con S3.
   - **Nextcloud / WebDAV & Servidores FTP:** Integración mejorada con compatibilidad para estructuras de carpetas anidadas.
-  - **Telegram Bot Uploader:** Envío automático de archivos y colecciones como mensajes multimedia directos.
 - [ ] **Modo de Sincronización "Subir y Mover" (Offload):**
   - Opción para subir el archivo terminado a la nube y eliminarlo del disco del VPS inmediatamente, reduciendo el consumo de almacenamiento en servidores pequeños.
 
