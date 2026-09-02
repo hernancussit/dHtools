@@ -1,6 +1,6 @@
 # ⚡ dHtools - Suite Multimedia & Extractor Universal
 
-[![Release](https://img.shields.io/badge/Release-v1.1.0--stable-blue.svg)](https://github.com/hernancussit/dHtools)
+[![Release](https://img.shields.io/badge/Release-v1.1.1--stable-blue.svg)](https://github.com/hernancussit/dHtools)
 [![Python](https://img.shields.io/badge/Python-3.11+-yellow.svg)](https://python.org)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)

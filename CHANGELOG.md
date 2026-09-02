@@ -4,6 +4,24 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.1.1] - 2026-09-01
+
+### 🛡️ Parche Crítico de Seguridad (Security Hardening)
+- **🔒 Eliminación del Volumen SSH del Contenedor:**
+  - Retirado el montaje `- ~/.ssh:/root/.ssh:ro` de `docker-compose.yml`. El actualizador de Git ahora utiliza exclusivamente HTTPS público sin exponer claves privadas del host.
+- **🔑 Generación Criptográfica y Persistente de `FLASK_SECRET_KEY`:**
+  - Eliminado el valor fallback estático. El servidor genera automáticamente un secreto aleatorio de 32 bytes (`.flask_secret`) en el primer inicio si no se define en `.env`.
+- **🔐 Fortalecimiento de Hash de Contraseñas (PBKDF2-SHA256):**
+  - Reemplazado el algoritmo SHA-256 con sal fija por `werkzeug.security` (`pbkdf2:sha256:600000`) con sal aleatoria única por usuario y migración transparente automática al iniciar sesión.
+- **🛡️ Control Estricto de Propietario en `/api/files/<job_id>`:**
+  - Verificación de propiedad por usuario (`current_user`) impidiendo que usuarios con rol `downloader` accedan a descargas de otros usuarios mediante IDs de trabajo conocidos.
+- **🚫 Mitigación contra Redirección Abierta (*Open Redirect*):**
+  - Validación canónica de `next_url` en `/login` bloqueando URLs relativas a protocolo (`//malicious.com`) o destinos con `netloc` externo.
+- **⚙️ Limpieza de Variables de Entorno en Cobalt:**
+  - Desvinculada la variable `YOUTUBE_SESSION_SERVER` huérfana de Cobalt en `docker-compose.yml`.
+
+---
+
 ## [1.1.0] - 2026-09-01
 
 ### 🚀 Lanzamiento Estable v1.1.0

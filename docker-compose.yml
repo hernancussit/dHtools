@@ -10,8 +10,6 @@ services:
       - .env
     volumes:
       - .:/app
-      - ~/.ssh:/root/.ssh:ro
-
     restart: unless-stopped
 
   potprovider:
@@ -26,10 +24,6 @@ services:
     container_name: cobalt-api
     environment:
       API_URL: "http://cobalt:9000/"
-      YOUTUBE_SESSION_SERVER: "http://potprovider:4416/"
-    depends_on:
-      - potprovider
     ports:
       - "127.0.0.1:9000:9000"
     restart: unless-stopped
-

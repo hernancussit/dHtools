@@ -15,15 +15,39 @@ import ftplib
 import urllib.parse
 import requests
 from flask import Flask, request, jsonify, send_file, render_template, abort, Response, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import yt_dlp
 from yt_dlp.utils import download_range_func
 
+def get_or_create_flask_secret() -> str:
+    env_secret = os.environ.get("FLASK_SECRET_KEY")
+    if env_secret and env_secret.strip() and env_secret != "dhtools_secret_session_key_2026_super_secure":
+        return env_secret.strip()
+    secret_file = "/app/.flask_secret" if os.path.exists("/app") else os.path.join(os.path.dirname(os.path.abspath(__file__)), ".flask_secret")
+    try:
+        if os.path.exists(secret_file):
+            with open(secret_file, "r", encoding="utf-8") as f:
+                sec = f.read().strip()
+                if sec:
+                    return sec
+        generated = secrets.token_hex(32)
+        with open(secret_file, "w", encoding="utf-8") as f:
+            f.write(generated)
+        try:
+            os.chmod(secret_file, 0o600)
+        except Exception:
+            pass
+        return generated
+    except Exception:
+        return secrets.token_hex(32)
+
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dhtools_secret_session_key_2026_super_secure")
+app.secret_key = get_or_create_flask_secret()
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 
 # Security: Brute Force & Rate Limiting Storage
 LOGIN_ATTEMPTS = {}
@@ -144,12 +168,21 @@ def player_client_opts(clients=None, for_download: bool = True):
 
 
 def hash_password(password: str) -> str:
-    salt = "ytsite_salt_2026"
-    return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
+    return generate_password_hash(password, method="pbkdf2:sha256:600000")
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return secrets.compare_digest(hash_password(password), hashed)
+    if not password or not hashed:
+        return False
+    if hashed.startswith("pbkdf2:") or hashed.startswith("scrypt:"):
+        return check_password_hash(hashed, password)
+    # Transparent legacy SHA-256 migration support
+    legacy_salt = "ytsite_salt_2026"
+    leg_hash1 = hashlib.sha256(f"{legacy_salt}:{password}".encode("utf-8")).hexdigest()
+    if secrets.compare_digest(leg_hash1, hashed):
+        return True
+    leg_hash2 = hashlib.sha256(f"{legacy_salt}_{password}".encode("utf-8")).hexdigest()
+    return secrets.compare_digest(leg_hash2, hashed)
 
 
 def load_users() -> dict:
@@ -187,11 +220,29 @@ def check_auth(username, password):
     if username in users:
         u = dict(users[username])
         u["username"] = username
-        if verify_password(password, u.get("password_hash", "")) or (username == APP_USERNAME and secrets.compare_digest(password, APP_PASSWORD)):
+        stored_hash = u.get("password_hash", "")
+        if verify_password(password, stored_hash) or (username == APP_USERNAME and secrets.compare_digest(password, APP_PASSWORD)):
             if u.get("status") == "suspended":
                 return "SUSPENDED"
+            # Upgrade legacy hash automatically
+            if not stored_hash.startswith("pbkdf2:") and not stored_hash.startswith("scrypt:"):
+                try:
+                    users[username]["password_hash"] = hash_password(password)
+                    save_users(users)
+                except Exception:
+                    pass
             return u
     if secrets.compare_digest(username, APP_USERNAME) and secrets.compare_digest(password, APP_PASSWORD):
+        try:
+            users[username] = {
+                "password_hash": hash_password(password),
+                "role": "admin",
+                "status": "active",
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            save_users(users)
+        except Exception:
+            pass
         return {"role": "admin", "username": username, "status": "active"}
     return False
 
@@ -244,6 +295,19 @@ def protect_all_routes():
 
     next_param = request.full_path.rstrip("?") if request.path != "/" else None
     return redirect(url_for("login", next=next_param))
+
+
+def is_safe_redirect_url(target: str) -> bool:
+    if not target or not isinstance(target, str):
+        return False
+    target = target.strip()
+    if not target.startswith("/") or target.startswith("//") or target.startswith("/\\"):
+        return False
+    try:
+        parsed = urllib.parse.urlparse(target)
+        return not parsed.netloc and not parsed.scheme
+    except Exception:
+        return False
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -316,7 +380,9 @@ def login():
 
         session["username"] = u.get("username", username)
         session["role"] = u.get("role", "downloader")
-        return redirect(next_url if next_url.startswith("/") else "/")
+        if is_safe_redirect_url(next_url):
+            return redirect(next_url)
+        return redirect("/")
 
     if session.get("username"):
         return redirect("/")
@@ -1898,26 +1964,12 @@ def ensure_git_safe_and_remote():
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
         subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/app"], capture_output=True, timeout=2)
 
-        ssh_key_candidates = [
-            "/root/.ssh/github_key",
-            "/root/.ssh/id_ed25519",
-            "/root/.ssh/id_rsa",
-            os.path.expanduser("~/.ssh/github_key"),
-            os.path.expanduser("~/.ssh/id_ed25519"),
-        ]
-        for key_path in ssh_key_candidates:
-            if os.path.exists(key_path):
-                ssh_cmd = f"ssh -i {key_path} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -F /dev/null"
-                subprocess.run(["git", "config", "--global", "core.sshCommand", ssh_cmd], capture_output=True, timeout=2)
-                os.environ["GIT_SSH_COMMAND"] = ssh_cmd
-                break
-
         rem = subprocess.run(["git", "remote", "get-url", "origin"], cwd="/app", capture_output=True, text=True, timeout=3)
         if rem.returncode == 0:
             rem_url = rem.stdout.strip()
-            if os.environ.get("GIT_SSH_COMMAND") and "https://github.com/" in rem_url:
-                ssh_url = rem_url.replace("https://github.com/", "git@github.com:")
-                subprocess.run(["git", "remote", "set-url", "origin", ssh_url], cwd="/app", capture_output=True, timeout=3)
+            if "git@github.com:" in rem_url:
+                https_url = rem_url.replace("git@github.com:", "https://github.com/")
+                subprocess.run(["git", "remote", "set-url", "origin", https_url], cwd="/app", capture_output=True, timeout=3)
     except Exception:
         pass
 
@@ -3489,8 +3541,26 @@ def files(job_id):
     if not job_id or not re.match(r"^[a-zA-Z0-9_-]+$", str(job_id)):
         abort(400)
 
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username", "admin")
+    is_admin = (user.get("role") == "admin")
+
     with JOBS_LOCK:
         job = JOBS.get(job_id)
+
+    # Ownership check on in-memory jobs
+    if job:
+        job_owner = job.get("owner")
+        if job_owner and not is_admin and job_owner != username:
+            return jsonify({"error": "No tenés permiso para acceder a este archivo"}), 403
+
+    # Ownership check on persistent downloads meta
+    meta = load_downloads_meta()
+    meta_entry = meta.get(job_id)
+    if meta_entry:
+        meta_owner = meta_entry.get("username")
+        if meta_owner and not is_admin and meta_owner != username:
+            return jsonify({"error": "No tenés permiso para acceder a este archivo"}), 403
 
     if job and job.get("status") == "finished" and job.get("filepath"):
         safe_path = safe_download_path(job["filepath"])
