@@ -25,6 +25,12 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - Auditoría y ajuste exhaustivo de diseño responsivo para teléfonos celulares en todas las pantallas (`index.html`, `admin.html`, `login.html`, `wiki.html`).
   - Evitar que tarjetas, paneles de progreso, modales o botones se encimen, se recorten o generen desplazamiento horizontal en pantallas estrechas (320px a 480px).
   - Estudiar y diseñar navegación móvil optimizada (ej. barra de navegación inferior fija estilo app nativa o menú colapsable) para que el contenido no quede desplazado hacia abajo.
+- [ ] **Visualización Enriquecida en la Cola de Descargas:**
+  - Priorizar el título/nombre del video o canción en los elementos de la cola en lugar de la URL bruta.
+  - Mostrar la URL en tipografía pequeña y atenuada solo si hay espacio disponible en escritorio; ocultarla en móviles para mantener una vista limpia y compacta.
+- [ ] **Descarga Estricta de Fragmentos Recortados (Trimming Optimization):**
+  - Configurar descarga estricta por secciones temporales (`download_ranges` / `--download-sections` y pre-seeking con FFmpeg `-ss`) para evitar descargar el video completo cuando solo se solicita un fragmento.
+  - Reducción drástica del consumo de ancho de banda, uso de disco temporal y tiempos de espera en recortes de videos largos (podcasts, conciertos, directos).
 - [ ] **Favicon e Identidad de Pestaña:** Integrar favicon oficial (en formatos `.ico`, `.png` y `.svg`) en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) para visualización clara en pestañas del navegador y marcadores.
 - [ ] **Sistema de Cuentas con Correo Electrónico:**
   - Registro de email por usuario para comunicaciones y alertas del sistema.
