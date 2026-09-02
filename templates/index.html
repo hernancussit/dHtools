@@ -1523,15 +1523,15 @@
         <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">
           O abrí el enlace directo para iniciar el bot con 1 clic:
         </div>
-        <a id="btnTgDeepLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; padding:8px 14px;">
+        <a id="btnTgDeepLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.86rem; padding:9px 18px; font-weight:600;">
           ✈️ Abrir Bot en Telegram
         </a>
       </div>
 
-      <div style="font-size:0.8rem; color:var(--muted); line-height:1.5;">
+      <div style="font-size:0.82rem; color:var(--muted); line-height:1.6;">
         <strong>Instrucciones:</strong>
         <ol style="margin:6px 0 0 0; padding-left:18px;">
-          <li>Abrí el bot en Telegram (<span id="tgBotNameLabel" style="color:var(--accent-blue); font-weight:600;">@bot</span>).</li>
+          <li>Abrí el bot en Telegram: <a id="tgBotNameLink" href="#" target="_blank" style="color:var(--accent-blue); font-weight:700; text-decoration:underline;">@dHtoolsbot</a> (enlace directo a app o web).</li>
           <li>Enviá el comando: <code id="tgCmdExample" style="color:var(--text); font-weight:600;">/vincular DHT-......</code></li>
           <li>¡Listo! Tu cuenta quedará vinculada al instante.</li>
         </ol>
@@ -3169,14 +3169,18 @@ async function startTelegramSetup() {
     if (data.token) {
       document.getElementById('tgTokenCode').textContent = data.token;
       document.getElementById('tgCmdExample').textContent = `/vincular ${data.token}`;
-      const botName = data.bot_username ? `@${data.bot_username}` : 'el bot';
-      document.getElementById('tgBotNameLabel').textContent = botName;
+      const botName = data.bot_username ? `@${data.bot_username}` : '@dHtoolsbot';
+      const botLink = data.deep_link || (data.bot_username ? `https://t.me/${data.bot_username}?start=link_${data.token}` : `https://t.me/dHtoolsbot?start=link_${data.token}`);
+
+      const botLinkEl = document.getElementById('tgBotNameLink');
+      if (botLinkEl) {
+        botLinkEl.textContent = botName;
+        botLinkEl.href = botLink;
+      }
       const deepLinkBtn = document.getElementById('btnTgDeepLink');
-      if (data.deep_link) {
-        deepLinkBtn.href = data.deep_link;
+      if (deepLinkBtn) {
+        deepLinkBtn.href = botLink;
         deepLinkBtn.style.display = 'inline-flex';
-      } else {
-        deepLinkBtn.style.display = 'none';
       }
     }
   } catch (e) {
