@@ -30,7 +30,12 @@ admin_bp = Blueprint("admin_bp", __name__)
 @admin_bp.route("/wiki")
 def wiki_page():
     cfg = load_config()
-    return render_template("wiki.html", version=APP_VERSION, config=cfg)
+    from core.utils import get_git_info
+    git_info = get_git_info()
+    branch = git_info.get("branch") or "dev"
+    raw_ver = APP_VERSION.split("-")[0]
+    display_version = f"{raw_ver}-{branch}" if branch and branch != "main" else raw_ver
+    return render_template("wiki.html", version=display_version, config=cfg)
 
 
 # ==================== ADMIN PANEL & API ====================
@@ -39,7 +44,12 @@ def wiki_page():
 @require_admin
 def admin_panel():
     cfg = load_config()
-    return render_template("admin.html", version=APP_VERSION, config=cfg)
+    from core.utils import get_git_info
+    git_info = get_git_info()
+    branch = git_info.get("branch") or "dev"
+    raw_ver = APP_VERSION.split("-")[0]
+    display_version = f"{raw_ver}-{branch}" if branch and branch != "main" else raw_ver
+    return render_template("admin.html", version=display_version, config=cfg)
 
 
 @admin_bp.route("/api/admin/services-status")

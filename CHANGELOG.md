@@ -4,7 +4,9 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-## [1.3.0-dev] - En desarrollo activo (Rama dev)
+## [1.3.0] - 2026-09-02
+
+### 🚀 Lanzamiento Estable v1.3.0
 
 ### 🤖 Asistente Interactivo de Telegram (Telegram Bot Hub)
 - **Motor Long-Polling Autónomo (`core/telegram_bot.py`):**
@@ -20,6 +22,20 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Almacenamiento seguro de múltiples perfiles de almacenamiento por usuario en `users.json` (`/api/user/cloud-presets`).
   - Selector rápido de presets en el Modo Avanzado de descargas con carga automática de credenciales.
   - Herramienta de prueba de conexión en 1 clic para WebDAV y FTP (`/api/user/cloud-presets/test`).
+
+### ⚡ Evasión de Restricciones SABR de YouTube (Full HD 1080p Restablecido)
+- **Cascada Multi-Cliente Dinámica (`core/downloader.py`):**
+  - Incorporación de lista combinada `["web_music", "web", "mweb", "web_embedded"]` que elude el bloqueo de streams forzados SABR de YouTube, recuperando la descarga en Full HD 1080p (`1920x1080`), 720p y 480p.
+  - Generación continua de tokens Proof-of-Origin (PO Tokens) con el microservicio `pot-provider` estabilizado bajo Docker Compose v2.
+  - Inyección de PO Token Provider tanto en la fase de inspección de metadatos como en la descarga real (`core/utils.py`).
+
+### 🛡️ Seguridad, Privacidad y Versionado Consciente
+- **Protección de Datos Sensibles en Panel Admin:**
+  - Ofuscación mediante `type="password"` de campos confidenciales: Bot Token de Telegram, Default Chat ID, Contraseña WebDAV y Contraseña FTP.
+- **Leyenda de Versión Dinámica:**
+  - Inyección unificada del identificador de rama git (`-main` / `-dev`) en la barra superior de `index.html`, `admin.html` y `wiki.html`.
+- **Visibilidad Condicional de Controles:**
+  - Ocultación dinámica del botón de Telegram en la barra lateral cuando el bot no está activo.
 
 ## [1.2.0] - 2026-09-02
 
