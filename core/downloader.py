@@ -341,17 +341,17 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
 
     candidates = []
     if is_yt:
-        # Use explicit clients instead of "default" to prevent yt-dlp from silently falling back to 360p ios/android
-        candidates.append((["tv_embedded"], False))
-        candidates.append((["web"], False))
         if has_cookies:
-            candidates.append((["web"], True))
-            candidates.append((["tv_embedded"], True))  # May ignore cookies, but safe to try
-        candidates.append((["mweb"], False))
+            # 1. Combined client list: web_music provides 1080p for music videos; web, mweb, web_embedded for general videos
+            candidates.append((["web_music", "web", "mweb", "web_embedded"], True))
+            candidates.append((["web", "mweb", "web_embedded"], True))
+        # 2. Try without cookies using POT provider and Deno JS challenge solving
+        candidates.append((["web_music", "web", "mweb"], False))
+        candidates.append((["web", "mweb"], False))
         if has_cookies:
-            candidates.append((["mweb"], True))
-        candidates.append((["web_embedded", "tv_downgraded"], False))
-        candidates.append((["tv"], False))
+            candidates.append((["tv_embedded", "tv_downgraded", "tv"], True))
+        candidates.append((["tv_embedded", "tv_downgraded", "tv"], False))
+        candidates.append((["default"], has_cookies))
     else:
         candidates.append((["default"], has_cookies))
 

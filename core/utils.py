@@ -634,11 +634,10 @@ def cookies_opts(for_url: str = None, force: bool = False):
 def player_client_opts(clients=None, for_download: bool = True):
     opts = {
         "extractor_args": {
-            "youtubetab": {"skip": ["authcheck"]}
+            "youtubetab": {"skip": ["authcheck"]},
+            "youtubepot-bgutilhttp": {"base_url": [POT_PROVIDER_URL]}
         }
     }
-    if for_download:
-        opts["extractor_args"]["youtubepot-bgutilhttp"] = {"base_url": [POT_PROVIDER_URL]}
 
     target = clients
     if target is None and PLAYER_CLIENTS_ENV and PLAYER_CLIENTS_ENV != "default":
