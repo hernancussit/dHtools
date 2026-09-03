@@ -4,74 +4,51 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ---
 
-## 🎯 Versión Estable Actual: `v1.2.0`
-- [x] **Arquitectura Modular (Flask Blueprints):** Monolito desacoplado al 100% en módulos independientes (`core/` y `routes/`).
-- [x] **Workers en Segundo Plano (Gunicorn WSGI):** Inicialización de hilos concurrentes compatible con servidores de producción.
-- [x] **Homogeneización de Motores:** Badges `● Online` con indicador de latencia en milisegundos en tiempo real y auto-actualizador de Deno JS.
-- [x] **Unificación de Descargas en Lote:** Conmutador interactivo `[ 🔗 Enlace Único | 📋 Descarga en Lote ]` integrado en Modo Fácil y Modo Avanzado con todas las resoluciones y formatos.
-- [x] 🚨 **Optimización Integral de Navegabilidad y Layout Móvil (Smartphones / WebApp):**
-  - Auditoría y ajuste de diseño responsivo para celulares en todas las vistas (`index.html`, `admin.html`, `login.html`, `wiki.html`).
-  - Navegación en celulares en cuadrícula compacta 2x2, cabecera de bajo perfil y eliminación de desplazamientos horizontales accidentales (`overflow-x: hidden`).
-  - Tarjetas y paneles adaptados con padding ergonómico para pantallas estrechas (320px a 480px).
-- [x] **Visualización Enriquecida en la Cola de Descargas:**
-  - Priorización del título/nombre del video o canción en negrita en lugar de la URL sin procesar.
-  - Subtítulo con URL secundaria pequeña y atenuada en pantallas de escritorio, ocultándose automáticamente en celulares (`.queue-url-sub`).
-  - Propagación inmediata de metadatos de inspección desde el cliente a la API para mostrar el título desde el segundo cero.
-- [x] **Favicon e Identidad de Pestaña:** Integración del favicon oficial (`favicon.svg` y `favicon.ico`) en todas las plantillas web (`index.html`, `admin.html`, `login.html`, `wiki.html`) y endpoint directo `/favicon.ico`.
-- [x] **Descarga Estricta de Fragmentos Recortados (Trimming Optimization):**
-  - Registro informativo en tiempo real (`format_seconds`) con aviso explícito al usuario en consola.
-  - Descarga estricta por secciones temporales activas (`download_ranges` con forzado de keyframes y pre-seeking), evitando la transferencia innecesaria de archivos completos.
-- [x] **Sistema de Cuentas con Correo Electrónico & Servidor SMTP:**
-  - Soporte de servidor SMTP configurable en el panel de administración (TLS/SSL) con prueba de envío en vivo (`/api/admin/smtp-test`).
-  - Registro y edición de direcciones de email por usuario en la administración (`users.json`).
-- [x] **Recuperación Segura de Contraseñas:**
-  - Tokens temporales de un solo uso de 1 hora de duración para recuperación de accesos.
-  - Flujo completo con modal "¿Olvidaste tu contraseña?" y formulario de cambio de clave con token (`/api/auth/reset-password`).
-- [x] **Autenticación de Dos Factores (2FA / TOTP Opcional):**
-  - Motor criptográfico puro en Python bajo el estándar RFC 6238 compatible con Google Authenticator, Microsoft Authenticator, Authy, Aegis, Bitwarden, etc.
-  - Asistente de configuración con clave Base32, URL `otpauth://`, código QR dinámico y 8 códigos de respaldo (*backup recovery codes*).
-  - Flujo de inicio de sesión en dos pasos y panel de gestión para activar o desactivar 2FA en cualquier momento.
-- [x] **Control de Cuotas de Almacenamiento & Auditoría de Sesiones Activas:**
-  - Asignación de cuotas de almacenamiento en disco por usuario (ej. 5 GB, 10 GB o ilimitada) con bloqueo preventivo y amigable al superar el límite.
-  - Barra de progreso de cuota en vivo en el perfil del usuario.
-  - Monitor de telemetría de sesiones web activas en tiempo real (IP, dispositivo, navegador, última actividad) con revocación remota instantánea desde la administración.
+## 🎯 Versión Estable Actual: `v1.3.0`
+- [x] **🤖 Asistente Interactivo Bidireccional de Telegram (Telegram Bot Hub & Remote Assistant):**
+  - **Solicitud de Nuevas Descargas desde el Chat:** Envío directo de cualquier enlace compatible con botones en línea táctiles (*Inline Keyboards*) para elegir resoluciones (`1080p`, `720p`, `480p`) o calidades de audio (`MP3 320k`, `FLAC`).
+  - **Monitoreo Dinámico de Progreso:** Mensajes editados en vivo con porcentaje, velocidad y barra de progreso.
+  - **Entrega Inteligente:** Archivos multimedia directos en el chat (hasta 50 MB) o botones con enlace web seguro.
+  - **Vinculación Segura (Telegram Connect):** Tokens temporales de un solo uso desde el perfil web con aislamiento de usuario y control de cuotas.
+  - **Comandos Interactivos:** `/descargas`, `/cola`, `/cuota`, `/ayuda`, `/desvincular`.
+- [x] **☁️ Hub de Conectores Cloud con Presets Privados:**
+  - Perfiles de almacenamiento personalizados por usuario (Nextcloud/ownCloud vía **WebDAV**, servidores **FTP** y webhooks) con aislamiento total de credenciales.
+  - Herramienta de prueba de conexión en 1 clic para validar accesos antes de guardar.
+- [x] **🛡️ Blindaje de Seguridad & Privacidad:**
+  - Ofuscación de campos sensibles en el panel administrativo (`type="password"` en Tokens de Telegram, Chat IDs, contraseñas WebDAV y FTP).
+  - Visibilidad condicional inteligente de botones en la interfaz de usuario.
+- [x] **⚡ Evasión de Restricciones SABR de YouTube (Full HD 1080p Restablecido):**
+  - Cascada multi-cliente combinada (`web_music`, `web`, `mweb`, `web_embedded`) que elude el bloqueo de streams forzados SABR en YouTube.
+  - Puente nativo con **Deno** para resolución de desafíos JavaScript (JS challenges).
+  - Estabilización del microservicio `pot-provider` (Proof-of-Origin Token) en Docker Compose v2 garantizando disponibilidad continua del puerto 4416.
+- [x] **🏷️ Versionado Consciente de Rama (`-main` / `-dev`):**
+  - Detección e inyección unificada de la rama activa de Git en el panel principal (`index.html`), panel administrativo (`admin.html`) y la wiki técnica (`wiki.html`).
 
 ---
 
-## 🎯 Versión `v1.3.0` (En desarrollo activo en rama `dev`) — Conectores Cloud con Presets Privados por Usuario
-- [x] **Gestor de Presets de Nube Personales:**
-  - Cada usuario puede registrar y almacenar múltiples perfiles/presets de almacenamiento (ej. *"Mi Nextcloud Casa"*, *"FTP de Trabajo"*).
-  - Selector rápido de destino en la interfaz de descargas para enviar archivos terminados al preset elegido con 1 clic.
-- [x] **Privacidad y Aislamiento Estricto de Credenciales:**
-  - Aislamiento total de credenciales por usuario: ningún usuario puede ver, editar ni utilizar los accesos a la nube configurados por otro.
-- [x] **Herramienta de Prueba de Conexión en 1 Clic:**
-  - Validación de conectividad y credenciales en la nube antes de guardar cualquier preset.
-- [x] **🤖 Asistente Interactivo Bidireccional de Telegram (Telegram Bot Hub & Remote Assistant):**
-  - **Solicitud de Nuevas Descargas desde el Chat:**
-    - Envío directo de cualquier enlace compatible (YouTube, Spotify, Deezer, TikTok, Instagram, Twitter/X, Twitch, etc.) al chat del bot.
-    - Menú interactivo con botones en línea (*Inline Keyboards*) para seleccionar formato y calidad con 1 toque (`[ 🎬 1080p ]`, `[ 🎬 720p ]`, `[ 🎵 MP3 320k ]`, `[ 🎵 FLAC ]`).
-    - Actualización visual del progreso en tiempo real editando el mensaje (`⏳ Descargando: 64% | 5.2 MB/s`).
-    - Entrega directa del archivo multimedia en el chat (hasta 50 MB) o botón con enlace de descarga web seguro.
-  - **Acceso y Consulta de Mis Descargas desde Telegram:**
-    - Comando `/descargas` o `/historial` para explorar los archivos recientes del usuario con botones para recibir el archivo en Telegram o abrir enlace.
-    - Comando `/cola` para monitorizar tareas en ejecución y botón para cancelar descargas activas.
-    - Comando `/cuota` para verificar el almacenamiento consumido vs. límite asignado.
-  - **Vinculación Segura de Cuentas (Telegram Connect):**
-    - Vinculación de cuenta mediante token temporal de un solo uso generado en el perfil web (`/vincular <token>` o enlace `/start link_<token>`).
-    - Respeto estricto del aislamiento de archivos por usuario, permisos de rol (`admin` / `downloader`) y control de cuotas de disco.
+## 🎯 Versión `v1.4.0` — Fortalecimiento de Motores, Conectores Cloud Avanzados & Taller Multimedia
 
+### 🚀 Optimización y Fortalecimiento del Motor Cobalt (`cobalt-api`)
+- [ ] **Sincronización Automática de Cookies para Cobalt (`COOKIE_PATH`):**
+  - Conversión automatizada del archivo `cookies.txt` (formato Netscape subido al panel Admin) a `cookies.json` montado en el contenedor `cobalt-api`, eliminando el bloqueo `error.api.youtube.login` en IPs de datacenter.
+- [ ] **Soporte de Proxy Residencial / HTTP Proxy en Cobalt (`HTTP_PROXY`):**
+  - Variable de entorno configurable en Docker y panel Admin para enrutar las consultas de Cobalt a través de un proxy residencial o nodo túnel hogareño (Tailscale/WireGuard), eludiendo verificaciones antibot de forma transparente.
+- [ ] **Generador de Sesiones YouTube (`YOUTUBE_SESSION_SERVER`):**
+  - Evaluación y despliegue del generador de sesiones de BotGuard para Cobalt v11, posibilitando descargas sin necesidad de asociar cuentas personales de Google.
+- [ ] **Enrutamiento Inteligente Especializado por Plataforma:**
+  - Derivación prioritaria inmediata a **Cobalt** para redes sociales (**TikTok, Instagram Reels, Twitter/X, Reddit, Pinterest, SoundCloud, Vimeo**), obteniendo descargas ultra-rápidas directas desde CDN.
+  - Derivación optimizada a **yt-dlp** para **YouTube** aprovechando la suite de PO Tokens, Deno y clientes especializados (`web_music`).
+
+### ☁️ Conectores Cloud Principales & Offload
 - [ ] **Integración Directa con Proveedores Cloud Principales:**
   - **Google Drive:** Autenticación OAuth2 / Service Account con soporte para carpetas específicas y Unidades Compartidas (*Shared Drives*).
   - **Microsoft OneDrive / SharePoint:** Conexión con cuentas personales de Microsoft y cuentas educativas / corporativas de Microsoft 365.
   - **Dropbox:** Conexión vía API oficial para subida automática de archivos y creación de carpetas de colección.
   - **Amazon S3 / MinIO / Backblaze B2 / Cloudflare R2:** Conector universal para buckets compatibles con S3.
-  - **Nextcloud / WebDAV & Servidores FTP:** Integración mejorada con compatibilidad para estructuras de carpetas anidadas.
 - [ ] **Modo de Sincronización "Subir y Mover" (Offload):**
   - Opción para subir el archivo terminado a la nube y eliminarlo del disco del VPS inmediatamente, reduciendo el consumo de almacenamiento en servidores pequeños.
 
----
-
-## 🎯 Versión `v1.4.0` — Taller Multimedia, Conversor de Formatos & Edición (Media Studio)
+### 🎬 Taller Multimedia, Conversor de Formatos & Edición (Media Studio)
 - [ ] **Conversor Universal de Formatos (Video & Audio):**
   - **Video:** `MP4` (H.264 / H.265), `MKV`, `WebM` (VP9 / AV1), `AVI`, `MOV` y generación de **GIFs animados** a partir de fragmentos de video.
   - **Audio:** `MP3` (320/256/192/128 kbps CBR/VBR), `FLAC` (Hi-Res sin pérdida), `WAV`, `AAC`, `M4A`, `Opus` y `OGG`.

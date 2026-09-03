@@ -1,6 +1,6 @@
 # 📚 Wiki Técnica & Arquitectura del Sistema: dHtools
 
-Documentación técnica detallada sobre el funcionamiento interno, componentes, microservicios, módulos y flujos de trabajo de la plataforma multimedia **dHtools** (Versión `v1.2.0`).
+Documentación técnica detallada sobre el funcionamiento interno, componentes, microservicios, módulos y flujos de trabajo de la plataforma multimedia **dHtools** (Versión `v1.3.0`).
 
 ---
 
