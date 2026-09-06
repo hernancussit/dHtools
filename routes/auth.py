@@ -185,7 +185,7 @@ def protect_all_routes():
             return None
 
     # 3. Public informational pages accessible without login (guests and authenticated users)
-    if request.path in ("/about", "/acerca-de"):
+    if request.path in ("/about", "/acerca-de", "/wiki"):
         return None
 
     # 4. Unauthenticated requests
