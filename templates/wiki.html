@@ -253,12 +253,16 @@
 <body>
   <div class="container">
     <div class="top-header">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:42px; height:42px; border-radius:10px; object-fit:cover; border:1px solid rgba(239,68,68,0.4); box-shadow:0 0 12px rgba(239,68,68,0.35);">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <a href="/" style="display:block; text-decoration:none;" title="Volver a dHtools">
+          <img src="/static/icons/brand_horizontal.png" alt="dHtools Multimedia Suite" style="height:52px; width:auto; max-width:210px; border-radius:10px; background:#080b12; border:1px solid rgba(56,189,248,0.22); box-shadow:0 4px 18px rgba(0,0,0,0.4), 0 0 15px rgba(56,189,248,0.18); object-fit:contain; display:block;">
+        </a>
         <div>
-          <h1 style="margin:0;">📚 Wiki Técnica & Arquitectura</h1>
-          <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">
-            Documentación interna del funcionamiento y componentes de <strong>{{ (config and config.site_title) or 'dHtools' }}</strong>.
+          <h1 style="margin:0; font-size:1.45rem; display:flex; align-items:center; gap:8px;">
+            <span>📚 Wiki Técnica & Arquitectura</span>
+          </h1>
+          <div style="font-size:0.85rem; color:var(--muted); margin-top:3px;">
+            Documentación interna, mitigación antibot, túneles y componentes de <strong>{{ (config and config.site_title) or 'dHtools' }}</strong>.
           </div>
         </div>
       </div>
@@ -292,7 +296,9 @@
           <li><a href="#section-telegram" class="sidebar-link">8. Asistente Telegram Bot Hub</a></li>
           <li><a href="#section-storage" class="sidebar-link">9. Almacenamiento & Purga</a></li>
           <li><a href="#section-security" class="sidebar-link">10. Seguridad y Roles (RBAC)</a></li>
-          <li><a href="#section-faq" class="sidebar-link">11. Preguntas Frecuentes (FAQ)</a></li>
+          <li><a href="#section-tunnel" class="sidebar-link">11. Túnel Universal & Proxies Residenciales</a></li>
+          <li><a href="#section-troubleshooting" class="sidebar-link">12. Solución de Problemas (Troubleshooting)</a></li>
+          <li><a href="#section-faq" class="sidebar-link">13. Preguntas Frecuentes (FAQ)</a></li>
         </ul>
       </div>
 
@@ -483,8 +489,97 @@
           <li><strong>Privacidad:</strong> Cabeceras <code>X-Robots-Tag: noindex, nofollow</code> para prevenir indexación en motores de búsqueda.</li>
         </ul>
 
-        <!-- 11. FAQ -->
-        <h2 id="section-faq">❓ 11. Preguntas Frecuentes (FAQ)</h2>
+        <!-- 11. UNIVERSAL TUNNELING & RESIDENTIAL PROXY -->
+        <h2 id="section-tunnel">🛡️ 11. Túnel Universal & Proxies Residenciales (SOCKS5 / MikroTik)</h2>
+        <p>
+          Las plataformas multimedia masivas (YouTube, Instagram, TikTok) aplican análisis reputacional por Sistema Autónomo (ASN). Las direcciones IP pertenecientes a centros de datos (Datacenter / Hosting / VPS) suelen ser objeto de <em>rate-limiting</em> agresivo, desafíos criptográficos en bucle (<em>"Sign in to confirm you're not a bot"</em>) o degradación selectiva de resolución (capado forzado a 360p en streams SABR de 1080p/4K).
+        </p>
+
+        <h3>Arquitectura en Cascada de 4 Niveles (Tier 4 Failsafe)</h3>
+        <p>Para no saturar ni consumir el ancho de banda de un enlace residencial hogareño, dHtools opera con una estrategia de contingencia:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Nivel</th>
+              <th>Motor / Mecanismo</th>
+              <th>Propósito</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Nivel 1</strong></td>
+              <td>Cobalt Engine v11 Oficial</td>
+              <td>Extracción directa desde CDN sin marcas de agua en milisegundos (TikTok, Instagram, Twitter/X, Reddit, etc.).</td>
+            </tr>
+            <tr>
+              <td><strong>Nivel 2</strong></td>
+              <td>Deezer / Spotify Nativo</td>
+              <td>Extracción de pistas de música en alta fidelidad y metadatos ID3 automáticos con carátulas HD.</td>
+            </tr>
+            <tr>
+              <td><strong>Nivel 3</strong></td>
+              <td>yt-dlp Core (Directo VPS)</td>
+              <td>Descargas masivas y videos de YouTube cursados por la red del servidor con PO Tokens generados por <code>bgutil</code> + Deno. <em>Cursa más del 90% del tráfico pesado.</em></td>
+            </tr>
+            <tr>
+              <td><strong>Nivel 4</strong></td>
+              <td>Respaldo Residencial (Failsafe)</td>
+              <td><strong>Activación autónoma condicional.</strong> Solo entra en juego si el Nivel 3 reporta <code>UNPLAYABLE</code> o bloqueo antibot.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Protocolos Soportados & Telemetría RTT</h3>
+        <ul>
+          <li><strong>SOCKS5 / SOCKS5h:</strong> Conexión con resolución DNS remota en destino para eliminar filtraciones geográficas de DNS (<em>DNS Leaks</em>).</li>
+          <li><strong>Integración con Routers MikroTik RouterOS:</strong> Soporte para proxys nativos MikroTik (<code>/ip socks</code>) y túneles WireGuard, permitiendo que el servidor en nube descargue validaciones a través del router hogareño o de oficina.</li>
+          <li><strong>Telemetría de Latencia RTT:</strong> El panel administrativo ejecuta sondas TCP periódicas en milisegundos para verificar la salud del túnel antes de enrutar descargas reales.</li>
+        </ul>
+
+        <!-- 12. EMPIRICAL TROUBLESHOOTING GUIDE -->
+        <h2 id="section-troubleshooting">🔧 12. Guía de Solución de Problemas (Troubleshooting & Lecciones Aprendidas)</h2>
+        <div class="callout callout-warning">
+          <strong>Regla de Oro:</strong> NUNCA utilices las cookies de tu cuenta principal de Google o YouTube. El uso constante en servidores puede provocar bloqueos temporales por parte de los proveedores.
+        </div>
+
+        <h3>1. Error <code>Sign in to confirm you're not a bot</code> o <code>UNPLAYABLE</code></h3>
+        <ul>
+          <li><strong>Causa:</strong> YouTube detectó una tasa inusualmente alta de solicitudes desde la IP del VPS o caducaron los tokens de sesión.</li>
+          <li><strong>Solución Comprobada:</strong>
+            <ol>
+              <li>Abre una ventana de incógnito e inicia sesión en YouTube con una <strong>cuenta secundaria desechable</strong>.</li>
+              <li>Exporta las cookies en formato Netscape usando la extensión <em>Get cookies.txt LOCALLY</em>.</li>
+              <li><strong>Cierra la ventana de incógnito y NO navegues con esa cuenta en el navegador.</strong> Si continúas navegando en el explorador, Google rota los tokens criptográficos de sesión e invalida las cookies exportadas de inmediato.</li>
+              <li>Sube el archivo en el <strong>Panel Admin (<code>/admin</code>) ➔ Parámetros & Cookies</strong>. El validador integrado comprobará la autenticación contra YouTube antes de guardarlas.</li>
+            </ol>
+          </li>
+        </ul>
+
+        <h3>2. Video solicitado en 1080p o 4K se descarga únicamente en 360p</h3>
+        <ul>
+          <li><strong>Causa:</strong> Experimento SABR de YouTube activado para la sesión, fragmentando los streams HD en bloques cifrados no combinables con el cliente estándar.</li>
+          <li><strong>Solución Comprobada:</strong> dHtools incorpora una cascada multi-cliente dinámica (<code>web_music</code>, <code>web</code>, <code>mweb</code>, <code>web_embedded</code>) inyectando el PO Token en la fase de inspección y descarga. Si persiste, el Tier 4 Failsafe enruta automáticamente la solicitud por el túnel residencial.</li>
+        </ul>
+
+        <h3>3. Falla en el Asistente de Telegram al entregar archivos pesados</h3>
+        <ul>
+          <li><strong>Causa:</strong> La API de Telegram Bots impone un límite estricto de subida de <strong>50 MB</strong> por archivo. Además, ciertos códecs son rechazados por los métodos <code>sendVideo</code> o <code>sendAudio</code>.</li>
+          <li><strong>Solución Comprobada:</strong>
+            <ul>
+              <li>dHtools implementa un fallback transparente: si <code>sendVideo</code> falla por formato, reintenta automáticamente como <code>sendDocument</code>.</li>
+              <li>Para archivos mayores a 50 MB, el bot notifica que el archivo supera el límite de Telegram y genera un botón interactivo para descargarlo directamente desde la plataforma web.</li>
+            </ul>
+          </li>
+        </ul>
+
+        <h3>4. Consumo Excesivo de Memoria RAM en Descargas de Álbumes o Cloud</h3>
+        <ul>
+          <li><strong>Causa:</strong> Intentar cargar archivos enteros en memoria para subirlos a la nube o acumulación de procesos huérfanos de transcodificación FFmpeg.</li>
+          <li><strong>Solución Comprobada:</strong> dHtools realiza streaming multipart en fragmentos de 10 MB con <code>boto3</code> hacia Amazon S3, MinIO o Cloudflare R2, vacía descriptores y fuerza recolección de basura (<code>gc.collect()</code>), manteniendo el consumo de RAM del contenedor habitualmente por debajo de 250 MB.</li>
+        </ul>
+
+        <!-- 13. FAQ -->
+        <h2 id="section-faq">❓ 13. Preguntas Frecuentes (FAQ)</h2>
         <h3>¿Si instalo dHtools en otro VPS tengo que usar el mismo Bot de Telegram o crear uno nuevo?</h3>
         <p><strong>Debés crear tu propio bot en @BotFather.</strong> Telegram no admite que dos servidores consulten con el mismo token (error 409 Conflict). Además, tener tu propio bot garantiza que tus descargas y credenciales sean 100% privadas en tu propio servidor.</p>
 

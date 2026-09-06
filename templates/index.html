@@ -1397,6 +1397,20 @@
         <button id="btnQuickDownload" class="btn btn-primary btn-block" style="margin-top:16px; padding:12px; font-size:1rem;">
           <span>⬇️ Descargar Ahora</span>
         </button>
+
+        <!-- QUICK MODE ACTIVITY CONSOLE (INFORMATIVE & REAL-TIME) -->
+        <div style="margin-top:18px; background:#060b14; border:1px solid #1e293b; border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-family:monospace; font-weight:700; font-size:0.82rem; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+              📟 Consola de Actividad & Registro en Tiempo Real
+            </span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span class="status-badge status-online" style="font-size:0.68rem; padding:2px 6px;"><span class="badge-dot" style="background:#10b981;"></span> Informativo</span>
+              <button id="btnClearQuickConsole" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:2px 8px;">🧹 Limpiar</button>
+            </div>
+          </div>
+          <div id="quickActivityConsole" style="background:#020617; border:1px solid #0f172a; border-radius:8px; padding:10px; font-family:monospace; font-size:0.78rem; color:#a5f3fc; height:150px; overflow-y:auto; white-space:pre-wrap; line-height:1.5;">[Listo] Esperando operaciones...</div>
+        </div>
       </div>
     </div>
 
@@ -2388,20 +2402,30 @@ let advDelivery = 'zip';
 let inspectedPlaylistItems = [];
 let lastRenderedLogCount = 0;
 
-// User Console Helper
+// User Console Helper (Synchronized across Quick & Advanced modes)
 function appendUserConsole(text, time = null) {
-  const consoleEl = document.getElementById('userActivityConsole');
-  if (!consoleEl) return;
+  const consoles = [document.getElementById('userActivityConsole'), document.getElementById('quickActivityConsole')];
   const stamp = time || new Date().toLocaleTimeString();
-  if (consoleEl.textContent.trim() === '[Listo] Esperando operaciones...' || consoleEl.textContent.trim() === '[Consola limpia] Esperando operaciones...') {
-    consoleEl.textContent = '';
-  }
-  consoleEl.textContent += `[${stamp}] ${text}\n`;
-  consoleEl.scrollTop = consoleEl.scrollHeight;
+  consoles.forEach(consoleEl => {
+    if (!consoleEl) return;
+    if (consoleEl.textContent.trim() === '[Listo] Esperando operaciones...' || consoleEl.textContent.trim() === '[Consola limpia] Esperando operaciones...') {
+      consoleEl.textContent = '';
+    }
+    consoleEl.textContent += `[${stamp}] ${text}\n`;
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  });
 }
 
 document.getElementById('btnClearUserConsole')?.addEventListener('click', () => {
   const consoleEl = document.getElementById('userActivityConsole');
+  if (consoleEl) {
+    consoleEl.textContent = '[Consola limpia] Esperando operaciones...';
+    lastRenderedLogCount = 0;
+  }
+});
+
+document.getElementById('btnClearQuickConsole')?.addEventListener('click', () => {
+  const consoleEl = document.getElementById('quickActivityConsole');
   if (consoleEl) {
     consoleEl.textContent = '[Consola limpia] Esperando operaciones...';
     lastRenderedLogCount = 0;
