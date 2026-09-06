@@ -5,7 +5,7 @@
 <h1 align="center">⚡ dHtools - Suite Multimedia & Extractor Universal</h1>
 
 <p align="center">
-  <a href="https://github.com/hernancussit/dHtools"><img src="https://img.shields.io/badge/Release-v2.8.0--dev-blue.svg" alt="Release"></a>
+  <a href="https://github.com/hernancussit/dHtools"><img src="https://img.shields.io/badge/Release-v1.5.0--stable-blue.svg" alt="Release"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.11+-yellow.svg" alt="Python"></a>
   <a href="https://docker.com"><img src="https://img.shields.io/badge/Docker-Compose-2496ED.svg" alt="Docker"></a>
   <a href="https://cafecito.app/henu_45"><img src="https://img.shields.io/badge/Cafecito-Invitame_uno-00A8FF.svg?logo=coffeescript&logoColor=white" alt="Cafecito"></a>

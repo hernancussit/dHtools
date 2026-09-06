@@ -4,7 +4,44 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-## [Unreleased] - dev
+## [1.5.0] - 2026-09-06
+
+### 🚀 Lanzamiento Oficial Estable v1.5.0
+
+### 🎨 Identidad de Marca Oficial & Rediseño de Experiencia de Usuario
+- **Suite Completa de Marca y Logotipo (`static/icons/`):**
+  - Incorporación del avatar y logotipo oficial de alta fidelidad con el monograma `dH`, rayos de neón y ondas de sonido cyberpunk.
+  - Banner horizontal panorámico de alta definición (`brand_horizontal.png`) integrado en la barra lateral del dashboard y panel administrativo, con tipografía nítida para *"MULTIMEDIA SUITE"* en cian eléctrico de alto contraste.
+  - Generación de favicons de alta densidad (`favicon.png`, `favicon.ico` multi-capa 16/32/48/64px), íconos para iOS (`apple-touch-icon.png`) y PWA (`icon-192.png`, `icon-512.png`).
+  - Actualización del manifiesto de aplicación web progresiva (`static/manifest.json`).
+- **Página Dedicada "Acerca de" (`/about` & `/acerca-de`):**
+  - Módulo de contribución y donaciones integrado con **Cafecito.app** (`cafecito.app/henu_45`) con botón interactivo y código QR dinámico para escanear desde dispositivos móviles.
+  - Ficha de autor y créditos de desarrollo (Hernán Cussit / Servicios Informáticos LT).
+  - Tarjeta independiente y modular para el Asistente de Telegram self-hosted.
+  - Resumen visual de arquitectura de microservicios y licencia libre MIT.
+- **Rediseño Móvil Ergonómico (`templates/index.html`):**
+  - Barra de navegación inferior fija y permanente (`Bottom Nav Bar`) accesible en cualquier sección de la app para navegación táctil con una sola mano.
+  - Menú lateral desplegable (*Off-canvas drawer*) con perfil de usuario y control de cuota de disco.
+  - Cabecera compacta (*Topbar*) con selector rápido de temas y contador en vivo de descargas en cola.
+- **Doble Consola Interactiva en Tiempo Real (`templates/index.html`):**
+  - Incorporación de la terminal de actividad en tiempo real dentro del **Modo Fácil**, permitiendo visualizar inspección de enlaces, progreso de descarga, y eventos de transcodificación FFmpeg sin alternar al Modo Avanzado.
+
+### 📚 Wiki Técnica, Mitigación Antibot & Troubleshooting Empírico (`templates/wiki.html`)
+- **Sección 11: Túnel Universal & Proxies Residenciales (SOCKS5 / MikroTik RouterOS):**
+  - Documentación de la arquitectura de mitigación de bloqueos por ASN de datacenters.
+  - Integración con RouterOS (`/ip socks`) y túneles WireGuard con telemetría de latencia TCP (RTT en milisegundos).
+- **Sección 12: Guía Exhaustiva de Solución de Problemas (Troubleshooting):**
+  - Paso a paso para resolver `Sign in to confirm you're not a bot` y `UNPLAYABLE` mediante exportación Netscape sin invalidación de tokens de sesión.
+  - Evasión de bloqueos SABR forzados a 360p en YouTube mediante cascada multi-cliente (`web_music`, `web`, `mweb`).
+  - Resolución de límites de 50 MB en Telegram y fallback transparente a documento.
+  - Manejo eficiente de memoria RAM en descargas masivas y subidas cloud mediante streaming chunked.
+- **Acceso Público:** Desbloqueo de acceso libre para `/wiki` y `/about` sin requerir autenticación previa.
+
+### 🤖 Asistente de Telegram: Aislamiento Estricto y Reconocimiento Natural (`core/telegram_bot.py`)
+- **Aislamiento Estricto de Descargas por Usuario:**
+  - Corrección de visibilidad en `/descargas`: cada usuario vinculado a Telegram accede estricta y exclusivamente a sus propios archivos, eliminando cualquier fuga cruzada de descargas entre usuarios o administradores.
+  - Validación de seguridad en callbacks (`send:<id>`) impidiendo descargas no autorizadas.
+- **Reconocimiento de Lenguaje Natural:** Detección de intenciones conversacionales ("mis descargas", "estado de cola", "mi cuota de espacio", "ayuda") sin obligar al uso de comandos de barra.
 
 ### ⚡ Optimización y Fortalecimiento del Motor Cobalt v11
 - **Sincronización Automática de Cookies Netscape a JSON de Cobalt (`core/utils.py`, `core/config.py`):**
