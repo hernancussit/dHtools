@@ -61,6 +61,10 @@ class Plugin:
         safe_user = "".join(c for c in raw_user if c.isalnum() or c in ("-", "_")).strip() or "admin"
         udir = os.path.join(self.users_data_dir, safe_user)
         os.makedirs(udir, exist_ok=True)
+        try:
+            os.chmod(udir, 0o700)
+        except Exception:
+            pass
         return udir
 
     def get_server_config(self) -> Dict[str, Any]:
@@ -111,7 +115,7 @@ class Plugin:
 
             if not cfg:
                 # Si es admin y existe el config.json raíz, usarlo como base inicial
-                if username in ("admin", "hernan") and os.path.exists(self.config_path):
+                if username == "admin" and os.path.exists(self.config_path):
                     cfg = dict(server_cfg)
                 else:
                     cfg = {
@@ -180,12 +184,20 @@ class Plugin:
 
                 with open(u_cfg_path, "w", encoding="utf-8") as f:
                     json.dump(save_cfg, f, indent=2, ensure_ascii=False)
+                try:
+                    os.chmod(u_cfg_path, 0o600)
+                except Exception:
+                    pass
 
                 # Si es admin, sincronizar también config.json raíz para compatibilidad con el servidor
                 if username == "admin":
                     try:
                         with open(self.config_path, "w", encoding="utf-8") as f:
                             json.dump(save_cfg, f, indent=2, ensure_ascii=False)
+                        try:
+                            os.chmod(self.config_path, 0o600)
+                        except Exception:
+                            pass
                     except Exception:
                         pass
                 return True
@@ -201,26 +213,18 @@ class Plugin:
         """Compatibilidad con llamadas legacy: guarda la configuración de admin."""
         return self.save_user_config("admin", new_cfg)
 
-    def _get_request_username(self, allow_override: bool = False) -> str:
-        """Obtiene el nombre de usuario autenticado de la solicitud actual."""
+    def _get_request_username(self) -> str:
+        """
+        Obtiene el nombre de usuario autenticado de la solicitud actual de forma estricta.
+        Bajo ninguna circunstancia se permite suplantar o acceder a credenciales de otro usuario,
+        garantizando privacidad y aislamiento total entre cuentas (incluso para administradores).
+        """
         user = getattr(request, "current_user", {}) or {}
         username = user.get("username") or getattr(request, "current_username", None)
         if not username:
             username = session.get("username", "admin")
 
-        username = (username or "admin").strip().lower()
-        is_admin = (user.get("role") == "admin")
-
-        # Si el usuario es administrador, puede gestionar otro perfil vía ?for_user=
-        if allow_override and is_admin:
-            target = request.args.get("for_user")
-            if not target and request.is_json:
-                data = request.get_json(silent=True) or {}
-                target = data.get("for_user")
-            if target and isinstance(target, str) and target.strip():
-                return target.strip().lower()
-
-        return username
+        return (username or "admin").strip().lower()
 
     def _get_redirect_uri(self) -> str:
         """Determina la URI de redirección canónica para OAuth2."""
@@ -263,7 +267,7 @@ class Plugin:
         def view_settings():
             current_user = getattr(request, "current_user", {}) or {}
             is_admin = (current_user.get("role") == "admin")
-            target_username = self._get_request_username(allow_override=True)
+            target_username = self._get_request_username()
             cfg = self.get_user_config(target_username)
             udir = self.get_user_dir(target_username)
 
@@ -272,25 +276,16 @@ class Plugin:
             # Comprobar si existe el archivo de service account del usuario
             sa_user_file = os.path.join(udir, cfg.get("service_account_file", "service_account.json"))
             sa_exists = os.path.exists(sa_user_file)
-            if not sa_exists and (is_admin or target_username == "admin"):
+            if not sa_exists and target_username == "admin":
                 sa_exists = os.path.exists(os.path.join(self.plugin_dir, "service_account.json"))
 
             # Comprobar si existe un token OAuth2 real y válido para el usuario
             oauth_token_file = os.path.join(udir, cfg.get("oauth", {}).get("token_file", "token.json"))
             token_exists = self.is_valid_token_file(oauth_token_file)
-            if not token_exists and (is_admin or target_username == "admin"):
+            if not token_exists and target_username == "admin":
                 token_exists = self.is_valid_token_file(os.path.join(self.plugin_dir, "token.json"))
 
             redirect_uri = self._get_redirect_uri()
-
-            # Lista de usuarios para el selector si es admin
-            all_usernames = []
-            if is_admin:
-                try:
-                    from routes.auth import load_users
-                    all_usernames = list(load_users().keys())
-                except Exception:
-                    all_usernames = ["admin"]
 
             return render_template(
                 "settings.html",
@@ -298,7 +293,6 @@ class Plugin:
                 config=cfg,
                 target_username=target_username,
                 is_admin=is_admin,
-                all_usernames=all_usernames,
                 dependencies_ok=deps_ok,
                 dependencies_msg=deps_msg,
                 service_account_exists=sa_exists,
@@ -309,7 +303,7 @@ class Plugin:
         @bp.route(f"/plugin/{self.plugin_id}/api/save", methods=["POST"])
         def api_save():
             data = request.get_json(force=True) or {}
-            target_username = self._get_request_username(allow_override=True)
+            target_username = self._get_request_username()
             cfg = self.get_user_config(target_username)
             udir = self.get_user_dir(target_username)
 
@@ -330,6 +324,10 @@ class Plugin:
                     sa_file_path = os.path.join(udir, "service_account.json")
                     with open(sa_file_path, "w", encoding="utf-8") as f:
                         json.dump(parsed_sa, f, indent=2)
+                    try:
+                        os.chmod(sa_file_path, 0o600)
+                    except Exception:
+                        pass
                     cfg["service_account_file"] = "service_account.json"
                 except Exception as e:
                     return jsonify({"success": False, "error": f"JSON de Cuenta de Servicio inválido: {e}"}), 400
@@ -355,13 +353,14 @@ class Plugin:
         @bp.route(f"/plugin/{self.plugin_id}/api/test", methods=["POST"])
         def api_test():
             req_data = request.get_json(force=True) or {}
-            target_username = self._get_request_username(allow_override=True)
+            target_username = self._get_request_username()
             cfg = self.get_user_config(target_username)
             udir = self.get_user_dir(target_username)
             
             # Permitir probar parámetros enviados en el request sin haberlos guardado aún
             test_cfg = dict(cfg)
             if req_data:
+                req_data.pop("for_user", None)
                 test_cfg.update(req_data)
                 sa_raw = (req_data.get("service_account_json_content") or "").strip()
                 if sa_raw:
@@ -376,9 +375,7 @@ class Plugin:
                     except Exception:
                         pass
 
-            current_user = getattr(request, "current_user", {}) or {}
-            is_admin = (current_user.get("role") == "admin")
-            fallback_dir = self.plugin_dir if (is_admin or target_username == "admin") else None
+            fallback_dir = self.plugin_dir if target_username == "admin" else None
 
             ok, res = drive_client.test_connection(test_cfg, base_dir=udir, fallback_dir=fallback_dir)
             if ok:
@@ -387,7 +384,7 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/oauth/start", methods=["GET"])
         def oauth_start():
-            target_username = self._get_request_username(allow_override=False)
+            target_username = self._get_request_username()
             cfg = self.get_user_config(target_username)
             
             client_id = (cfg.get("oauth", {}).get("effective_client_id") or cfg.get("oauth", {}).get("client_id") or "").strip()
@@ -429,18 +426,24 @@ class Plugin:
                 return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote("No se recibió código de autorización de Google."))
 
             # Determinar usuario y redirect_uri desde el parámetro state
-            target_username = self._get_request_username(allow_override=False)
+            current_auth_user = self._get_request_username()
             redirect_uri = self._get_redirect_uri()
             state_param = request.args.get("state")
+            state_user = current_auth_user
             if state_param:
                 try:
                     decoded = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
                     if decoded.get("username"):
-                        target_username = decoded["username"]
+                        state_user = decoded["username"]
                     if decoded.get("redirect_uri"):
                         redirect_uri = decoded["redirect_uri"]
                 except Exception as e:
                     logger.warning(f"No se pudo decodificar state de OAuth: {e}")
+
+            # Seguridad: el usuario autenticado debe coincidir con quien inició el flujo
+            target_username = current_auth_user if (current_auth_user and current_auth_user != "admin") else state_user
+            if current_auth_user and current_auth_user != "admin" and state_user != current_auth_user:
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote("Violación de seguridad: El usuario autenticado no coincide con el origen de la autorización OAuth."))
 
             cfg = self.get_user_config(target_username)
             client_id = (cfg.get("oauth", {}).get("effective_client_id") or cfg.get("oauth", {}).get("client_id") or "").strip()
@@ -493,12 +496,20 @@ class Plugin:
 
                 with open(token_file_path, "w", encoding="utf-8") as f:
                     json.dump(token_payload, f, indent=2)
+                try:
+                    os.chmod(token_file_path, 0o600)
+                except Exception:
+                    pass
 
                 # Si es admin, actualizar también token.json raíz
                 if target_username == "admin":
                     try:
                         with open(os.path.join(self.plugin_dir, "token.json"), "w", encoding="utf-8") as f:
                             json.dump(token_payload, f, indent=2)
+                        try:
+                            os.chmod(os.path.join(self.plugin_dir, "token.json"), 0o600)
+                        except Exception:
+                            pass
                     except Exception:
                         pass
 
@@ -518,7 +529,7 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/oauth/manual-token", methods=["POST"])
         def oauth_manual_token():
-            target_username = self._get_request_username(allow_override=True)
+            target_username = self._get_request_username()
             data = request.get_json(force=True) or {}
             raw_token = (data.get("token_content") or "").strip()
             if not raw_token:
@@ -574,11 +585,19 @@ class Plugin:
                 token_file_path = os.path.join(udir, "token.json")
                 with open(token_file_path, "w", encoding="utf-8") as f:
                     json.dump(token_dict, f, indent=2)
+                try:
+                    os.chmod(token_file_path, 0o600)
+                except Exception:
+                    pass
 
                 if target_username == "admin":
                     try:
                         with open(os.path.join(self.plugin_dir, "token.json"), "w", encoding="utf-8") as f:
                             json.dump(token_dict, f, indent=2)
+                        try:
+                            os.chmod(os.path.join(self.plugin_dir, "token.json"), 0o600)
+                        except Exception:
+                            pass
                     except Exception:
                         pass
 
@@ -594,7 +613,7 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/oauth/revoke", methods=["POST"])
         def oauth_revoke():
-            target_username = self._get_request_username(allow_override=True)
+            target_username = self._get_request_username()
             udir = self.get_user_dir(target_username)
             token_file_path = os.path.join(udir, "token.json")
             removed = False
@@ -624,7 +643,7 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/api/upload-job", methods=["POST"])
         def api_upload_job():
-            current_username = self._get_request_username(allow_override=False)
+            current_username = self._get_request_username()
             current_user = getattr(request, "current_user", {}) or {}
             is_admin = (current_user.get("role") == "admin")
 
@@ -688,7 +707,7 @@ class Plugin:
             def _progress(percent: int, message: str):
                 self._append_job_log(job_id, f"[*] [GoogleDrive] {message}")
 
-            fallback_dir = self.plugin_dir if (is_admin or current_username == "admin") else None
+            fallback_dir = self.plugin_dir if current_username == "admin" else None
 
             ok, result = drive_client.upload_file_resumable(
                 filepath=target_filepath,

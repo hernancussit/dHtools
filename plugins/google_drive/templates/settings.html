@@ -485,22 +485,20 @@
       </div>
     </header>
 
-    <!-- BANNER CONTEXTUAL DE USUARIO -->
-    <div style="background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); border-radius:var(--radius-md); padding:10px 14px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-      <div style="display:flex; align-items:center; gap:8px; font-size:0.85rem;">
-        <span style="font-size:1.1rem;">👤</span>
-        <span>Configurando unidad de Google Drive para el usuario: <strong style="color:var(--accent-cyan);">{{ target_username }}</strong> <span class="badge-user">{{ 'ADMINISTRADOR' if target_username == 'admin' else 'USUARIO' }}</span></span>
+    <!-- BANNER DE PRIVACIDAD ESTRICTA Y PERFIL AISLADO -->
+    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+        <span style="font-size:1.3rem;">🔒</span>
+        <div>
+          <div>Cuenta y almacenamiento exclusivo de: <strong style="color:var(--accent-cyan); font-size:0.92rem;">{{ target_username }}</strong> <span class="badge-user">{{ 'ADMINISTRADOR' if target_username == 'admin' else 'USUARIO' }}</span></div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+            Espacio estrictamente personal y confidencial. Ningún otro usuario ni administrador puede ver tus credenciales, modificarlas ni tener acceso a tu cuenta cloud.
+          </div>
+        </div>
       </div>
-      {% if is_admin and all_usernames and all_usernames|length > 1 %}
-      <div style="display:flex; align-items:center; gap:8px;">
-        <label for="forUserSelect" style="font-size:0.75rem; color:var(--text-muted); margin:0;">Cambiar perfil:</label>
-        <select id="forUserSelect" class="form-control" style="padding:4px 10px; font-size:0.78rem; width:auto; border-color:rgba(59,130,246,0.4);" onchange="window.location.href='/plugin/google_drive/settings?for_user=' + encodeURIComponent(this.value)">
-          {% for u in all_usernames %}
-          <option value="{{ u }}" {{ 'selected' if u == target_username else '' }}>{{ u }}</option>
-          {% endfor %}
-        </select>
+      <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#10b981; background:rgba(16,185,129,0.15); padding:4px 10px; border-radius:12px; font-weight:600;">
+        <span>🛡️</span> Aislamiento Total Activo
       </div>
-      {% endif %}
     </div>
 
     {% if request.args.get('oauth_status') == 'success' %}
@@ -896,7 +894,7 @@
     }
 
     async function revokeOAuthToken() {
-      if (!confirm(`¿Estás seguro de que deseas desvincular la cuenta de Google Drive para el usuario '${targetUsername}'?`)) {
+      if (!confirm(`¿Estás seguro de que deseas desvincular tu cuenta de Google Drive?`)) {
         return;
       }
 
@@ -904,12 +902,12 @@
         const res = await fetch('/plugin/google_drive/oauth/revoke', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ for_user: targetUsername })
+          body: JSON.stringify({})
         });
         const data = await res.json();
         if (data.success) {
           showToast(data.message || 'Token eliminado correctamente.');
-          setTimeout(() => { window.location.href = `/plugin/google_drive/settings?for_user=${encodeURIComponent(targetUsername)}`; }, 1000);
+          setTimeout(() => { window.location.href = '/plugin/google_drive/settings'; }, 1000);
         } else {
           showToast(data.error || 'Error al eliminar token.', true);
         }
@@ -929,12 +927,12 @@
         const res = await fetch('/plugin/google_drive/oauth/manual-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token_content: content, for_user: targetUsername })
+          body: JSON.stringify({ token_content: content })
         });
         const data = await res.json();
         if (data.success) {
           showToast(data.message || 'Token guardado exitosamente.');
-          setTimeout(() => { window.location.href = `/plugin/google_drive/settings?for_user=${encodeURIComponent(targetUsername)}&oauth_status=success`; }, 1000);
+          setTimeout(() => { window.location.href = '/plugin/google_drive/settings?oauth_status=success'; }, 1000);
         } else {
           showToast(data.error || 'JSON de token inválido.', true);
         }
@@ -951,7 +949,6 @@
       box.style.display = 'none';
 
       const payload = {
-        for_user: targetUsername,
         auth_type: currentAuthType,
         folder_id: document.getElementById('folderIdInput').value.trim(),
         service_account_json_content: document.getElementById('saJsonTextarea').value.trim(),
@@ -993,7 +990,7 @@
 
           box.className = 'test-result-box success';
           box.innerHTML = `
-            <strong>✓ Conexión establecida con éxito con Google Drive (${targetUsername})</strong><br>
+            <strong>✓ Conexión establecida con éxito con tu Google Drive</strong><br>
             <div style="margin-top:6px; font-size:0.78rem;">
               • <strong>Cuenta:</strong> ${d.user_name} (${d.email})<br>
               • <strong>Carpeta destino:</strong> ${d.folder_name} ${d.folder_id ? '<code>['+d.folder_id+']</code>' : '(Raíz)'}<br>
@@ -1031,7 +1028,6 @@
       }
 
       const payload = {
-        for_user: targetUsername,
         enabled: document.getElementById('enabledSwitch').checked,
         auto_upload: document.getElementById('autoUploadSwitch').checked,
         safe_offload: document.getElementById('offloadSwitch').checked,
