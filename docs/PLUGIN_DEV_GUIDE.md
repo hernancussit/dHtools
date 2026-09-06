@@ -327,19 +327,38 @@ else:
     print("Error:", res["error"])
 ```
 
-#### 4. `self.manager.get_user_nav_items(username=None) -> List[Dict[str, Any]]`
+#### 4. `self.manager.get_queue_status(username=None) -> Dict[str, Any]`
+Consulta de forma *thread-safe* el estado de las descargas activas y en espera en el servidor.
+Si se especifica `username`, filtra únicamente las tareas de ese usuario (imprescindible para bots o asistentes privados multiusuario). Si es `None`, entrega la visión global.
+```python
+queue_info = self.manager.get_queue_status(username="hernan")
+# Retorna:
+# {
+#   "active_jobs": [
+#       {"job_id": "abc1", "title": "Video 1", "status": "downloading", "percent": 55, "speed": "2.4 MB/s", "eta": "00:15", "owner": "hernan"}
+#   ],
+#   "queued_jobs": [
+#       {"job_id": "abc2", "title": "Video 2", "status": "queued", "percent": 0, "owner": "hernan"}
+#   ],
+#   "total_active": 1,
+#   "total_queued": 1,
+#   "total": 2
+# }
+```
+
+#### 5. `self.manager.get_user_nav_items(username=None) -> List[Dict[str, Any]]`
 Recolecta todos los botones y enlaces de navegación personal provistos por los plugins para el usuario actual.
 
-#### 5. `self.manager.get_plugin_instance(plugin_id: str) -> Optional[Any]`
+#### 6. `self.manager.get_plugin_instance(plugin_id: str) -> Optional[Any]`
 Obtiene la instancia viva en memoria de otro plugin cargado para invocar métodos entre extensiones.
 
-#### 6. `self.manager.get_plugin(plugin_id: str) -> Optional[Dict[str, Any]]`
+#### 7. `self.manager.get_plugin(plugin_id: str) -> Optional[Dict[str, Any]]`
 Obtiene los metadatos (`plugin.json`) del plugin solicitado.
 
-#### 7. `self.manager.get_all_plugins() -> Dict[str, Dict[str, Any]]`
+#### 8. `self.manager.get_all_plugins() -> Dict[str, Dict[str, Any]]`
 Diccionario con todos los plugins descubiertos en el sistema y su estado.
 
-#### 8. `self.manager.plugins_dir -> str`
+#### 9. `self.manager.plugins_dir -> str`
 Ruta absoluta al directorio `/plugins` en el servidor o contenedor.
 
 ---
@@ -565,6 +584,7 @@ El proyecto cuenta con una arquitectura de plugins totalmente desacoplada del Co
 
 ### 🛠️ API disponible a través de `self.manager`:
 - `self.manager.enqueue_download(url, quality="best", format_type="video", owner="admin", title="", extra_params=None)`: Solicita descargas al Core de dHtools.
+- `self.manager.get_queue_status(username=None)`: Consulta tareas activas y en espera (con soporte de filtro por usuario).
 - `self.manager.get_user_cloud_providers(username)`: Consulta de nubes activas del usuario.
 - `self.manager.upload_job_to_cloud(plugin_id, job_id, username, progress_callback=None)`: Despachador hacia plugins de nube.
 - `self.manager.get_user_nav_items(username)`: Accesos de navegación.

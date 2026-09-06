@@ -459,6 +459,73 @@ class PluginManager:
             logger.error(f"Error al encolar descarga desde plugin: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
 
+    def get_queue_status(self, username: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Retorna información thread-safe de las tareas activas y en espera para plugins de monitoreo y mensajería.
+        Si se especifica username, filtra únicamente las tareas pertenecientes a ese usuario.
+        Si username es None, retorna la visión global de la cola.
+        """
+        try:
+            from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, ACTIVE_WORKER_JOB
+
+            with QUEUE_LOCK:
+                q_ids = list(QUEUE_LIST)
+
+            active_jobs = []
+            queued_jobs = []
+
+            with JOBS_LOCK:
+                # Tarea actualmente en descarga por el worker en segundo plano
+                if ACTIVE_WORKER_JOB and ACTIVE_WORKER_JOB in JOBS:
+                    j = JOBS[ACTIVE_WORKER_JOB]
+                    if not username or j.get("owner") == username:
+                        active_jobs.append({
+                            "job_id": ACTIVE_WORKER_JOB,
+                            "title": j.get("title") or j.get("video_title") or "Descarga en curso",
+                            "status": j.get("status", "downloading"),
+                            "percent": j.get("percent", 0),
+                            "speed": j.get("speed"),
+                            "eta": j.get("eta"),
+                            "owner": j.get("owner"),
+                            "format_type": j.get("format_type", "video"),
+                            "quality": j.get("quality", "best")
+                        })
+
+                # Tareas en espera en la cola
+                for jid in q_ids:
+                    if jid == ACTIVE_WORKER_JOB:
+                        continue
+                    j = JOBS.get(jid)
+                    if j and (not username or j.get("owner") == username):
+                        queued_jobs.append({
+                            "job_id": jid,
+                            "title": j.get("title") or j.get("video_title") or j.get("url"),
+                            "status": j.get("status", "queued"),
+                            "percent": j.get("percent", 0),
+                            "owner": j.get("owner"),
+                            "format_type": j.get("format_type", "video"),
+                            "quality": j.get("quality", "best")
+                        })
+
+            return {
+                "active_jobs": active_jobs,
+                "queued_jobs": queued_jobs,
+                "total_active": len(active_jobs),
+                "total_queued": len(queued_jobs),
+                "total": len(active_jobs) + len(queued_jobs)
+            }
+
+        except Exception as e:
+            logger.error(f"Error al obtener estado de la cola para plugin: {e}", exc_info=True)
+            return {
+                "active_jobs": [],
+                "queued_jobs": [],
+                "total_active": 0,
+                "total_queued": 0,
+                "total": 0,
+                "error": str(e)
+            }
+
 
 # Singleton global
 plugin_manager = PluginManager()
