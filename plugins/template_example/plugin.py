@@ -117,6 +117,11 @@ class Plugin:
         # 2. Notificar por Discord, WhatsApp o Webhook.
         # 3. Mover o copiar el archivo a una ruta específica fuera de dHtools.
 
+    def on_download_error(self, job_data, error=None):
+        """
+        Hook ejecutado cuando una descarga falla o es cancelada.
+        """
+        job_id = job_data.get("job_id", "desconocido") if isinstance(job_data, dict) else str(job_data)
         logger.warning(f"[EXPERIMENTAL] {self.name} -> Fallo en descarga {job_id}: {error}")
 
     # =========================================================================
