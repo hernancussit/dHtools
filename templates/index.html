@@ -731,93 +731,282 @@
     text-align: center;
   }
 
-  /* RESPONSIVE (TABLETS & MOBILE) */
-  @media (max-width: 860px) {
-    .app-layout {
-      flex-direction: column;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-    .sidebar {
-      width: 100%;
-      min-width: 100%;
-      height: auto;
-      border-right: none;
-      border-bottom: 1px solid var(--border);
-      padding: 10px 14px;
-    }
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-    .user-badge-box {
-      margin-top: 0;
-      padding: 3px 8px;
-      font-size: 0.75rem;
-    }
-    #userQuotaWidget {
-      width: 100%;
-      margin-top: 4px;
-      padding: 6px 10px;
-    }
-    .nav-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-    .nav-title {
-      display: none; /* Ocultar subtitulos para no robar espacio vertical */
-    }
-    .nav-item {
-      padding: 8px 10px;
-      font-size: 0.82rem;
-      border-radius: 8px;
-    }
-    .sidebar-footer {
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
-      margin-top: 4px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-    .sidebar-footer > div:first-child {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .sidebar-footer > div:first-child label {
-      margin: 0;
-      white-space: nowrap;
-    }
-    .main-content {
-      padding: 12px 10px;
-      height: auto;
-      overflow-y: visible;
-      overflow-x: hidden;
-    }
-    .card {
-      padding: 14px 12px;
-      border-radius: 12px;
-      margin-bottom: 14px;
-    }
+  /* ==================== MOBILE & RESPONSIVE DESIGN SYSTEM ==================== */
+  /* Desktop defaults for mobile components (Hidden on large screens) */
+  .mobile-topbar, .mobile-bottom-nav, .mobile-drawer, .mobile-drawer-backdrop {
+    display: none !important;
   }
 
-  @media (max-width: 600px) {
-    .queue-url-sub {
+  @media (max-width: 860px) {
+    body {
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .app-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Hide heavy desktop sidebar completely on mobile */
+    .sidebar {
       display: none !important;
     }
-    .url-input-header {
-      flex-direction: column;
-      align-items: stretch;
+
+    /* MOBILE TOP BAR */
+    .mobile-topbar {
+      display: flex !important;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 60;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .mobile-topbar-brand {
+      display: flex;
+      align-items: center;
       gap: 8px;
-      margin-bottom: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .mobile-brand-title {
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: -0.4px;
+    }
+    .mobile-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mobile-topbar-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-topbar-btn:active {
+      transform: scale(0.92);
+      background: var(--border);
+    }
+
+    /* MAIN CONTENT VIEWPORT */
+    .main-content {
+      flex: 1;
+      height: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 14px 12px calc(72px + env(safe-area-inset-bottom, 0px)) 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .card {
+      padding: 14px 12px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .card-title {
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+    }
+
+    /* MOBILE BOTTOM NAVIGATION BAR */
+    .mobile-bottom-nav {
+      display: flex !important;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(58px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: rgba(11, 17, 32, 0.96);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 100;
+      box-shadow: 0 -4px 25px rgba(0,0,0,0.4);
+      justify-content: space-around;
+      align-items: center;
+    }
+    [data-theme="oled"] .mobile-bottom-nav {
+      background: rgba(5, 5, 5, 0.98);
+      border-color: #222;
+    }
+    [data-theme="light"] .mobile-bottom-nav {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: #e2e8f0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+    }
+
+    .mobile-nav-btn {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.15s ease, transform 0.15s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-nav-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+      display: block;
+      position: relative;
+      transition: transform 0.18s ease;
+    }
+    .mobile-nav-btn:active .mobile-nav-icon {
+      transform: scale(0.88);
+    }
+    .mobile-nav-btn.active {
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+    .mobile-nav-btn.active .mobile-nav-icon {
+      transform: translateY(-2px) scale(1.1);
+    }
+
+    .mobile-badge {
+      position: absolute;
+      top: -4px;
+      right: -8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 10px;
+      min-width: 16px;
+      text-align: center;
+      line-height: 1.2;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    }
+
+    /* OFF-CANVAS MOBILE DRAWER & BACKDROP */
+    .mobile-drawer-backdrop {
+      display: block !important;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .mobile-drawer-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-drawer {
+      display: flex !important;
+      position: fixed;
+      top: 0; bottom: 0; right: 0;
+      width: 86%;
+      max-width: 330px;
+      background: var(--bg-sidebar);
+      border-left: 1px solid var(--border);
+      z-index: 201;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: -10px 0 35px rgba(0, 0, 0, 0.65);
+      padding-bottom: env(safe-area-inset-bottom, 12px);
+    }
+    .mobile-drawer.open {
+      transform: translateX(0);
+    }
+
+    .mobile-drawer-header {
+      padding: 16px 14px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .mobile-drawer-close {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mobile-drawer-body {
+      padding: 14px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .drawer-user-card {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .drawer-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* INPUT ROW & PRESET CONTROLS */
+    .url-input-row {
+      flex-direction: column;
+      gap: 8px;
+    }
+    .url-input-row input {
+      font-size: 0.88rem;
+      padding: 11px 12px;
+    }
+    .url-input-actions {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+    }
+    .url-input-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 10px 12px;
+      font-size: 0.82rem;
     }
     .mode-toggle-group {
       width: 100%;
@@ -827,32 +1016,36 @@
       flex: 1;
       justify-content: center;
       padding: 8px 6px;
-      font-size: 0.82rem;
-    }
-    .url-input-row {
-      flex-direction: column;
-      gap: 8px;
-    }
-    .url-input-actions {
-      width: 100%;
-      display: flex;
-    }
-    .url-input-actions .btn {
-      flex: 1;
-      justify-content: center;
-      padding: 9px 12px;
-      font-size: 0.84rem;
+      font-size: 0.8rem;
     }
     .preset-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
+      gap: 8px;
     }
     .preset-pill {
-      padding: 8px 10px;
+      padding: 9px 10px;
+    }
+    .preset-pill-title {
+      font-size: 0.82rem;
+    }
+    .preset-pill-sub {
+      font-size: 0.68rem;
     }
     .engine-selector {
       flex-direction: column;
       gap: 6px;
+    }
+    .queue-url-sub {
+      display: none !important;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .recent-grid {
+      grid-template-columns: 1fr;
+    }
+    .folder-items-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -860,7 +1053,27 @@
 <body>
 
 <div class="app-layout">
-  <!-- LEFT SIDEBAR -->
+  <!-- MOBILE TOP BAR -->
+  <header class="mobile-topbar">
+    <a href="/" class="mobile-topbar-brand">
+      <span class="mobile-brand-title">{{ (config and config.site_title) or '⚡ dHtools' }}</span>
+      <span class="brand-badge" style="font-size:0.68rem; padding:1px 6px;">v{{ version }}</span>
+      {% if branch %}
+      <span style="font-size:0.62rem; font-weight:800; padding:1px 5px; border-radius:4px; text-transform:uppercase; {% if branch == 'dev' %}background:rgba(245,158,11,0.18); color:#fbbf24; border:1px solid rgba(245,158,11,0.35);{% else %}background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35);{% endif %}">{{ branch }}</span>
+      {% endif %}
+    </a>
+    <div class="mobile-topbar-actions">
+      <button type="button" class="mobile-topbar-btn" id="mobileTopQueueBtn" title="Cola de descargas">
+        <span>⏳</span>
+        <span id="mobileTopQueueBadge" class="mobile-badge" style="display:none;">0</span>
+      </button>
+      <button type="button" class="mobile-topbar-btn" id="btnToggleMobileDrawer" aria-label="Abrir menú" title="Menú y usuario">
+        <span>👤</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- LEFT SIDEBAR (DESKTOP) -->
   <aside class="sidebar">
     <div>
       <div class="sidebar-header">
@@ -1170,7 +1383,8 @@
             <div class="url-input-row">
               <input type="text" id="advUrlInput" placeholder="https://youtube.com/watch?v=... o playlist/álbum..." autocomplete="off">
               <div class="url-input-actions">
-                <button id="btnInspectAdv" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
+                <button type="button" id="btnPasteAdv" class="btn btn-secondary btn-sm" style="white-space:nowrap;">📋 Pegar</button>
+                <button type="button" id="btnInspectAdv" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
               </div>
             </div>
           </div>
@@ -1458,9 +1672,116 @@
           <div id="queueCompletedList" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
       </div>
-    </div>
-  </main>
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
+  <nav class="mobile-bottom-nav" aria-label="Navegación principal móvil">
+    <button type="button" class="mobile-nav-btn active" data-tab="tab-quick" id="mNavQuick">
+      <span class="mobile-nav-icon">⚡</span>
+      <span class="mobile-nav-label">Rápido</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-adv" id="mNavAdv">
+      <span class="mobile-nav-icon">🎛️</span>
+      <span class="mobile-nav-label">Avanzado</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-queue" id="mNavQueue">
+      <span class="mobile-nav-icon" style="position:relative;">
+        ⏳
+        <span id="mobileBottomQueueBadge" class="mobile-badge" style="display:none;">0</span>
+      </span>
+      <span class="mobile-nav-label">Cola</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-history" id="mNavHistory">
+      <span class="mobile-nav-icon">📂</span>
+      <span class="mobile-nav-label">Archivos</span>
+    </button>
+  </nav>
 </div>
+
+<!-- OFF-CANVAS MOBILE DRAWER & BACKDROP -->
+<div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop"></div>
+<aside class="mobile-drawer" id="mobileDrawer">
+  <div class="mobile-drawer-header">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:1.05rem; font-weight:800;">⚡ Menú & Opciones</span>
+    </div>
+    <button type="button" class="mobile-drawer-close" id="btnCloseMobileDrawer" aria-label="Cerrar menú">✕</button>
+  </div>
+
+  <div class="mobile-drawer-body">
+    <!-- User Card -->
+    <div class="drawer-user-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:700; font-size:0.95rem;">👤 {{ username }}</span>
+        {% if is_admin %}
+        <span class="brand-badge" style="background:rgba(239,68,68,0.2); color:var(--accent-2); border-color:rgba(239,68,68,0.4);">👑 Admin</span>
+        {% else %}
+        <span class="brand-badge">Usuario</span>
+        {% endif %}
+      </div>
+      
+      <!-- User Quota inside drawer -->
+      <div style="margin-top:10px; background:var(--bg-card); padding:8px 10px; border-radius:8px; border:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--muted); margin-bottom:4px;">
+          <span>💾 Cuota de Disco</span>
+          <span id="drawerQuotaTextVal">Calculando...</span>
+        </div>
+        <div style="background:var(--bg-input); height:6px; border-radius:3px; overflow:hidden;">
+          <div id="drawerQuotaProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-2)); transition:width 0.3s;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme Selector -->
+    <div class="drawer-section">
+      <label style="font-size:0.76rem; font-weight:700; margin-bottom:6px;">🎨 Tema Visual</label>
+      <select id="drawerThemeSelector" style="padding:9px 12px; font-size:0.85rem; border-radius:8px; background:var(--bg-input); border:1px solid var(--border); color:var(--text); width:100%;">
+        <option value="cyberpunk">🌌 Cyberpunk / Midnight</option>
+        <option value="oled">🌑 OLED Black</option>
+        <option value="emerald">🌲 Emerald Green</option>
+        <option value="light">☀️ Light Clean</option>
+      </select>
+    </div>
+
+    <!-- Security & Tools -->
+    <div class="drawer-section">
+      <label style="font-size:0.76rem; font-weight:700; margin-bottom:6px;">🛡️ Herramientas & Seguridad</label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button type="button" id="drawerBtn2fa" class="btn btn-secondary btn-sm" style="font-size:0.82rem; padding:9px;">
+          🛡️ 2FA
+        </button>
+        {% if telegram_enabled %}
+        <button type="button" id="drawerBtnTelegram" class="btn btn-secondary btn-sm" style="font-size:0.82rem; padding:9px;">
+          ✈️ Telegram
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Navigation Shortcuts -->
+    <div class="drawer-section">
+      <label style="font-size:0.76rem; font-weight:700; margin-bottom:6px;">⚡ Enlaces</label>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% if is_admin %}
+        <a href="/admin" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
+          <span>⚙️</span> <span>Panel de Administración</span>
+        </a>
+        {% endif %}
+        <a href="/wiki" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
+          <span>📚</span> <span>Wiki y Documentación Técnica</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- PWA & Session Actions -->
+    <div class="drawer-section" style="margin-top:auto; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px;">
+      <button type="button" id="drawerPwaInstallBtn" class="btn btn-primary btn-sm" style="display:none; width:100%; font-size:0.85rem; padding:10px;">
+        📲 Instalar en el Celular
+      </button>
+      <button type="button" id="drawerLogoutBtn" class="btn btn-danger btn-sm" style="width:100%; font-size:0.85rem; padding:10px;">
+        🚪 Cerrar Sesión
+      </button>
+    </div>
+  </div>
+</aside>
 
 <!-- MODAL: CONFIGURACION 2FA (TOTP) -->
 <div id="modal2faConfig" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:16px;">
@@ -1634,14 +1955,21 @@ if (pwaInstallBtn) {
 
 // Theme management
 const themeSelector = document.getElementById('themeSelector');
+const drawerThemeSelector = document.getElementById('drawerThemeSelector');
 const currentTheme = localStorage.getItem('site_theme') || '{{ (config and config.default_theme) or "cyberpunk" }}';
 document.documentElement.setAttribute('data-theme', currentTheme);
-themeSelector.value = currentTheme;
-themeSelector.addEventListener('change', (e) => {
-  const chosen = e.target.value;
+if (themeSelector) themeSelector.value = currentTheme;
+if (drawerThemeSelector) drawerThemeSelector.value = currentTheme;
+
+function applyTheme(chosen) {
   document.documentElement.setAttribute('data-theme', chosen);
   localStorage.setItem('site_theme', chosen);
-});
+  if (themeSelector) themeSelector.value = chosen;
+  if (drawerThemeSelector) drawerThemeSelector.value = chosen;
+}
+
+themeSelector?.addEventListener('change', (e) => applyTheme(e.target.value));
+drawerThemeSelector?.addEventListener('change', (e) => applyTheme(e.target.value));
 
 // Toast
 function showToast(msg, type = 'info', timeout = 4000) {
@@ -1652,19 +1980,69 @@ function showToast(msg, type = 'info', timeout = 4000) {
   if (timeout) setTimeout(() => { t.style.display = 'none'; }, timeout);
 }
 
-// Navigation Tabs
-document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    const target = btn.dataset.tab;
-    if (target) {
-      document.getElementById(target)?.classList.add('active');
-      if (target === 'tab-history') loadRecentDownloads();
-      if (target === 'tab-queue') fetchQueueState();
-    }
+// Unified Navigation Tabs (Desktop Sidebar + Mobile Bottom Navigation)
+function switchTab(target) {
+  if (!target) return;
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === target);
   });
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === target);
+  });
+
+  const pane = document.getElementById(target);
+  if (pane) {
+    pane.classList.add('active');
+    const mainViewport = document.querySelector('.main-content');
+    if (mainViewport) mainViewport.scrollTop = 0;
+    if (target === 'tab-history') loadRecentDownloads();
+    if (target === 'tab-queue') fetchQueueState();
+  }
+}
+
+document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    switchTab(btn.dataset.tab);
+  });
+});
+
+document.getElementById('mobileTopQueueBtn')?.addEventListener('click', () => {
+  switchTab('tab-queue');
+});
+
+// Mobile Drawer Controls
+const mobileDrawer = document.getElementById('mobileDrawer');
+const mobileDrawerBackdrop = document.getElementById('mobileDrawerBackdrop');
+
+function openMobileDrawer() {
+  mobileDrawer?.classList.add('open');
+  mobileDrawerBackdrop?.classList.add('open');
+}
+
+function closeMobileDrawer() {
+  mobileDrawer?.classList.remove('open');
+  mobileDrawerBackdrop?.classList.remove('open');
+}
+
+document.getElementById('btnToggleMobileDrawer')?.addEventListener('click', openMobileDrawer);
+document.getElementById('btnCloseMobileDrawer')?.addEventListener('click', closeMobileDrawer);
+mobileDrawerBackdrop?.addEventListener('click', closeMobileDrawer);
+
+// Drawer tool shortcuts
+document.getElementById('drawerBtn2fa')?.addEventListener('click', () => {
+  closeMobileDrawer();
+  document.getElementById('btnOpen2faModal')?.click();
+});
+document.getElementById('drawerBtnTelegram')?.addEventListener('click', () => {
+  closeMobileDrawer();
+  document.getElementById('btnOpenTelegramModal')?.click();
+});
+document.getElementById('drawerPwaInstallBtn')?.addEventListener('click', () => {
+  document.getElementById('pwaInstallBtn')?.click();
+});
+document.getElementById('drawerLogoutBtn')?.addEventListener('click', () => {
+  document.getElementById('logoutBtn')?.click();
 });
 
 
@@ -2003,6 +2381,18 @@ document.getElementById('btnPasteQuick')?.addEventListener('click', async () => 
     if (text) {
       document.getElementById('quickUrlInput').value = text.trim();
       inspectUrl(text.trim(), 'quick');
+    }
+  } catch (e) {
+    showToast('Habilitá permisos del portapapeles o pegá manualmente con Ctrl+V', 'info');
+  }
+});
+
+document.getElementById('btnPasteAdv')?.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      document.getElementById('advUrlInput').value = text.trim();
+      inspectUrl(text.trim(), 'adv');
     }
   } catch (e) {
     showToast('Habilitá permisos del portapapeles o pegá manualmente con Ctrl+V', 'info');
@@ -2755,15 +3145,18 @@ function formatSeconds(sec) {
 
 function renderQueueState(data) {
   const badge = document.getElementById('sidebarQueueBadge');
+  const topBadge = document.getElementById('mobileTopQueueBadge');
+  const bottomBadge = document.getElementById('mobileBottomQueueBadge');
   const totalQueued = data.total_queued || 0;
-  if (badge) {
+  [badge, topBadge, bottomBadge].forEach(b => {
+    if (!b) return;
     if (totalQueued > 0) {
-      badge.textContent = totalQueued;
-      badge.style.display = 'inline-block';
+      b.textContent = totalQueued;
+      b.style.display = 'inline-block';
     } else {
-      badge.style.display = 'none';
+      b.style.display = 'none';
     }
-  }
+  });
 
   // Active Job
   const actCard = document.getElementById('queueActiveCard');
@@ -3117,27 +3510,37 @@ setInterval(fetchQueueState, 2000);
 async function loadUserQuota() {
   const textEl = document.getElementById('quotaTextVal');
   const barEl = document.getElementById('quotaProgressBar');
+  const dTextEl = document.getElementById('drawerQuotaTextVal');
+  const dBarEl = document.getElementById('drawerQuotaProgressBar');
   if (!textEl || !barEl) return;
   try {
     const res = await fetch('/api/user/quota');
     const data = await res.json();
+    const textVals = [textEl, dTextEl].filter(Boolean);
+    const barEls = [barEl, dBarEl].filter(Boolean);
+
     if (data.quota_bytes > 0) {
-      textEl.textContent = `${data.used_formatted} / ${data.quota_formatted}`;
-      barEl.style.width = `${Math.min(data.percent_used, 100)}%`;
+      const formatted = `${data.used_formatted} / ${data.quota_formatted}`;
+      textVals.forEach(el => el.textContent = formatted);
+      const pct = `${Math.min(data.percent_used, 100)}%`;
+      barEls.forEach(el => el.style.width = pct);
       if (data.percent_used >= 90) {
-        barEl.style.background = 'var(--danger)';
-        textEl.style.color = 'var(--danger)';
+        barEls.forEach(el => el.style.background = 'var(--danger)');
+        textVals.forEach(el => el.style.color = 'var(--danger)');
       } else if (data.percent_used >= 70) {
-        barEl.style.background = 'var(--warning)';
-        textEl.style.color = 'var(--warning)';
+        barEls.forEach(el => el.style.background = 'var(--warning)');
+        textVals.forEach(el => el.style.color = 'var(--warning)');
       } else {
-        barEl.style.background = 'linear-gradient(90deg, var(--accent-blue), var(--accent-2))';
-        textEl.style.color = 'var(--muted)';
+        barEls.forEach(el => el.style.background = 'linear-gradient(90deg, var(--accent-blue), var(--accent-2))');
+        textVals.forEach(el => el.style.color = 'var(--muted)');
       }
     } else {
-      textEl.textContent = `${data.used_formatted} (Ilimitada)`;
-      barEl.style.width = '100%';
-      barEl.style.background = 'rgba(56, 189, 248, 0.4)';
+      const formatted = `${data.used_formatted} (Ilimitada)`;
+      textVals.forEach(el => el.textContent = formatted);
+      barEls.forEach(el => {
+        el.style.width = '100%';
+        el.style.background = 'rgba(56, 189, 248, 0.4)';
+      });
     }
   } catch (e) {}
 }

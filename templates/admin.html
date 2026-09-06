@@ -384,22 +384,101 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  @media (max-width: 768px) {
-    body { flex-direction: column; height: auto; overflow: auto; }
-    .admin-layout { flex-direction: column; height: auto; overflow: auto; }
-    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
-    .sidebar-nav { flex-direction: row; overflow-x: auto; padding: 8px; }
-    .main-content { height: auto; overflow: visible; padding: 16px; }
+  @media (max-width: 860px) {
+    body {
+      overflow-x: hidden;
+      height: auto;
+      min-height: 100vh;
+    }
+    .admin-layout {
+      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+    .sidebar {
+      width: 100%;
+      min-width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(11, 17, 32, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .sidebar-header {
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sidebar-title {
+      font-size: 1.05rem;
+    }
+    .sidebar-subtitle {
+      margin-bottom: 0;
+    }
+    .sidebar-nav {
+      flex-direction: row;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 2px 6px;
+      gap: 6px;
+      scroll-snap-type: x mandatory;
+    }
+    .sidebar-nav::-webkit-scrollbar {
+      display: none;
+    }
+    .nav-btn {
+      white-space: nowrap;
+      flex-shrink: 0;
+      scroll-snap-align: start;
+      border-radius: 20px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+    }
+    .sidebar-footer {
+      display: none;
+    }
+    .main-content {
+      height: auto;
+      overflow: visible;
+      padding: 14px 12px 30px;
+    }
+    .content-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .content-title {
+      font-size: 1.1rem;
+    }
+    .services-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .card {
+      padding: 14px 12px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+    }
+    .mobile-admin-top-actions {
+      display: flex !important;
+      align-items: center;
+      gap: 6px;
+    }
   }
 
-  @media (max-width: 600px) {
-    .main-content { padding: 12px 10px; }
-    .card { padding: 14px 12px; margin-bottom: 12px; border-radius: 10px; }
-    .content-header { flex-direction: column; align-items: stretch; gap: 8px; }
-    .sidebar-footer { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-    .sidebar-footer a, .sidebar-footer button { margin: 0 !important; font-size: 0.74rem; padding: 6px 8px; text-align: center; }
-    #formSmtpConfig button { width: 100%; }
-    #smtpTestEmail { width: 100% !important; margin: 0 !important; }
+  .mobile-admin-top-actions {
+    display: none;
   }
 </style>
 </head>
@@ -408,14 +487,18 @@
   <!-- SIDEBAR NAVIGATION -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-title">
-        <span>⚙️ Panel Admin</span>
+      <div>
+        <div class="sidebar-title">
+          <span>⚙️ Panel Admin</span>
+        </div>
+        <div class="sidebar-subtitle">
+          <span>{{ (config and config.site_title) or 'dHtools' }}</span>
+          <span class="version-tag">v{{ version }}</span>
+        </div>
       </div>
-      <div class="sidebar-subtitle">
-        <span>{{ (config and config.site_title) or 'dHtools' }}</span>
-        <span class="version-tag">v{{ version }}</span>
+      <div class="mobile-admin-top-actions">
+        <a href="/" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:5px 10px;">⬅ Descargador</a>
       </div>
-
     </div>
 
     <nav class="sidebar-nav">
