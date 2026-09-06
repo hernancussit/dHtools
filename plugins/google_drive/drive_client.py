@@ -199,11 +199,12 @@ def test_connection(config: Dict[str, Any], base_dir: Optional[str] = None) -> T
                         "status": "error",
                         "error": f"La cuenta no tiene permisos para subir archivos en la carpeta '{result['folder_name']}'."
                     }
-            except Exception as fe:
                 return False, {
                     "status": "error",
                     "error": f"No se pudo acceder a la carpeta destino ('{folder_id}'): {fe}"
                 }
+
+        return True, result
 
     except Exception as e:
         logger.error(f"Error al verificar conexión Google Drive: {e}")
