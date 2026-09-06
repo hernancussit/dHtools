@@ -7,9 +7,12 @@ con streaming por fragmentos (RAM-safe) y modo Safe Offload opcional.
 import os
 import json
 import time
+import base64
 import logging
 import threading
+from urllib.parse import urlencode, quote
 from typing import Dict, Any, Optional
+import requests
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for
 
 from core.state import JOBS, JOBS_LOCK
@@ -84,6 +87,12 @@ class Plugin:
                 logger.error(f"Error guardando {self.config_path}: {e}")
                 return False
 
+    def _get_redirect_uri(self) -> str:
+        """Determina la URI de redirección canónica para OAuth2."""
+        proto = request.headers.get("X-Forwarded-Proto", request.scheme)
+        host = request.headers.get("X-Forwarded-Host", request.host)
+        return f"{proto}://{host}/plugin/{self.plugin_id}/oauth/callback"
+
     # =========================================================================
     # RUTAS FLASK / BLUEPRINT
     # =========================================================================
@@ -113,6 +122,8 @@ class Plugin:
             oauth_token = drive_client._resolve_path(cfg.get("oauth", {}).get("token_file", "token.json"), self.plugin_dir)
             token_exists = os.path.exists(oauth_token)
 
+            redirect_uri = self._get_redirect_uri()
+
             return render_template(
                 "settings.html",
                 plugin=self,
@@ -120,7 +131,8 @@ class Plugin:
                 dependencies_ok=deps_ok,
                 dependencies_msg=deps_msg,
                 service_account_exists=sa_exists,
-                oauth_token_exists=token_exists
+                oauth_token_exists=token_exists,
+                redirect_uri=redirect_uri
             )
 
         @bp.route(f"/plugin/{self.plugin_id}/api/save", methods=["POST"])
@@ -179,6 +191,12 @@ class Plugin:
                         test_cfg["service_account_json_content"] = json.loads(sa_raw)
                     except Exception:
                         pass
+                oauth_raw = (req_data.get("oauth_token_json_content") or "").strip()
+                if oauth_raw:
+                    try:
+                        test_cfg["oauth_token_json_content"] = json.loads(oauth_raw)
+                    except Exception:
+                        pass
             else:
                 test_cfg = cfg
 
@@ -186,6 +204,171 @@ class Plugin:
             if ok:
                 return jsonify({"success": True, "details": res})
             return jsonify({"success": False, "error": res.get("error", "Error desconocido de conexión.")}), 400
+
+        @bp.route(f"/plugin/{self.plugin_id}/oauth/start", methods=["GET"])
+        def oauth_start():
+            cfg = self.get_config()
+            client_id = (cfg.get("oauth", {}).get("client_id") or "").strip()
+            client_secret = (cfg.get("oauth", {}).get("client_secret") or "").strip()
+
+            if not client_id or not client_secret:
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote("Debe ingresar y guardar Client ID y Client Secret antes de iniciar la conexión con Google."))
+
+            redirect_uri = request.args.get("redirect_uri") or self._get_redirect_uri()
+
+            state_payload = {
+                "redirect_uri": redirect_uri,
+                "ts": int(time.time())
+            }
+            state_token = base64.urlsafe_b64encode(json.dumps(state_payload).encode("utf-8")).decode("utf-8")
+
+            params = {
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": " ".join(drive_client.DRIVE_SCOPES),
+                "access_type": "offline",
+                "prompt": "consent",
+                "include_granted_scopes": "true",
+                "state": state_token
+            }
+            auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+            return redirect(auth_url)
+
+        @bp.route(f"/plugin/{self.plugin_id}/oauth/callback", methods=["GET"])
+        def oauth_callback():
+            error = request.args.get("error")
+            if error:
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote(f"Google devolvió un error: {error}"))
+
+            code = request.args.get("code")
+            if not code:
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote("No se recibió código de autorización de Google."))
+
+            cfg = self.get_config()
+            client_id = (cfg.get("oauth", {}).get("client_id") or "").strip()
+            client_secret = (cfg.get("oauth", {}).get("client_secret") or "").strip()
+
+            if not client_id or not client_secret:
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote("Client ID o Client Secret no configurados en el servidor."))
+
+            redirect_uri = self._get_redirect_uri()
+            state_param = request.args.get("state")
+            if state_param:
+                try:
+                    decoded = json.loads(base64.urlsafe_b64decode(state_param.encode("utf-8")).decode("utf-8"))
+                    if "redirect_uri" in decoded:
+                        redirect_uri = decoded["redirect_uri"]
+                except Exception as e:
+                    logger.warning(f"No se pudo decodificar state de OAuth: {e}")
+
+            token_endpoint = "https://oauth2.googleapis.com/token"
+            exchange_data = {
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code"
+            }
+
+            try:
+                resp = requests.post(token_endpoint, data=exchange_data, timeout=20)
+                if resp.status_code != 200:
+                    err_msg = resp.text
+                    try:
+                        resp_json = resp.json()
+                        err_msg = resp_json.get("error_description") or resp_json.get("error") or err_msg
+                    except Exception:
+                        pass
+                    return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote(f"Error al canjear token con Google: {err_msg}"))
+
+                token_data = resp.json()
+                token_file_path = os.path.join(self.plugin_dir, "token.json")
+                token_payload = {
+                    "token": token_data.get("access_token"),
+                    "refresh_token": token_data.get("refresh_token"),
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "scopes": drive_client.DRIVE_SCOPES
+                }
+
+                # Preservar refresh_token anterior si Google no devolvió uno nuevo en re-autorización
+                if not token_payload.get("refresh_token") and os.path.exists(token_file_path):
+                    try:
+                        with open(token_file_path, "r", encoding="utf-8") as f:
+                            old_t = json.load(f)
+                            if old_t.get("refresh_token"):
+                                token_payload["refresh_token"] = old_t["refresh_token"]
+                    except Exception:
+                        pass
+
+                with open(token_file_path, "w", encoding="utf-8") as f:
+                    json.dump(token_payload, f, indent=2)
+
+                # Asegurar auth_type oauth2 en la configuración
+                cfg["auth_type"] = "oauth2"
+                if "oauth" not in cfg:
+                    cfg["oauth"] = {}
+                cfg["oauth"]["token_file"] = "token.json"
+                self.save_config(cfg)
+
+                logger.info("Token OAuth2 de Google Drive guardado exitosamente tras autorización web.")
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_status=success")
+
+            except Exception as e:
+                logger.error(f"Excepción procesando callback OAuth2: {e}")
+                return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote(f"Error de conexión: {e}"))
+
+        @bp.route(f"/plugin/{self.plugin_id}/oauth/manual-token", methods=["POST"])
+        def oauth_manual_token():
+            data = request.get_json() or {}
+            raw_token = (data.get("token_content") or "").strip()
+            if not raw_token:
+                return jsonify({"success": False, "error": "No se recibió contenido de token."}), 400
+
+            try:
+                token_dict = json.loads(raw_token)
+                if not isinstance(token_dict, dict):
+                    raise ValueError("El contenido no es un objeto JSON válido.")
+
+                cfg = self.get_config()
+                client_id = cfg.get("oauth", {}).get("client_id", "").strip()
+                client_secret = cfg.get("oauth", {}).get("client_secret", "").strip()
+
+                if "client_id" not in token_dict and client_id:
+                    token_dict["client_id"] = client_id
+                if "client_secret" not in token_dict and client_secret:
+                    token_dict["client_secret"] = client_secret
+                if "token_uri" not in token_dict:
+                    token_dict["token_uri"] = "https://oauth2.googleapis.com/token"
+                if "scopes" not in token_dict:
+                    token_dict["scopes"] = drive_client.DRIVE_SCOPES
+
+                token_file_path = os.path.join(self.plugin_dir, "token.json")
+                with open(token_file_path, "w", encoding="utf-8") as f:
+                    json.dump(token_dict, f, indent=2)
+
+                cfg["auth_type"] = "oauth2"
+                if "oauth" not in cfg:
+                    cfg["oauth"] = {}
+                cfg["oauth"]["token_file"] = "token.json"
+                self.save_config(cfg)
+
+                return jsonify({"success": True, "message": "Token OAuth2 guardado exitosamente."})
+            except Exception as e:
+                return jsonify({"success": False, "error": f"JSON de token inválido: {e}"}), 400
+
+        @bp.route(f"/plugin/{self.plugin_id}/oauth/revoke", methods=["POST"])
+        def oauth_revoke():
+            token_file_path = os.path.join(self.plugin_dir, "token.json")
+            if os.path.exists(token_file_path):
+                try:
+                    os.remove(token_file_path)
+                    return jsonify({"success": True, "message": "Token OAuth2 eliminado exitosamente."})
+                except Exception as e:
+                    return jsonify({"success": False, "error": f"No se pudo eliminar el token: {e}"}), 500
+            return jsonify({"success": True, "message": "No había ningún token almacenado."})
 
         app.register_blueprint(bp)
         logger.info(f"Rutas de Google Drive registradas bajo /plugin/{self.plugin_id}/")

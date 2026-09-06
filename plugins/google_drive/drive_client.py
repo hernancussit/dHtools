@@ -88,9 +88,37 @@ def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None):
         token_file = _resolve_path(oauth_cfg.get("token_file", "token.json"), base_dir)
         creds = None
 
-        if os.path.exists(token_file):
+        # Soporte para token provisto en caliente vía config (pruebas o contenido pegado)
+        token_content = config.get("oauth_token_json_content")
+        if token_content and isinstance(token_content, (dict, str)):
+            if isinstance(token_content, str):
+                try:
+                    t_info = json.loads(token_content)
+                except Exception as e:
+                    raise ValueError(f"El contenido JSON del token OAuth2 es inválido: {e}")
+            else:
+                t_info = token_content
+
+            if isinstance(t_info, dict):
+                if "access_token" in t_info and "token" not in t_info:
+                    t_info["token"] = t_info["access_token"]
+                if "token_uri" not in t_info:
+                    t_info["token_uri"] = "https://oauth2.googleapis.com/token"
+                try:
+                    creds = Credentials.from_authorized_user_info(t_info, scopes=DRIVE_SCOPES)
+                except Exception as e:
+                    logger.warning(f"Error cargando credenciales OAuth2 desde info: {e}")
+
+        elif os.path.exists(token_file):
             try:
-                creds = Credentials.from_authorized_user_file(token_file, scopes=DRIVE_SCOPES)
+                with open(token_file, "r", encoding="utf-8") as f:
+                    t_info = json.load(f)
+                if isinstance(t_info, dict):
+                    if "access_token" in t_info and "token" not in t_info:
+                        t_info["token"] = t_info["access_token"]
+                    if "token_uri" not in t_info:
+                        t_info["token_uri"] = "https://oauth2.googleapis.com/token"
+                    creds = Credentials.from_authorized_user_info(t_info, scopes=DRIVE_SCOPES)
             except Exception as e:
                 logger.warning(f"Error cargando token OAuth2: {e}")
 
