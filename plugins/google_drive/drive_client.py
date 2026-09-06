@@ -33,6 +33,18 @@ def check_dependencies() -> Tuple[bool, str]:
         )
 
 
+def sanitize_folder_id(raw_id: str) -> str:
+    """Extrae el ID alfanumérico limpio de Google Drive si viene con URL o parámetros ?hl=es."""
+    if not raw_id:
+        return ""
+    val = raw_id.strip()
+    if "?" in val:
+        val = val.split("?")[0]
+    if "/folders/" in val:
+        val = val.split("/folders/")[-1]
+    return val.strip().strip("/")
+
+
 def _resolve_path(path_str: str, base_dir: Optional[str] = None) -> str:
     """Resuelve rutas relativas contra el directorio del plugin."""
     if not path_str:
@@ -114,11 +126,18 @@ def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None):
                 with open(token_file, "r", encoding="utf-8") as f:
                     t_info = json.load(f)
                 if isinstance(t_info, dict):
+                    if "web" in t_info or "installed" in t_info:
+                        raise ValueError(
+                            "El archivo token.json contiene las credenciales de la app (client_secret.json) en lugar del token del usuario. "
+                            "Por favor haga clic en 'Conectar con Google' en /plugin/google_drive/settings para autorizar el acceso."
+                        )
                     if "access_token" in t_info and "token" not in t_info:
                         t_info["token"] = t_info["access_token"]
                     if "token_uri" not in t_info:
                         t_info["token_uri"] = "https://oauth2.googleapis.com/token"
                     creds = Credentials.from_authorized_user_info(t_info, scopes=DRIVE_SCOPES)
+            except ValueError:
+                raise
             except Exception as e:
                 logger.warning(f"Error cargando token OAuth2: {e}")
 
@@ -152,18 +171,20 @@ def test_connection(config: Dict[str, Any], base_dir: Optional[str] = None) -> T
         user_info = about.get("user", {})
         quota = about.get("storageQuota", {})
 
+        clean_folder = sanitize_folder_id(config.get("folder_id", ""))
+
         result = {
             "status": "success",
             "user_name": user_info.get("displayName", "Desconocido"),
             "email": user_info.get("emailAddress", "N/A"),
             "storage_used_bytes": int(quota.get("usage", 0)),
             "storage_total_bytes": int(quota.get("limit", 0)) if quota.get("limit") else None,
-            "folder_id": config.get("folder_id", "").strip(),
+            "folder_id": clean_folder,
             "folder_name": "Raíz de Mi Unidad"
         }
 
         # 2. Validar carpeta destino si fue provista
-        folder_id = config.get("folder_id", "").strip()
+        folder_id = clean_folder
         if folder_id and folder_id.lower() != "root":
             try:
                 f_meta = service.files().get(

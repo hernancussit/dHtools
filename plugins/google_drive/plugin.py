@@ -93,6 +93,21 @@ class Plugin:
         host = request.headers.get("X-Forwarded-Host", request.host)
         return f"{proto}://{host}/plugin/{self.plugin_id}/oauth/callback"
 
+    def is_valid_token_file(self, filepath: str) -> bool:
+        """Verifica que el archivo de token exista y sea un token real (no client_secret)."""
+        if not filepath or not os.path.exists(filepath):
+            return False
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return False
+            if "web" in data or "installed" in data:
+                return False
+            return bool(data.get("refresh_token") or data.get("token") or data.get("access_token"))
+        except Exception:
+            return False
+
     # =========================================================================
     # RUTAS FLASK / BLUEPRINT
     # =========================================================================
@@ -118,9 +133,9 @@ class Plugin:
             sa_file = drive_client._resolve_path(cfg.get("service_account_file", "service_account.json"), self.plugin_dir)
             sa_exists = os.path.exists(sa_file)
 
-            # Comprobar si existe el token OAuth2
+            # Comprobar si existe un token OAuth2 real y válido
             oauth_token = drive_client._resolve_path(cfg.get("oauth", {}).get("token_file", "token.json"), self.plugin_dir)
-            token_exists = os.path.exists(oauth_token)
+            token_exists = self.is_valid_token_file(oauth_token)
 
             redirect_uri = self._get_redirect_uri()
 
@@ -143,7 +158,7 @@ class Plugin:
             # Actualizar valores
             cfg["enabled"] = bool(data.get("enabled", False))
             cfg["auth_type"] = data.get("auth_type", "service_account")
-            cfg["folder_id"] = (data.get("folder_id") or "").strip()
+            cfg["folder_id"] = drive_client.sanitize_folder_id(data.get("folder_id") or "")
             cfg["safe_offload"] = bool(data.get("safe_offload", False))
             cfg["subfolder_by_owner"] = bool(data.get("subfolder_by_owner", False))
 
@@ -331,6 +346,34 @@ class Plugin:
                 token_dict = json.loads(raw_token)
                 if not isinstance(token_dict, dict):
                     raise ValueError("El contenido no es un objeto JSON válido.")
+
+                # Detección inteligente: Si el usuario pegó el archivo client_secret.json descargado de Google Cloud
+                if "web" in token_dict or "installed" in token_dict:
+                    client_block = token_dict.get("web") or token_dict.get("installed") or {}
+                    extracted_id = (client_block.get("client_id") or "").strip()
+                    extracted_secret = (client_block.get("client_secret") or "").strip()
+                    if extracted_id and extracted_secret:
+                        cfg = self.get_config()
+                        if "oauth" not in cfg:
+                            cfg["oauth"] = {}
+                        cfg["oauth"]["client_id"] = extracted_id
+                        cfg["oauth"]["client_secret"] = extracted_secret
+                        self.save_config(cfg)
+                        
+                        # Limpiar token.json si contenía este archivo client_secret
+                        token_file_path = os.path.join(self.plugin_dir, "token.json")
+                        if os.path.exists(token_file_path):
+                            try:
+                                os.remove(token_file_path)
+                            except Exception:
+                                pass
+                                
+                        return jsonify({
+                            "success": True,
+                            "is_client_credentials": True,
+                            "client_id": extracted_id,
+                            "message": "Has importado el archivo client_secret.json de Google Cloud. Tus credenciales (Client ID y Client Secret) han sido autocompletadas y guardadas. Ahora por favor haz clic en 'Conectar con Google' para autorizar el acceso."
+                        })
 
                 cfg = self.get_config()
                 client_id = cfg.get("oauth", {}).get("client_id", "").strip()
