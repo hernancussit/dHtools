@@ -1,6 +1,6 @@
 import os
 import threading
-from flask import Flask
+from flask import Flask, request, session
 
 from core.config import get_or_create_flask_secret, APP_VERSION
 from core.state import START_TIME
