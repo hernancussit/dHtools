@@ -232,7 +232,12 @@ class PluginManager:
                     logger.error(f"Error obteniendo panel cloud de plugin '{pid}': {e}", exc_info=True)
         return panels
 
-    def get_download_cloud_options(self) -> List[Dict[str, Any]]:
+    def get_plugin_instance(self, plugin_id: str):
+        """Retorna la instancia en ejecución de un plugin específico o None."""
+        with self._lock:
+            return self._instances.get(plugin_id)
+
+    def get_download_cloud_options(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         [EXPERIMENTAL] Recolecta opciones de destino cloud para inyección en el selector
         de la interfaz principal de descargas y presets de usuario.
@@ -241,10 +246,23 @@ class PluginManager:
         with self._lock:
             instances = list(self._instances.items())
 
+        if not username:
+            try:
+                from flask import request, session
+                user = getattr(request, "current_user", {}) or {}
+                username = user.get("username") or getattr(request, "current_username", None) or session.get("username")
+            except Exception:
+                username = None
+
         for pid, inst in instances:
             if hasattr(inst, "get_download_cloud_option"):
                 try:
-                    opt = inst.get_download_cloud_option()
+                    import inspect
+                    sig = inspect.signature(inst.get_download_cloud_option)
+                    if "username" in sig.parameters:
+                        opt = inst.get_download_cloud_option(username=username)
+                    else:
+                        opt = inst.get_download_cloud_option()
                     if opt and isinstance(opt, dict):
                         opt.setdefault("plugin_id", pid)
                         opt.setdefault("name", self._plugins.get(pid, {}).get("name", pid))

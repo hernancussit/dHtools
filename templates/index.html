@@ -2011,6 +2011,7 @@
 
 <script>
 window.TELEGRAM_BOT_ENABLED = {{ 'true' if telegram_enabled else 'false' }};
+window.GOOGLE_DRIVE_ENABLED = {{ 'true' if google_drive_enabled else 'false' }};
 
 // ==================== GLOBAL INITIALIZATION & PWA ====================
 let deferredPrompt;
@@ -3513,7 +3514,7 @@ function renderRecentDownloads(data) {
                       <span>${sub.size_formatted}</span>
                       <div style="display:flex; gap:4px; align-items:center;">
                         ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>`}
-                        ${(!sub.offloaded) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="uploadToGoogleDrive('${sub.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
+                        ${(!sub.offloaded && window.GOOGLE_DRIVE_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="uploadToGoogleDrive('${sub.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
                         ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
                         <button class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="deleteUserDownload('${sub.job_id}')">🗑️</button>
                       </div>
@@ -3553,7 +3554,7 @@ function renderRecentDownloads(data) {
           </div>
           <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px; align-items:center;">
             ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:4px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>`}
-            ${(!item.offloaded) ? `<button class="btn btn-secondary btn-sm" onclick="uploadToGoogleDrive('${item.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
+            ${(!item.offloaded && window.GOOGLE_DRIVE_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="uploadToGoogleDrive('${item.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
             ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
           </div>

@@ -33,14 +33,25 @@ def index():
     raw_ver = APP_VERSION.split("-")[0]
     display_version = f"{raw_ver}-{branch}" if branch and branch != "main" else raw_ver
 
+    username = user.get("username", "admin")
+    google_drive_enabled = False
+    try:
+        from core.plugin_manager import plugin_manager
+        gdrive_inst = plugin_manager.get_plugin_instance("google_drive")
+        if gdrive_inst and hasattr(gdrive_inst, "get_user_config"):
+            google_drive_enabled = bool(gdrive_inst.get_user_config(username).get("enabled", False))
+    except Exception:
+        google_drive_enabled = False
+
     return render_template(
         "index.html",
         version=display_version,
         branch=branch,
         config=cfg,
         is_admin=is_admin,
-        username=user.get("username", "admin"),
+        username=username,
         telegram_enabled=telegram_enabled,
+        google_drive_enabled=google_drive_enabled,
     )
 
 

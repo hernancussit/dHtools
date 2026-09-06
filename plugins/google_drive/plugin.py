@@ -647,6 +647,14 @@ class Plugin:
             current_user = getattr(request, "current_user", {}) or {}
             is_admin = (current_user.get("role") == "admin")
 
+            # 1. El usuario debe tener habilitada la integración con Google Drive
+            user_cfg = self.get_user_config(current_username)
+            if not user_cfg.get("enabled", False):
+                return jsonify({
+                    "success": False,
+                    "error": "La integración con Google Drive está desactivada en tu cuenta. Debes activarla en Ajustes (/plugin/google_drive/settings) antes de realizar subidas."
+                }), 400
+
             data = request.get_json(force=True) or {}
             job_id = data.get("job_id")
             if not job_id:
@@ -822,11 +830,16 @@ class Plugin:
             "html_content": html
         }
 
-    def get_download_cloud_option(self) -> Dict[str, Any]:
+    def get_download_cloud_option(self, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         [EXPERIMENTAL] Inyecta la opción de Google Drive en el selector de descargas
-        y en los presets de usuario del Modo Avanzado.
+        y en los presets de usuario del Modo Avanzado SOLO SI el usuario tiene la integración habilitada.
         """
+        user = username or self._get_request_username()
+        user_cfg = self.get_user_config(user)
+        if not user_cfg.get("enabled", False):
+            return None
+
         return {
             "id": self.plugin_id,
             "name": "Google Drive",

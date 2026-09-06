@@ -35,12 +35,25 @@ app.before_request(protect_all_routes)
 @app.context_processor
 def inject_globals():
     from core.utils import load_config
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username") or getattr(request, "current_username", None) or session.get("username", "admin")
+
+    google_drive_enabled = False
+    try:
+        gdrive_inst = plugin_manager.get_plugin_instance("google_drive")
+        if gdrive_inst and hasattr(gdrive_inst, "get_user_config"):
+            u_cfg = gdrive_inst.get_user_config(username)
+            google_drive_enabled = bool(u_cfg.get("enabled", False))
+    except Exception:
+        google_drive_enabled = False
+
     return {
         "version": APP_VERSION,
         "config": load_config(),
         "plugins": plugin_manager.get_active_plugins_summary(),
         "plugin_cloud_admin_panels": plugin_manager.get_admin_cloud_panels(),
-        "plugin_download_cloud_options": plugin_manager.get_download_cloud_options()
+        "plugin_download_cloud_options": plugin_manager.get_download_cloud_options(username=username),
+        "google_drive_enabled": google_drive_enabled
     }
 
 from core.telegram_bot import telegram_bot
