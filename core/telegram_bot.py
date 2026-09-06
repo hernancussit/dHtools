@@ -293,7 +293,22 @@ class TelegramBot:
                 self.send_message(chat_id, "❓ Comando no reconocido. Escribí /ayuda para ver los comandos disponibles.")
             return
 
-        # Not a command -> Check if it's a URL
+        # Check for conversational keywords (when not using slash commands)
+        clean_lower = text.lower().strip()
+        if any(w in clean_lower for w in ("descarga", "descargas", "archivo", "archivos", "mis videos", "mis audios")):
+            self._cmd_descargas(chat_id, username)
+            return
+        elif any(w in clean_lower for w in ("cola", "progreso", "en curso", "pendientes", "descargando")):
+            self._cmd_cola(chat_id, username)
+            return
+        elif any(w in clean_lower for w in ("cuota", "espacio", "disco", "almacenamiento")):
+            self._cmd_cuota(chat_id, username, user_data)
+            return
+        elif any(w in clean_lower for w in ("ayuda", "comandos", "que podes hacer", "qué podés hacer", "instrucciones")):
+            self._cmd_ayuda(chat_id, username)
+            return
+
+        # Not a command or keyword -> Check if it's a URL
         if text.startswith("http://") or text.startswith("https://") or "youtube.com" in text or "youtu.be" in text or "spotify.com" in text or "deezer.com" in text:
             if not username:
                 self.send_message(
@@ -398,40 +413,125 @@ class TelegramBot:
 
         meta = load_downloads_meta()
         user_items = []
-        for filename, info in meta.items():
-            if info.get("owner") == username:
-                user_items.append((filename, info))
 
-        # Sort by timestamp desc
-        user_items.sort(key=lambda x: x[1].get("timestamp", 0), reverse=True)
+        # Map physical files currently in DOWNLOAD_DIR
+        disk_files = {}
+        if os.path.exists(DOWNLOAD_DIR):
+            for entry in os.listdir(DOWNLOAD_DIR):
+                if entry == ".gitkeep" or (entry.startswith("folder_") and entry.endswith(".zip")):
+                    continue
+                entry_path = os.path.join(DOWNLOAD_DIR, entry)
+                if os.path.isfile(entry_path):
+                    disk_files[entry] = entry_path
+
+        # 1. Gather all downloads matching this user from meta
+        for jid, info in meta.items():
+            item_owner = info.get("username") or info.get("owner")
+            if not item_owner:
+                with JOBS_LOCK:
+                    job = JOBS.get(jid)
+                    if job:
+                        item_owner = job.get("owner")
+            if not item_owner:
+                item_owner = "admin"
+
+            # Check if current user is owner or admin
+            if item_owner != username and not (username == "admin" or item_owner in ("admin", username)):
+                continue
+
+            matched_disk_path = None
+            matched_disk_name = None
+            for entry, full_p in disk_files.items():
+                if entry.startswith(f"{jid}_") or entry == jid or entry == f"{jid}.zip":
+                    matched_disk_path = full_p
+                    matched_disk_name = entry
+                    break
+
+            if matched_disk_path and os.path.exists(matched_disk_path):
+                stat = os.stat(matched_disk_path)
+                size_b = stat.st_size
+                mtime = stat.st_mtime
+            else:
+                size_b = info.get("size_bytes", 0)
+                mtime = info.get("created_at", 0)
+
+            title = info.get("filename") or info.get("title") or (matched_disk_name[len(jid)+1:] if matched_disk_name and matched_disk_name.startswith(f"{jid}_") else matched_disk_name) or jid
+
+            user_items.append({
+                "job_id": jid,
+                "filename": title,
+                "disk_path": matched_disk_path,
+                "disk_name": matched_disk_name,
+                "size_bytes": size_b,
+                "mtime": mtime,
+                "owner": item_owner
+            })
+
+        # 2. Add standalone files in DOWNLOAD_DIR that might not be in meta
+        known_jids = {it["job_id"] for it in user_items}
+        for entry, full_p in disk_files.items():
+            parts = entry.split("_", 1)
+            cand_jid = parts[0].replace(".zip", "")
+            if cand_jid in known_jids:
+                continue
+            clean_name = parts[1] if len(parts) > 1 else entry
+            stat = os.stat(full_p)
+            item_owner = None
+            with JOBS_LOCK:
+                job = JOBS.get(cand_jid)
+                if job:
+                    item_owner = job.get("owner")
+            if not item_owner:
+                item_owner = "admin"
+
+            if item_owner == username or (username == "admin" or item_owner in ("admin", username)):
+                user_items.append({
+                    "job_id": cand_jid,
+                    "filename": clean_name,
+                    "disk_path": full_p,
+                    "disk_name": entry,
+                    "size_bytes": stat.st_size,
+                    "mtime": stat.st_mtime,
+                    "owner": item_owner
+                })
+
+        # Sort by most recent mtime
+        user_items.sort(key=lambda x: x.get("mtime", 0), reverse=True)
 
         if not user_items:
             self.send_message(
                 chat_id,
                 "📂 <b>Mis Descargas</b>\n\n"
-                "Todavía no tenés archivos descargados. Enviame un enlace para comenzar."
+                "Todavía no tenés archivos descargados en tu cuenta. Enviame un enlace para comenzar a descargar."
             )
             return
 
-        recent = user_items[:5]
-        self.send_message(chat_id, f"📂 <b>Tus últimas {len(recent)} descargas:</b>")
+        recent = user_items[:6]
+        self.send_message(
+            chat_id,
+            f"📂 <b>Tus descargas ({len(user_items)} disponible{'s' if len(user_items) != 1 else ''}):</b>"
+        )
 
-        for fn, info in recent:
-            title = info.get("title") or info.get("display_name") or fn
-            size_mb = round(info.get("size_bytes", 0) / (1024 * 1024), 1)
-            dur = format_seconds(info.get("duration", 0))
-            is_audio = info.get("is_audio", False)
-            ext = info.get("format") or os.path.splitext(fn)[1].lstrip(".")
+        for it in recent:
+            jid = it["job_id"]
+            title = it["filename"]
+            size_mb = round(it["size_bytes"] / (1024 * 1024), 1)
+            ext = os.path.splitext(title)[1].lstrip(".").lower()
+            is_audio = ext in ("mp3", "m4a", "flac", "wav", "opus", "aac")
 
             txt = (
                 f"{'🎵' if is_audio else '🎬'} <b>{title}</b>\n"
-                f"📦 Peso: {size_mb} MB | ⏱️ {dur} | 🏷️ {ext.upper()}"
+                f"📦 Peso: {size_mb} MB | 🏷️ Formato: {ext.upper() or 'MULTIMEDIA'}"
             )
 
-            # Build keyboard
             buttons = []
-            if size_mb <= 50:
-                buttons.append([{"text": "📥 Enviar a este chat", "callback_data": f"send:{fn[:40]}"}])
+            if it.get("disk_path") and os.path.exists(it["disk_path"]):
+                if size_mb <= 50:
+                    buttons.append([{"text": "📥 Enviar a este chat", "callback_data": f"send:{jid[:40]}"}])
+                else:
+                    buttons.append([{"text": "🌐 Descargar desde la Web (>50MB)", "url": "https://dhtools.example.com"}])
+            else:
+                buttons.append([{"text": "🌐 Abrir en dHtools", "url": "https://dhtools.example.com"}])
 
             markup = {"inline_keyboard": buttons} if buttons else None
             self.send_message(chat_id, txt, reply_markup=markup)
@@ -631,32 +731,73 @@ class TelegramBot:
             return
 
         if data.startswith("send:"):
-            fn = data.split(":", 1)[1]
+            target_key = data.split(":", 1)[1]
             meta = load_downloads_meta()
-            matched = None
+
+            # Find matching item in meta or files
+            matched_jid = None
             matched_info = None
-            for stored_fn, finfo in meta.items():
-                if stored_fn.startswith(fn) or fn in stored_fn:
-                    matched = stored_fn
+            for jid, finfo in meta.items():
+                if jid == target_key or jid.startswith(target_key) or finfo.get("filename", "").startswith(target_key):
+                    matched_jid = jid
                     matched_info = finfo
                     break
 
-            if not matched or not matched_info:
-                self.answer_callback_query(q_id, "Archivo no encontrado", show_alert=True)
-                return
+            if not matched_jid:
+                matched_jid = target_key
+                matched_info = meta.get(target_key, {})
 
-            if matched_info.get("owner") != username:
+            # Check permissions
+            item_owner = (matched_info or {}).get("username") or (matched_info or {}).get("owner")
+            if not item_owner:
+                with JOBS_LOCK:
+                    job = JOBS.get(matched_jid)
+                    if job:
+                        item_owner = job.get("owner")
+            if not item_owner:
+                item_owner = "admin"
+
+            if item_owner != username and not (username == "admin" or item_owner in ("admin", username)):
                 self.answer_callback_query(q_id, "⛔ No tenés permiso para acceder a este archivo", show_alert=True)
                 return
 
-            self.answer_callback_query(q_id, "Enviando archivo...")
-            fpath = safe_download_path(matched)
-            if fpath and os.path.exists(fpath):
-                ok = self.send_media(chat_id, fpath, caption=f"📥 <b>{matched}</b>")
-                if not ok:
-                    self.send_message(chat_id, "⚠️ El archivo supera los 50 MB de límite de Telegram o hubo un error al transferirlo.")
-            else:
-                self.send_message(chat_id, "❌ El archivo ya no se encuentra en el servidor (fue purgado).")
+            # Find actual disk file in DOWNLOAD_DIR
+            actual_fpath = None
+            actual_fname = None
+            if os.path.exists(DOWNLOAD_DIR):
+                for f in os.listdir(DOWNLOAD_DIR):
+                    if f.startswith(f"{matched_jid}_") or f == matched_jid or f == f"{matched_jid}.zip":
+                        cand = os.path.join(DOWNLOAD_DIR, f)
+                        if os.path.isfile(cand):
+                            actual_fpath = cand
+                            actual_fname = f
+                            break
+
+            if not actual_fpath or not os.path.exists(actual_fpath):
+                self.answer_callback_query(q_id, "❌ Archivo no encontrado en el servidor (fue purgado)", show_alert=True)
+                return
+
+            size_bytes = os.path.getsize(actual_fpath)
+            if size_bytes > 50 * 1024 * 1024:
+                self.answer_callback_query(q_id, "⚠️ El archivo supera los 50 MB de Telegram", show_alert=True)
+                self.send_message(
+                    chat_id,
+                    f"⚠️ <b>Archivo demasiado pesado para Telegram:</b>\n\n"
+                    f"El archivo pesa <b>{format_bytes(size_bytes)}</b> y los bots de Telegram solo admiten hasta 50 MB.\n\n"
+                    f"Podés descargarlo directamente en tu navegador desde:\n"
+                    f"👉 https://dhtools.example.com"
+                )
+                return
+
+            self.answer_callback_query(q_id, "🚀 Enviando archivo al chat...")
+            display_title = (matched_info or {}).get("filename") or (actual_fname[len(matched_jid)+1:] if actual_fname.startswith(f"{matched_jid}_") else actual_fname)
+            ok = self.send_media(chat_id, actual_fpath, caption=f"📥 <b>{display_title}</b>")
+            if not ok:
+                self.send_message(
+                    chat_id,
+                    "⚠️ Hubo un error al transferir el archivo a Telegram (posible timeout o restricción de formato). "
+                    "Podés descargarlo directamente desde la plataforma web: https://dhtools.example.com"
+                )
             return
 
         if data.startswith("dl:"):
