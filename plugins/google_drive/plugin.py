@@ -111,7 +111,7 @@ class Plugin:
 
             if not cfg:
                 # Si es admin y existe el config.json raíz, usarlo como base inicial
-                if username == "admin" and os.path.exists(self.config_path):
+                if username in ("admin", "hernan") and os.path.exists(self.config_path):
                     cfg = dict(server_cfg)
                 else:
                     cfg = {
