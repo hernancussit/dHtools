@@ -313,6 +313,27 @@ class PluginManager:
             logger.error(f"Error despachando subida a nube en plugin '{plugin_id}': {e}", exc_info=True)
             return False, {"error": str(e)}
 
+    def upload_file_to_cloud(self, plugin_id: str, filepath: str, username: str, progress_callback=None) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Permite a cualquier plugin o servicio subir un archivo arbitrario en disco directamente al almacenamiento
+        en la nube especificado del usuario (ej: Google Drive, OneDrive), respetando el contrato upload_file_for_user.
+        """
+        if not filepath or not os.path.isfile(filepath):
+            return False, {"error": f"El archivo local a transferir no existe o no es accesible: '{filepath}'"}
+
+        inst = self.get_plugin_instance(plugin_id)
+        if not inst:
+            return False, {"error": f"Extensión de almacenamiento '{plugin_id}' no disponible o desactivada."}
+
+        if not hasattr(inst, "upload_file_for_user"):
+            return False, {"error": f"La extensión '{plugin_id}' no implementa 'upload_file_for_user'."}
+
+        try:
+            return inst.upload_file_for_user(filepath=filepath, username=username, progress_callback=progress_callback)
+        except Exception as e:
+            logger.error(f"Error despachando subida de archivo a nube en plugin '{plugin_id}': {e}", exc_info=True)
+            return False, {"error": str(e)}
+
     def get_user_nav_items(self, username: str = None) -> List[Dict[str, Any]]:
         """
         Recolecta dinámicamente accesos directos o elementos de navegación provistos por los plugins

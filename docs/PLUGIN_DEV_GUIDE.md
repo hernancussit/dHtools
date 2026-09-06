@@ -211,7 +211,7 @@ def get_download_cloud_option(self, username=None):
 ---
 
 ### 7. `upload_job_for_user(self, job_id, username, progress_callback=None) -> Tuple[bool, Dict[str, Any]]`
-* **Propósito:** Contrato estándar para subida manual bajo demanda invocable desde la web, la API o el comando `/descargas` de Telegram.
+* **Propósito:** Contrato estándar para subida manual bajo demanda de descargas existentes, invocable desde la web, la API o el comando `/descargas` de Telegram.
 * **Parámetros:**
   * `job_id` (`str`): ID de la descarga en dHtools.
   * `username` (`str`): Usuario dueño de la descarga.
@@ -222,7 +222,18 @@ def get_download_cloud_option(self, username=None):
 
 ---
 
-### 8. `get_user_nav_item(self, username=None) -> Dict[str, Any]`
+### 8. `upload_file_for_user(self, filepath, username, target_filename=None, progress_callback=None) -> Tuple[bool, Dict[str, Any]]`
+* **Propósito:** Contrato oficial del SDK para que un plugin de almacenamiento suba cualquier archivo arbitrario en disco a la nube del usuario especificado (independientemente de si proviene de una descarga de dHtools o si fue generado por otro plugin como reportes, logs, backups, etc.).
+* **Parámetros:**
+  * `filepath` (`str`): Ruta absoluta al archivo local en disco.
+  * `username` (`str`): Usuario dueño de la cuenta de nube receptora.
+  * `target_filename` (`str`, opcional): Nombre limpio que tendrá el archivo en la nube (por defecto el nombre en disco).
+  * `progress_callback` (`callable`, opcional): Función `callback(percent: int, message: str)`.
+* **Retorno esperado:** Tupla `(éxito, resultado)` (`(True, {"filename": "...", "web_link": "..."})` o `(False, {"error": "..."})`).
+
+---
+
+### 9. `get_user_nav_item(self, username=None) -> Dict[str, Any]`
 * **Propósito:** Inyectar un botón de acceso directo en el panel de seguridad/herramientas de usuario (sidebar de escritorio) y en el menú lateral móvil (drawer).
 * **Retorno esperado:**
 ```python
@@ -318,7 +329,7 @@ providers = self.manager.get_user_cloud_providers("hernan")
 ```
 
 #### 3. `self.manager.upload_job_to_cloud(plugin_id, job_id, username, progress_callback=None) -> Tuple[bool, Dict[str, Any]]`
-Despacha la subida manual de un archivo descargado hacia cualquier plugin de almacenamiento registrado.
+Despacha la subida de una descarga registrada hacia cualquier plugin de almacenamiento en la nube.
 ```python
 ok, res = self.manager.upload_job_to_cloud("onedrive", "abc12345", "hernan")
 if ok:
@@ -327,7 +338,17 @@ else:
     print("Error:", res["error"])
 ```
 
-#### 4. `self.manager.get_queue_status(username=None) -> Dict[str, Any]`
+#### 4. `self.manager.upload_file_to_cloud(plugin_id, filepath, username, progress_callback=None) -> Tuple[bool, Dict[str, Any]]`
+Permite a cualquier plugin auxiliar (ej. `Remote Assist`) subir **cualquier archivo arbitrario en disco** directamente a la nube del usuario (Google Drive, OneDrive, etc.) sin necesidad de implementar clientes OAuth2 propios.
+```python
+ok, res = self.manager.upload_file_to_cloud("google_drive", "/tmp/reporte_diagnostico.zip", "hernan")
+if ok:
+    print("Archivo subido:", res["web_link"])
+else:
+    print("Error:", res["error"])
+```
+
+#### 5. `self.manager.get_queue_status(username=None) -> Dict[str, Any]`
 Consulta de forma *thread-safe* el estado de las descargas activas y en espera en el servidor.
 Si se especifica `username`, filtra únicamente las tareas de ese usuario (imprescindible para bots o asistentes privados multiusuario). Si es `None`, entrega la visión global.
 ```python
@@ -346,19 +367,19 @@ queue_info = self.manager.get_queue_status(username="hernan")
 # }
 ```
 
-#### 5. `self.manager.get_user_nav_items(username=None) -> List[Dict[str, Any]]`
+#### 6. `self.manager.get_user_nav_items(username=None) -> List[Dict[str, Any]]`
 Recolecta todos los botones y enlaces de navegación personal provistos por los plugins para el usuario actual.
 
-#### 6. `self.manager.get_plugin_instance(plugin_id: str) -> Optional[Any]`
+#### 7. `self.manager.get_plugin_instance(plugin_id: str) -> Optional[Any]`
 Obtiene la instancia viva en memoria de otro plugin cargado para invocar métodos entre extensiones.
 
-#### 7. `self.manager.get_plugin(plugin_id: str) -> Optional[Dict[str, Any]]`
+#### 8. `self.manager.get_plugin(plugin_id: str) -> Optional[Dict[str, Any]]`
 Obtiene los metadatos (`plugin.json`) del plugin solicitado.
 
-#### 8. `self.manager.get_all_plugins() -> Dict[str, Dict[str, Any]]`
+#### 9. `self.manager.get_all_plugins() -> Dict[str, Dict[str, Any]]`
 Diccionario con todos los plugins descubiertos en el sistema y su estado.
 
-#### 9. `self.manager.plugins_dir -> str`
+#### 10. `self.manager.plugins_dir -> str`
 Ruta absoluta al directorio `/plugins` en el servidor o contenedor.
 
 ---
@@ -586,7 +607,8 @@ El proyecto cuenta con una arquitectura de plugins totalmente desacoplada del Co
 - `self.manager.enqueue_download(url, quality="best", format_type="video", owner="admin", title="", extra_params=None)`: Solicita descargas al Core de dHtools.
 - `self.manager.get_queue_status(username=None)`: Consulta tareas activas y en espera (con soporte de filtro por usuario).
 - `self.manager.get_user_cloud_providers(username)`: Consulta de nubes activas del usuario.
-- `self.manager.upload_job_to_cloud(plugin_id, job_id, username, progress_callback=None)`: Despachador hacia plugins de nube.
+- `self.manager.upload_job_to_cloud(plugin_id, job_id, username, progress_callback=None)`: Despacha la subida de una descarga de dHtools hacia la nube.
+- `self.manager.upload_file_to_cloud(plugin_id, filepath, username, progress_callback=None)`: Sube cualquier archivo arbitrario en disco a la nube del usuario.
 - `self.manager.get_user_nav_items(username)`: Accesos de navegación.
 - `self.manager.plugins_dir`: Ruta absoluta al directorio de plugins.
 

@@ -731,7 +731,6 @@ class Plugin:
         if not deps_ok:
             return False, {"success": False, "error": f"Google API dependencies missing: {deps_err}", "status_code": 500}
 
-        udir = self.get_user_dir(username)
         clean_name = target_filename or os.path.basename(target_filepath)
         self._append_job_log(job_id, f"[*] [GoogleDrive] Subida bajo demanda iniciada por {username} ({clean_name})...")
 
@@ -743,15 +742,10 @@ class Plugin:
                 except Exception:
                     pass
 
-        fallback_dir = self.plugin_dir if username == "admin" else None
-
-        ok, result = drive_client.upload_file_resumable(
+        ok, result = self.upload_file_for_user(
             filepath=target_filepath,
-            filename=clean_name,
-            config=user_cfg,
-            base_dir=udir,
-            fallback_dir=fallback_dir,
-            owner=username,
+            username=username,
+            target_filename=clean_name,
             progress_callback=_default_prog
         )
 
@@ -801,6 +795,44 @@ class Plugin:
             err_msg = result.get("error", "Error desconocido de subida.")
             self._append_job_log(job_id, f"[!] [GoogleDrive] Falló la subida manual: {err_msg}")
             return False, {"success": False, "error": err_msg, "status_code": 400}
+
+    def upload_file_for_user(self, filepath: str, username: str, target_filename: Optional[str] = None, progress_callback=None) -> Tuple[bool, Dict[str, Any]]:
+        """
+        [EXPERIMENTAL] Contrato oficial del SDK para subir cualquier archivo arbitrario en disco a la cuenta
+        de Google Drive del usuario especificado, respetando su configuración, credenciales y carpetas.
+        """
+        username = (username or "admin").strip().lower()
+        user_cfg = self.get_user_config(username)
+        if not user_cfg.get("enabled", False):
+            return False, {
+                "success": False,
+                "error": f"La integración con Google Drive está desactivada en la cuenta de '{username}'. Debes activarla en Ajustes (/plugin/google_drive/settings) antes de realizar subidas.",
+                "status_code": 400
+            }
+
+        if not filepath or not os.path.isfile(filepath):
+            return False, {"success": False, "error": f"El archivo local no existe o no se puede leer: '{filepath}'", "status_code": 404}
+
+        from plugins.google_drive import drive_client
+        deps_ok, deps_err = drive_client.check_dependencies()
+        if not deps_ok:
+            return False, {"success": False, "error": f"Google API dependencies missing: {deps_err}", "status_code": 500}
+
+        udir = self.get_user_dir(username)
+        clean_name = target_filename or os.path.basename(filepath)
+        fallback_dir = self.plugin_dir if username == "admin" else None
+
+        ok, result = drive_client.upload_file_resumable(
+            filepath=filepath,
+            filename=clean_name,
+            config=user_cfg,
+            base_dir=udir,
+            fallback_dir=fallback_dir,
+            owner=username,
+            progress_callback=progress_callback
+        )
+
+        return ok, result
 
 
     # =========================================================================
