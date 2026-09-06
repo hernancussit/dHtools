@@ -12,7 +12,7 @@ import base64
 import logging
 import threading
 from urllib.parse import urlencode, quote
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import requests
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, session
 
