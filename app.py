@@ -53,6 +53,7 @@ def inject_globals():
         "plugins": plugin_manager.get_active_plugins_summary(),
         "plugin_cloud_admin_panels": plugin_manager.get_admin_cloud_panels(),
         "plugin_download_cloud_options": plugin_manager.get_download_cloud_options(username=username),
+        "plugin_user_nav_items": plugin_manager.get_user_nav_items(username=username),
         "google_drive_enabled": google_drive_enabled
     }
 

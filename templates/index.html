@@ -1188,28 +1188,21 @@
         </select>
       </div>
 
-      {% if telegram_enabled %}
-      <div id="userSecurityNavGrid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px; grid-column:1 / -1; margin-top:2px;">
+      <div id="userSecurityNavGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(65px, 1fr)); gap:5px; grid-column:1 / -1; margin-top:2px;">
         <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center;">
           🛡️ 2FA
         </button>
+        {% if telegram_enabled %}
         <button id="btnOpenTelegramModal" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center;">
           ✈️ Bot
         </button>
-        <a href="/plugin/google_drive/settings" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center; text-decoration:none; display:flex; align-items:center;">
-          📁 Drive
+        {% endif %}
+        {% for nav_item in plugin_user_nav_items %}
+        <a href="{{ nav_item.url }}" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:3px;">
+          <span>{{ nav_item.icon }}</span> <span>{{ nav_item.title }}</span>
         </a>
+        {% endfor %}
       </div>
-      {% else %}
-      <div id="userSecurityNavGrid" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1; margin-top:2px;">
-        <button id="btnOpen2faModal" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">
-          🛡️ 2FA
-        </button>
-        <a href="/plugin/google_drive/settings" class="btn btn-secondary btn-sm" style="font-size:0.78rem; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:4px;">
-          📁 Drive
-        </a>
-      </div>
-      {% endif %}
 
       <div style="display:grid; grid-template-columns: {% if is_admin %}1fr 1fr 1fr{% else %}1fr 1fr{% endif %}; gap:5px; grid-column:1 / -1;">
         {% if is_admin %}
@@ -1869,9 +1862,11 @@
         <a href="/wiki" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
           <span>📚</span> <span>Wiki y Documentación Técnica</span>
         </a>
-        <a href="/plugin/google_drive/settings" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
-          <span>📁</span> <span>Google Drive Cloud Sync</span>
+        {% for nav_item in plugin_user_nav_items %}
+        <a href="{{ nav_item.url }}" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+          <span>{{ nav_item.icon }}</span> <span>{{ nav_item.full_title or nav_item.title }}</span>
         </a>
+        {% endfor %}
         <a href="/about" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
           <span>ℹ️</span> <span>Acerca de & Donar (Cafecito)</span>
         </a>

@@ -225,6 +225,62 @@ def on_telegram_callback(self, query, data, bot):
     return False
 ```
 
+### 4. Protocolo de Proveedores de Almacenamiento en la Nube (Cloud Storage)
+Si deseas crear un plugin de almacenamiento (ej. **OneDrive**, **Dropbox**, **Nextcloud**, **Box**), el Core y el Bot de Telegram están **100% desacoplados**. Solo necesitas implementar estos métodos contractuales en tu clase `Plugin`:
+
+```python
+def get_download_cloud_option(self, username=None):
+    """
+    Inyecta tu nube en el selector web de descargas y presets de usuario.
+    Indica si el usuario la tiene activada o desactivada.
+    """
+    is_enabled = self.is_user_enabled(username) # Tu lógica de activación
+    return {
+        "id": self.plugin_id,
+        "name": "Microsoft OneDrive",
+        "icon": "☁️",
+        "enabled": is_enabled,
+        "status_label": "ACTIVO" if is_enabled else "DESACTIVADO",
+        "description": "Sube el archivo descargado a tu almacenamiento de OneDrive.",
+        "settings_url": f"/plugin/{self.plugin_id}/settings"
+    }
+
+def upload_job_for_user(self, job_id, username, progress_callback=None):
+    """
+    Contrato estándar para subida manual bajo demanda.
+    Invocado automáticamente por Telegram (/descargas) o por la API web sin tocar el Core.
+    Retorna: (True, {"filename": "...", "web_link": "..."}) o (False, {"error": "..."})
+    """
+    # 1. Validar activación del usuario
+    # 2. Localizar archivo de la descarga
+    # 3. Subir vía API del proveedor
+    # 4. Retornar enlace web
+    return True, {"filename": "video.mp4", "web_link": "https://onedrive.live.com/..."}
+
+def get_user_nav_item(self, username=None):
+    """
+    Inyecta un acceso directo en el sidebar de usuario y en el drawer móvil.
+    """
+    return {
+        "id": self.plugin_id,
+        "title": "OneDrive",
+        "full_title": "OneDrive Cloud Sync",
+        "icon": "☁️",
+        "url": f"/plugin/{self.plugin_id}/settings"
+    }
+
+def on_download_complete(self, job_data):
+    """
+    Subida automática al finalizar la descarga en segundo plano.
+    job_data['user_cloud_sync']['plugins'] contendrá las nubes seleccionadas para la tarea.
+    """
+    sync_cfg = job_data.get("user_cloud_sync", {}).get("plugins", {}).get(self.plugin_id, {})
+    if sync_cfg.get("enabled"):
+        self.upload_job_for_user(job_data["job_id"], job_data.get("owner", "admin"))
+```
+
+*Con solo implementar estos métodos, el bot de Telegram mostrará automáticamente botones como `☁️ Subir a OneDrive: ✅ SÍ / ⬜ NO` en inspecciones y `☁️ Subir a OneDrive` en `/descargas`, y la web inyectará el botón de ajustes en la barra lateral sin tocar una sola línea del Core.*
+
 ---
 
 ## 🛠️ 6. API del PluginManager disponible para tu Plugin

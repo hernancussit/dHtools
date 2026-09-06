@@ -883,6 +883,22 @@ class Plugin:
             "settings_url": f"/plugin/{self.plugin_id}/settings"
         }
 
+    def get_user_nav_item(self, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Retorna el acceso directo para la barra de navegación del usuario y drawer móvil.
+        """
+        user = username or self._get_request_username()
+        user_cfg = self.get_user_config(user) if user else {}
+        is_enabled = bool(user_cfg.get("enabled", False))
+        return {
+            "id": self.plugin_id,
+            "title": "Drive",
+            "full_title": "Google Drive Cloud Sync",
+            "icon": "📁",
+            "url": f"/plugin/{self.plugin_id}/settings",
+            "enabled": is_enabled
+        }
+
     # =========================================================================
     # INTEGRACIÓN CON BOT DE TELEGRAM
     # =========================================================================

@@ -12,7 +12,7 @@ import importlib.util
 import threading
 import uuid
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 logger = logging.getLogger("dhtools.plugins")
 if not logger.handlers:
@@ -271,6 +271,75 @@ class PluginManager:
                 except Exception as e:
                     logger.error(f"Error obteniendo opción de descarga de plugin '{pid}': {e}", exc_info=True)
         return options
+
+    def get_user_cloud_providers(self, username: str = None) -> List[Dict[str, Any]]:
+        """
+        Retorna los plugins de almacenamiento en la nube disponibles y activados por el usuario.
+        Cualquier plugin que implemente get_download_cloud_option o upload_job_for_user
+        es compatible con este contrato.
+        """
+        providers = []
+        options = self.get_download_cloud_options(username=username)
+        for opt in options:
+            pid = opt.get("plugin_id")
+            inst = self.get_plugin_instance(pid)
+            if not inst:
+                continue
+            providers.append({
+                "id": pid,
+                "name": opt.get("name", pid),
+                "icon": opt.get("icon", "☁️"),
+                "enabled": bool(opt.get("enabled", False)),
+                "auto_upload": bool(opt.get("auto_upload", False)),
+                "status_label": opt.get("status_label", "DESACTIVADO"),
+                "instance": inst
+            })
+        return providers
+
+    def upload_job_to_cloud(self, plugin_id: str, job_id: str, username: str, progress_callback=None) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Despacha la subida manual de una descarga hacia un plugin de almacenamiento en la nube específico
+        para un usuario determinado, respetando el contrato estandarizado upload_job_for_user.
+        """
+        inst = self.get_plugin_instance(plugin_id)
+        if not inst:
+            return False, {"error": f"Extensión de almacenamiento '{plugin_id}' no disponible."}
+        if not hasattr(inst, "upload_job_for_user"):
+            return False, {"error": f"La extensión '{plugin_id}' no implementa 'upload_job_for_user'."}
+
+        try:
+            return inst.upload_job_for_user(job_id=job_id, username=username, progress_callback=progress_callback)
+        except Exception as e:
+            logger.error(f"Error despachando subida a nube en plugin '{plugin_id}': {e}", exc_info=True)
+            return False, {"error": str(e)}
+
+    def get_user_nav_items(self, username: str = None) -> List[Dict[str, Any]]:
+        """
+        Recolecta dinámicamente accesos directos o elementos de navegación provistos por los plugins
+        para el usuario actual (ej: accesos a ajustes de nube personales como Google Drive, OneDrive, etc.).
+        """
+        items = []
+        with self._lock:
+            instances = list(self._instances.items())
+
+        for pid, inst in instances:
+            if hasattr(inst, "get_user_nav_item"):
+                try:
+                    import inspect
+                    sig = inspect.signature(inst.get_user_nav_item)
+                    if "username" in sig.parameters:
+                        item = inst.get_user_nav_item(username=username)
+                    else:
+                        item = inst.get_user_nav_item()
+                    if item and isinstance(item, dict):
+                        item.setdefault("id", pid)
+                        item.setdefault("title", self._plugins.get(pid, {}).get("name", pid))
+                        item.setdefault("icon", self._plugins.get(pid, {}).get("icon", "🔌"))
+                        item.setdefault("url", f"/plugin/{pid}/settings")
+                        items.append(item)
+                except Exception as e:
+                    logger.error(f"Error obteniendo nav item de plugin '{pid}': {e}")
+        return items
 
     # =========================================================================
     # TELEGRAM BOT INTEGRATION (Hooks & Dispatchers)
