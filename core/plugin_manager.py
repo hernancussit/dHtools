@@ -9,6 +9,7 @@ import sys
 import json
 import logging
 import importlib.util
+import types
 import threading
 import uuid
 import time
@@ -101,7 +102,20 @@ class PluginManager:
             return
 
         try:
-            module_name = f"dhtools_plugin_{plugin_id}"
+            plugin_path = meta.get("_path") or os.path.dirname(entry_file)
+            pkg_name = f"plugins.{plugin_id}"
+
+            # Registrar namespace del plugin como paquete para permitir importaciones relativas (ej. from .core...)
+            if pkg_name not in sys.modules:
+                pkg_mod = types.ModuleType(pkg_name)
+                pkg_mod.__path__ = [plugin_path]
+                pkg_mod.__package__ = pkg_name
+                pkg_mod.__file__ = entry_file
+                sys.modules[pkg_name] = pkg_mod
+            else:
+                sys.modules[pkg_name].__path__ = [plugin_path]
+
+            module_name = f"{pkg_name}.plugin"
             spec = importlib.util.spec_from_file_location(module_name, entry_file)
             if not spec or not spec.loader:
                 logger.error(f"No se pudo crear spec para plugin '{plugin_id}'")
@@ -898,10 +912,12 @@ class PluginManager:
                     except Exception as e:
                         logger.warning(f"Error en on_unload de '{plugin_id}': {e}")
 
-            # Limpiar módulo de sys.modules si estaba cargado
-            module_name = f"dhtools_plugin_{plugin_id}"
-            if module_name in sys.modules:
-                sys.modules.pop(module_name, None)
+            # Limpiar módulos de sys.modules
+            prefix = f"plugins.{plugin_id}"
+            legacy_name = f"dhtools_plugin_{plugin_id}"
+            to_del = [m for m in list(sys.modules.keys()) if m == prefix or m.startswith(f"{prefix}.") or m == legacy_name]
+            for m in to_del:
+                sys.modules.pop(m, None)
 
             # Volver a cargar si está habilitado
             if meta.get("enabled", False):
