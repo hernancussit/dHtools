@@ -1,9 +1,16 @@
-# ⚡ dHtools - Suite Multimedia & Extractor Universal
+<p align="center">
+  <img src="static/icons/brand_logo.png" alt="dHtools Logo" width="140" style="border-radius: 28px; box-shadow: 0 0 25px rgba(239, 68, 68, 0.4);">
+</p>
 
-[![Release](https://img.shields.io/badge/Release-v1.4.0--stable-blue.svg)](https://github.com/hernancussit/dHtools)
-[![Python](https://img.shields.io/badge/Python-3.11+-yellow.svg)](https://python.org)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docker.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<h1 align="center">⚡ dHtools - Suite Multimedia & Extractor Universal</h1>
+
+<p align="center">
+  <a href="https://github.com/hernancussit/dHtools"><img src="https://img.shields.io/badge/Release-v2.8.0--dev-blue.svg" alt="Release"></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.11+-yellow.svg" alt="Python"></a>
+  <a href="https://docker.com"><img src="https://img.shields.io/badge/Docker-Compose-2496ED.svg" alt="Docker"></a>
+  <a href="https://cafecito.app/henu_"><img src="https://img.shields.io/badge/Cafecito-Invitame_uno-00A8FF.svg?logo=coffeescript&logoColor=white" alt="Cafecito"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+</p>
 
 **dHtools** es una plataforma web autohospedable y de alto rendimiento diseñada para la descarga, conversión, recorte y sincronización en la nube de contenido multimedia desde múltiples plataformas (**YouTube, Spotify, Deezer, TikTok, Instagram, Twitter/X, Twitch, Facebook y más**).
 
@@ -141,7 +148,29 @@ tu-dominio.com {
 
 ---
 
+## ☕ Apoyá el Proyecto
+
+Si **dHtools** te resulta útil para gestionar tus descargas multimedia y administrar tu servidor, podés invitarme un cafecito para apoyar el desarrollo continuo y mantenimiento de nuevas funciones:
+
+<div align="center">
+  <a href="https://cafecito.app/henu_" target="_blank" rel="noopener noreferrer">
+    <img src="https://cdn.cafecito.app/imgs/buttons/button_5.png" alt="Invitame un café en cafecito.app" height="48" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" />
+  </a>
+  <p><b>¡Muchas gracias por apoyar el software independiente y de código libre!</b></p>
+</div>
+
+---
+
+## 👤 Autor y Créditos
+
+- **Creador y Desarrollador:** [Hernán Cussit](https://github.com/hernancussit)
+- **Estudio / Servicios:** [Servicios Informáticos LT](https://serviciosinformaticoslt.com)
+- **Contacto en Telegram:** [@henu_45](https://t.me/henu_45)
+- **Donaciones:** [cafecito.app/henu_](https://cafecito.app/henu_)
+
+---
+
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT.
+Este proyecto está bajo la Licencia [MIT](LICENSE).
 

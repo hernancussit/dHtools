@@ -60,6 +60,42 @@ def favicon_ico():
     return send_file(os.path.join(current_app.root_path, "static", "favicon.ico"), mimetype="image/x-icon")
 
 
+@ui_bp.route("/favicon.png")
+def favicon_png():
+    return send_file(os.path.join(current_app.root_path, "static", "favicon.png"), mimetype="image/png")
+
+
+@ui_bp.route("/about")
+@ui_bp.route("/acerca-de")
+def about():
+    cfg = load_config()
+    user = getattr(request, "current_user", {}) or {}
+    is_admin = (user.get("role") == "admin")
+    from core.telegram_bot import telegram_bot
+    telegram_enabled = telegram_bot.is_enabled() and bool(telegram_bot.get_token())
+    from core.utils import get_git_info
+    git_info = get_git_info()
+    branch = git_info.get("branch") or "dev"
+
+    raw_ver = APP_VERSION.split("-")[0]
+    display_version = f"{raw_ver}-{branch}" if branch and branch != "main" else raw_ver
+
+    return render_template(
+        "about.html",
+        version=display_version,
+        raw_version=raw_ver,
+        branch=branch,
+        config=cfg,
+        is_admin=is_admin,
+        username=user.get("username", "admin"),
+        telegram_enabled=telegram_enabled,
+        creator_name="Hernán Cussit",
+        creator_company="Servicios Informáticos LT",
+        cafecito_url="https://cafecito.app/henu_",
+        github_repo="https://github.com/hernancussit/dHtools",
+    )
+
+
 
 @ui_bp.route("/api/version")
 def api_version():

@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
-<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="alternate icon" href="/static/favicon.ico">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/favicon.png">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <title>{{ (config and config.site_title) or 'dHtools - Suite Multimedia' }}</title>
 
 <style>
@@ -1073,7 +1073,8 @@
   <!-- MOBILE TOP BAR -->
   <header class="mobile-topbar">
     <a href="/" class="mobile-topbar-brand">
-      <span class="mobile-brand-title">{{ (config and config.site_title) or '⚡ dHtools' }}</span>
+      <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:28px; height:28px; border-radius:7px; object-fit:cover; border:1px solid rgba(239,68,68,0.4); box-shadow:0 0 10px rgba(239,68,68,0.35);">
+      <span class="mobile-brand-title">{{ (config and config.site_title) or 'dHtools' }}</span>
       <span class="brand-badge" style="font-size:0.68rem; padding:1px 6px;">v{{ version }}</span>
       {% if branch %}
       <span style="font-size:0.62rem; font-weight:800; padding:1px 5px; border-radius:4px; text-transform:uppercase; {% if branch == 'dev' %}background:rgba(245,158,11,0.18); color:#fbbf24; border:1px solid rgba(245,158,11,0.35);{% else %}background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35);{% endif %}">{{ branch }}</span>
@@ -1094,8 +1095,9 @@
   <aside class="sidebar">
     <div>
       <div class="sidebar-header">
-        <a href="/" class="brand-title">
-          <span>{{ (config and config.site_title) or '⚡ dHtools' }}</span>
+        <a href="/" class="brand-title" style="display:flex; align-items:center; gap:10px;">
+          <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:34px; height:34px; border-radius:9px; object-fit:cover; border:1px solid rgba(239,68,68,0.4); box-shadow:0 0 12px rgba(239,68,68,0.35);">
+          <span>{{ (config and config.site_title) or 'dHtools' }}</span>
         </a>
 
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -1185,11 +1187,12 @@
       </div>
       {% endif %}
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; grid-column:1 / -1;">
+      <div style="display:grid; grid-template-columns: {% if is_admin %}1fr 1fr 1fr{% else %}1fr 1fr{% endif %}; gap:5px; grid-column:1 / -1;">
         {% if is_admin %}
-        <a href="/admin" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">⚙️ Admin</a>
+        <a href="/admin" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center;">⚙️ Admin</a>
         {% endif %}
-        <a href="/wiki" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">📚 Wiki</a>
+        <a href="/wiki" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center;">📚 Wiki</a>
+        <a href="/about" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:6px 2px; justify-content:center;">ℹ️ Acerca</a>
       </div>
 
       <button id="pwaInstallBtn" class="btn btn-primary btn-sm" style="display:none; width:100%; font-size:0.8rem; grid-column:1 / -1;">
@@ -1721,7 +1724,8 @@
 <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop"></div>
 <aside class="mobile-drawer" id="mobileDrawer">
   <div class="mobile-drawer-header">
-    <div style="display:flex; align-items:center; gap:8px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:28px; height:28px; border-radius:7px; object-fit:cover; border:1px solid rgba(239,68,68,0.4); box-shadow:0 0 10px rgba(239,68,68,0.35);">
       <span style="font-size:1.05rem; font-weight:800;">⚡ Menú & Opciones</span>
     </div>
     <button type="button" class="mobile-drawer-close" id="btnCloseMobileDrawer" aria-label="Cerrar menú">✕</button>
@@ -1788,6 +1792,9 @@
         {% endif %}
         <a href="/wiki" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
           <span>📚</span> <span>Wiki y Documentación Técnica</span>
+        </a>
+        <a href="/about" class="btn btn-secondary btn-sm" style="justify-content:flex-start; padding:10px 12px; font-size:0.85rem;">
+          <span>ℹ️</span> <span>Acerca de & Donar (Cafecito)</span>
         </a>
       </div>
     </div>

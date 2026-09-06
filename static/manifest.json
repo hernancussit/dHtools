@@ -1,24 +1,23 @@
 {
   "name": "dHtools - Suite Multimedia",
   "short_name": "dHtools",
-  "description": "Descargador y extractor multimedia avanzado para YouTube, Spotify, Deezer, TikTok, Instagram y más.",
-
+  "description": "Descargador y extractor multimedia universal de alto rendimiento para YouTube, Spotify, Deezer, TikTok, Instagram y más.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#070b14",
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/static/icons/icon-192.svg",
+      "src": "/static/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/icons/icon-512.svg",
+      "src": "/static/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

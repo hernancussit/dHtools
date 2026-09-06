@@ -7,9 +7,9 @@
 <title>Panel de Administración - {{ (config and config.site_title) or 'dHtools' }}</title>
 
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
-<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="alternate icon" href="/static/favicon.ico">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/favicon.png">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <meta name="theme-color" content="#ef4444">
 <style>
   :root {
@@ -487,13 +487,16 @@
   <!-- SIDEBAR NAVIGATION -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <div>
-        <div class="sidebar-title">
-          <span>⚙️ Panel Admin</span>
-        </div>
-        <div class="sidebar-subtitle">
-          <span>{{ (config and config.site_title) or 'dHtools' }}</span>
-          <span class="version-tag">v{{ version }}</span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:36px; height:36px; border-radius:9px; object-fit:cover; border:1px solid rgba(239,68,68,0.4); box-shadow:0 0 10px rgba(239,68,68,0.35);">
+        <div>
+          <div class="sidebar-title">
+            <span>⚙️ Panel Admin</span>
+          </div>
+          <div class="sidebar-subtitle">
+            <span>{{ (config and config.site_title) or 'dHtools' }}</span>
+            <span class="version-tag">v{{ version }}</span>
+          </div>
         </div>
       </div>
       <div class="mobile-admin-top-actions">
@@ -528,6 +531,9 @@
       </a>
       <a href="/wiki" class="sidebar-link-btn">
         <span>📚</span> Wiki Técnica
+      </a>
+      <a href="/about" class="sidebar-link-btn">
+        <span>ℹ️</span> Acerca de & Donar
       </a>
       <button id="logoutBtn" class="btn btn-danger btn-sm" style="width:100%; margin-top:4px;">
         🚪 Cerrar Sesión

@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="cyberpunk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="theme-color" content="#070b14">
+<title>Acerca de - {{ (config and config.site_title) or 'dHtools' }}</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/favicon.png">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+
+<style>
+  :root, [data-theme="cyberpunk"] {
+    --bg-main: #070b14;
+    --bg-card: #0f172a;
+    --bg-card-hover: #131e35;
+    --bg-input: #0b1222;
+    --accent: #ef4444;
+    --accent-2: #f87171;
+    --accent-blue: #38bdf8;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --border: #1e293b;
+    --border-highlight: #334155;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --cafecito: #00A8FF;
+    --cafecito-hover: #008cd4;
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  [data-theme="oled"] {
+    --bg-main: #000000;
+    --bg-card: #0a0a0a;
+    --bg-card-hover: #141414;
+    --bg-input: #121212;
+    --accent: #e11d48;
+    --accent-2: #fb7185;
+    --accent-blue: #0ea5e9;
+    --text: #ffffff;
+    --muted: #a1a1aa;
+    --border: #222225;
+    --border-highlight: #333338;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --cafecito: #00A8FF;
+    --cafecito-hover: #008cd4;
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  }
+  [data-theme="emerald"] {
+    --bg-main: #021a14;
+    --bg-card: #064e3b;
+    --bg-card-hover: #075e47;
+    --bg-input: #022018;
+    --accent: #10b981;
+    --accent-2: #34d399;
+    --accent-blue: #6ee7b7;
+    --text: #ecfdf5;
+    --muted: #a7f3d0;
+    --border: #065f46;
+    --border-highlight: #047857;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --cafecito: #00A8FF;
+    --cafecito-hover: #008cd4;
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  [data-theme="light"] {
+    --bg-main: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f8fafc;
+    --bg-input: #f8fafc;
+    --accent: #ef4444;
+    --accent-2: #f87171;
+    --accent-blue: #0284c7;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --border-highlight: #cbd5e1;
+    --success: #16a34a;
+    --warning: #d97706;
+    --cafecito: #008cd4;
+    --cafecito-hover: #0074b0;
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-main);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px 14px 40px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  /* TOP NAVIGATION */
+  .top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    transition: all 0.18s ease;
+  }
+  .btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-highlight);
+    transform: translateY(-1px);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    border: none;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.1);
+  }
+
+  /* BRAND HERO SECTION */
+  .hero-card {
+    text-align: center;
+    padding: 36px 20px 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, rgba(239,68,68,0.18), transparent 70%);
+    pointer-events: none;
+  }
+  .brand-logo-wrap {
+    display: inline-block;
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .brand-logo-img {
+    width: 120px;
+    height: 120px;
+    border-radius: 28px;
+    object-fit: cover;
+    border: 2px solid rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.35), 0 0 45px rgba(56, 189, 248, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .brand-logo-img:hover {
+    transform: scale(1.05) rotate(1deg);
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.55), 0 0 60px rgba(56, 189, 248, 0.35);
+  }
+  .hero-title {
+    font-size: 2.1rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin: 0 0 6px 0;
+  }
+  .hero-subtitle {
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto 16px;
+  }
+  .badge-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text);
+  }
+  .badge-version {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--accent-2);
+    border-color: rgba(239, 68, 68, 0.35);
+  }
+  .badge-branch {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+  .badge-mit {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+
+  /* GRID SECTIONS */
+  .grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 768px) {
+    .grid-2col {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 20px;
+    box-shadow: var(--card-shadow);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-icon {
+    font-size: 1.4rem;
+  }
+  .card-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  /* CAFECITO MODULE */
+  .cafecito-card {
+    background: linear-gradient(145deg, var(--bg-card), rgba(0, 168, 255, 0.06));
+    border: 1px solid rgba(0, 168, 255, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .cafecito-card::after {
+    content: '☕';
+    position: absolute;
+    right: -15px;
+    bottom: -20px;
+    font-size: 7rem;
+    opacity: 0.05;
+    pointer-events: none;
+  }
+  .btn-cafecito {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: var(--cafecito);
+    color: #ffffff !important;
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-decoration: none;
+    border: none;
+    box-shadow: 0 6px 20px rgba(0, 168, 255, 0.4);
+    transition: all 0.22s ease;
+    margin-top: 14px;
+  }
+  .btn-cafecito:hover {
+    background: var(--cafecito-hover);
+    box-shadow: 0 8px 26px rgba(0, 168, 255, 0.55);
+    transform: translateY(-2px);
+  }
+  .cafecito-qr-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 14px;
+  }
+  .cafecito-qr-img {
+    width: 90px;
+    height: 90px;
+    border-radius: 8px;
+    background: #fff;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+
+  /* TECH STACK LIST */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .tech-item {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  /* CREDITS LIST */
+  .credit-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.9rem;
+  }
+  .credit-row:last-child {
+    border-bottom: none;
+  }
+  .credit-label {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .credit-val {
+    font-weight: 700;
+  }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    margin-top: 36px;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- TOP NAVIGATION -->
+  <header class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="btn">
+        <span>⬅</span>
+        <span>Volver a dHtools</span>
+      </a>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/wiki" class="btn">📚 Wiki Técnica</a>
+      {% if is_admin %}
+      <a href="/admin" class="btn">⚙️ Panel Admin</a>
+      {% endif %}
+      <select id="themeSelector" style="padding:7px 10px; font-size:0.8rem; background:var(--bg-card); color:var(--text); border:1px solid var(--border); border-radius:8px;">
+        <option value="cyberpunk">🌌 Cyberpunk</option>
+        <option value="oled">🌑 OLED Black</option>
+        <option value="emerald">🌲 Emerald</option>
+        <option value="light">☀️ Light Clean</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- BRAND HERO -->
+  <section class="hero-card">
+    <div class="brand-logo-wrap">
+      <img src="/static/icons/brand_logo.png" alt="dHtools Logo" class="brand-logo-img">
+    </div>
+    <h1 class="hero-title">⚡ dHtools</h1>
+    <p class="hero-subtitle">
+      Suite multimedia de alto rendimiento autohospedable para extracción, conversión y sincronización en la nube.
+    </p>
+
+    <div class="badge-row">
+      <span class="badge badge-version">v{{ version }}</span>
+      <span class="badge badge-branch">Rama: {{ branch }}</span>
+      <span class="badge badge-mit">Licencia MIT</span>
+      <span class="badge">Open Source</span>
+    </div>
+  </section>
+
+  <!-- MAIN 2-COLUMN GRID -->
+  <div class="grid-2col">
+
+    <!-- CARD 1: CAFECITO / DONACIONES -->
+    <div class="card cafecito-card">
+      <div class="card-header">
+        <span class="card-icon">☕</span>
+        <h2 class="card-title">Apoyá el Proyecto</h2>
+      </div>
+
+      <p style="font-size:0.92rem; margin:0 0 12px; color:var(--text);">
+        <b>dHtools</b> es un proyecto de código abierto desarrollado y mantenido con dedicación para ofrecer una suite multimedia moderna, rápida y sin límites.
+      </p>
+      <p style="font-size:0.85rem; color:var(--muted); margin:0;">
+        Si la plataforma te resulta de utilidad para descargar tu música, videos, automatizar descargas o sincronizar con la nube, podés colaborar invitándome un cafecito para apoyar el desarrollo continuo, mejoras de compatibilidad y costos de infraestructura.
+      </p>
+
+      <a href="{{ cafecito_url }}" target="_blank" rel="noopener noreferrer" class="btn-cafecito">
+        <span style="font-size:1.3rem;">☕</span>
+        <span>Invitame un Cafecito</span>
+      </a>
+
+      <!-- SCAN QR OPTION -->
+      <div class="cafecito-qr-box">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fcafecito.app%2Fhenu_&format=png" alt="QR Cafecito" class="cafecito-qr-img">
+        <div>
+          <div style="font-weight:700; font-size:0.88rem; margin-bottom:4px;">📲 Escaneá desde tu celular</div>
+          <div style="font-size:0.78rem; color:var(--muted); line-height:1.4;">
+            Doná en segundos a través de Mercado Pago o tarjeta de débito/crédito en <code>cafecito.app/henu_</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD 2: CRÉDITOS Y AUTORÍA -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">👤</span>
+        <h2 class="card-title">Créditos & Autoría</h2>
+      </div>
+
+      <div class="credit-row">
+        <span class="credit-label">Desarrollador Principal:</span>
+        <span class="credit-val">{{ creator_name }}</span>
+      </div>
+      <div class="credit-row">
+        <span class="credit-label">Organización / Empresa:</span>
+        <span class="credit-val">{{ creator_company }}</span>
+      </div>
+      <div class="credit-row">
+        <span class="credit-label">Contacto Telegram:</span>
+        <span class="credit-val"><a href="https://t.me/henu_45" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue); text-decoration:none;">@henu_45</a></span>
+      </div>
+      <div class="credit-row">
+        <span class="credit-label">Bot de Telegram dHtools:</span>
+        <span class="credit-val"><a href="https://t.me/dhtoolsbot" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue); text-decoration:none;">@dhtoolsbot</a></span>
+      </div>
+      <div class="credit-row">
+        <span class="credit-label">Repositorio GitHub:</span>
+        <span class="credit-val"><a href="{{ github_repo }}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue); text-decoration:none;">hernancussit/dHtools</a></span>
+      </div>
+      <div class="credit-row">
+        <span class="credit-label">Licencia:</span>
+        <span class="credit-val" style="color:var(--success);">MIT License (Libre & Abierto)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ARCHITECTURE & TECH STACK CARD -->
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+      <span class="card-icon">🚀</span>
+      <h2 class="card-title">Arquitectura & Tecnologías</h2>
+    </div>
+    <p style="font-size:0.88rem; color:var(--muted); margin:0 0 14px;">
+      dHtools combina microservicios de última generación y motores multimedia integrados en una arquitectura reactiva y aislada:
+    </p>
+
+    <div class="tech-grid">
+      <div class="tech-item">🐍 Python 3.11</div>
+      <div class="tech-item">⚡ Flask Modular</div>
+      <div class="tech-item">🐳 Docker Compose</div>
+      <div class="tech-item">🎬 yt-dlp Core</div>
+      <div class="tech-item">🌌 Cobalt API v11</div>
+      <div class="tech-item">🦕 Deno Engine</div>
+      <div class="tech-item">🎞️ FFmpeg 7.1</div>
+      <div class="tech-item">🛡️ Proxy Residencial</div>
+      <div class="tech-item">🤖 Telegram Bot Hub</div>
+      <div class="tech-item">☁️ WebDAV / FTP / S3</div>
+      <div class="tech-item">🔐 2FA / TOTP</div>
+      <div class="tech-item">📲 PWA Offline Ready</div>
+    </div>
+  </div>
+
+  <!-- MIT LICENSE CARD -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">📜</span>
+      <h2 class="card-title">Licencia MIT</h2>
+    </div>
+    <div style="font-family:monospace; font-size:0.8rem; color:var(--muted); line-height:1.5; background:var(--bg-input); padding:14px; border-radius:10px; border:1px solid var(--border);">
+      Copyright (c) 2026 Hernán Cussit - Servicios Informáticos LT<br><br>
+      Permission is hereby granted, free of charge, to any person obtaining a copy
+      of this software and associated documentation files (the "Software"), to deal
+      in the Software without restriction, including without limitation the rights
+      to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+      copies of the Software, and to permit persons to whom the Software is
+      furnished to do so, subject to the following conditions:<br><br>
+      The above copyright notice and this permission notice shall be included in all
+      copies or substantial portions of the Software.
+    </div>
+  </div>
+
+  <div class="footer">
+    ⚡ <b>dHtools</b> — Diseñado y desarrollado con pasión por <b>Hernán Cussit</b>.
+  </div>
+
+</div>
+
+<script>
+  // Theme management synchronized with site
+  const themeSelector = document.getElementById('themeSelector');
+  const currentTheme = localStorage.getItem('site_theme') || '{{ (config and config.default_theme) or "cyberpunk" }}';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  if (themeSelector) themeSelector.value = currentTheme;
+
+  themeSelector?.addEventListener('change', (e) => {
+    const chosen = e.target.value;
+    document.documentElement.setAttribute('data-theme', chosen);
+    localStorage.setItem('site_theme', chosen);
+  });
+</script>
+</body>
+</html>

@@ -6,9 +6,9 @@
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <title>Iniciar Sesión - {{ (config and config.site_title) or '🎬 Descargador Multimedia' }}</title>
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
-<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="alternate icon" href="/static/favicon.ico">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/favicon.png">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <meta name="theme-color" content="#ef4444">
 <style>
   :root {
@@ -170,8 +170,11 @@
 <body>
 <div class="login-card">
   <div class="branding">
-    <h1>{{ (config and config.site_title) or '🎬 Descargador Multimedia' }}</h1>
-    <p>{{ (config and config.site_subtitle) or 'Ingresá tus credenciales para acceder a la plataforma' }}</p>
+    <div style="margin-bottom:12px;">
+      <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:76px; height:76px; border-radius:18px; object-fit:cover; border:2px solid rgba(239,68,68,0.45); box-shadow:0 0 20px rgba(239,68,68,0.35), 0 0 35px rgba(56,189,248,0.2);">
+    </div>
+    <h1>{{ (config and config.site_title) or 'dHtools' }}</h1>
+    <p>Suite Multimedia & Extractor Universal</p>
   </div>
 
   <button id="pwaInstallBtn" class="btn-install" type="button" title="Instalar como App nativa">
@@ -242,8 +245,11 @@
   </form>
   {% endif %}
 
-  <div class="footer-note">
-    🔒 Acceso privado restringido a usuarios autorizados.
+  <div class="footer-note" style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+    <span>🔒 Acceso privado restringido a usuarios autorizados.</span>
+    <a href="/about" style="color:var(--muted); font-size:0.75rem; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='var(--muted)'">
+      ⚡ Acerca de dHtools & Donaciones
+    </a>
   </div>
 </div>
 
