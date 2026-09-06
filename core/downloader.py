@@ -335,9 +335,29 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return None
 
+    # Automatic fallback to Residential Proxy if not already using a proxy
+    if not proxy_url:
+        try:
+            res_cfg = get_residential_proxy_config()
+            if res_cfg.get("enabled") and res_cfg.get("url") and res_cfg.get("auto_fallback", True):
+                if job_id:
+                    append_job_log(job_id, "[*] Reintentando inspección mediante Enlace Residencial de Respaldo...")
+                p_opts = dict(ydl_opts_base)
+                p_opts["proxy"] = res_cfg["url"]
+                if has_cookies:
+                    p_opts["cookiefile"] = COOKIES_FILE
+                p_opts["extractor_args"] = player_client_opts(["web", "mweb"], for_download=download)["extractor_args"]
+                with yt_dlp.YoutubeDL(p_opts) as ydl:
+                    res = ydl.extract_info(url, download=download)
+                    if res:
+                        return res
+        except Exception as pe:
+            last_exc = pe
+
     if last_exc:
         raise last_exc
     return None
+
 
 
 def normalize_url(url: str) -> str:

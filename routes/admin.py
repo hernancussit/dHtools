@@ -355,7 +355,7 @@ def admin_git_update():
     git_info = get_git_info()
     current_commit = git_info.get("commit")
     current_branch = git_info.get("branch") or "main"
-    app_dir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     try:
         save_rollback_state({
@@ -366,7 +366,11 @@ def admin_git_update():
         })
 
         subprocess.run(["git", "fetch", "origin"], cwd=app_dir, capture_output=True, text=True, timeout=30, check=True)
-        pull_res = subprocess.run(["git", "pull", "origin", current_branch], cwd=app_dir, capture_output=True, text=True, timeout=45, check=True)
+        # Attempt pull with rebase first, or fallback to fast-forward/reset if branches diverged cleanly
+        pull_res = subprocess.run(["git", "pull", "--rebase", "origin", current_branch], cwd=app_dir, capture_output=True, text=True, timeout=45)
+        if pull_res.returncode != 0:
+            # Fallback to hard reset against origin branch
+            pull_res = subprocess.run(["git", "reset", "--hard", f"origin/{current_branch}"], cwd=app_dir, capture_output=True, text=True, timeout=30, check=True)
 
         req_file = os.path.join(app_dir, "requirements.txt")
         if os.path.exists(req_file):
@@ -378,6 +382,7 @@ def admin_git_update():
             "message": "Actualización completada con éxito. Reiniciando servidor...",
             "details": pull_res.stdout.strip()
         })
+
     except Exception as e:
         return jsonify({"error": f"Error durante la actualización: {e}"}), 500
 
