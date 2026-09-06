@@ -122,7 +122,7 @@ def protect_all_routes():
         request.path == "/login"
         or request.path == "/logout"
         or request.path.startswith("/static/")
-        or request.path in ("/manifest.json", "/sw.js", "/robots.txt", "/favicon.ico")
+        or request.path in ("/manifest.json", "/sw.js", "/robots.txt", "/favicon.ico", "/favicon.png")
         or request.path in ("/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/verify-2fa")
     ):
         return None
@@ -184,7 +184,11 @@ def protect_all_routes():
             request.current_username = auth.username
             return None
 
-    # 3. Unauthenticated requests
+    # 3. Public informational pages accessible without login (guests and authenticated users)
+    if request.path in ("/about", "/acerca-de"):
+        return None
+
+    # 4. Unauthenticated requests
     if request.path.startswith("/api/"):
         return jsonify({"error": "Autenticación requerida. Iniciá sesión en la web o enviá credenciales HTTP Basic."}), 401
 
