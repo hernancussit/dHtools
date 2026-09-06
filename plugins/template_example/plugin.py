@@ -117,9 +117,61 @@ class Plugin:
         # 2. Notificar por Discord, WhatsApp o Webhook.
         # 3. Mover o copiar el archivo a una ruta específica fuera de dHtools.
 
-    def on_download_error(self, job_data, error=None):
-        """
-        Hook ejecutado si una descarga falla.
-        """
-        job_id = job_data.get("job_id") or job_data.get("id")
         logger.warning(f"[EXPERIMENTAL] {self.name} -> Fallo en descarga {job_id}: {error}")
+
+    # =========================================================================
+    # INYECCIÓN SEGURA EN PANELES UI (Slots de Interfaz)
+    # =========================================================================
+
+    def get_admin_cloud_panel(self, config=None):
+        """
+        (Opcional) Inyecta una tarjeta o bloque informativo en la pestaña Cloud Sync de /admin.
+        """
+        return {
+            "id": self.plugin_id,
+            "title": "Proveedor Ejemplo (Nube)",
+            "icon": "🧪",
+            "badge": "EXP",
+            "settings_url": f"/plugin/{self.plugin_id}/status",
+            "html_content": "<p style='font-size:0.8rem; color:var(--muted); margin:0;'>Demostración de conector cloud inyectado dinámicamente.</p>"
+        }
+
+    def get_download_cloud_option(self):
+        """
+        (Opcional) Inyecta una opción de almacenamiento en el acordeón de nube de la web principal.
+        """
+        return {
+            "id": self.plugin_id,
+            "name": "Nube Ejemplo",
+            "icon": "🧪",
+            "badge": "EXP",
+            "description": "Envía las descargas a un destino configurado en este plugin.",
+            "fields": [
+                {"id": "carpeta_remota", "label": "Carpeta", "placeholder": "ej. /mis_videos"}
+            ]
+        }
+
+    # =========================================================================
+    # INTERCEPCIÓN SEGURA DEL BOT DE TELEGRAM PRINCIPAL
+    # =========================================================================
+
+    def get_telegram_commands(self):
+        """
+        (Opcional) Retorna comandos adicionales para añadir al menú /ayuda del bot de Telegram.
+        """
+        return [
+            {"command": "/ejemplo", "description": "Comando de prueba del plugin de plantilla"}
+        ]
+
+    def on_telegram_command(self, cmd, args, message, bot):
+        """
+        (Opcional) Maneja comandos de Telegram delegados por el bot principal.
+        Retorna True si el comando fue procesado por este plugin.
+        """
+        if cmd == "/ejemplo":
+            chat_id = message.get("chat", {}).get("id")
+            if chat_id:
+                bot.send_message(chat_id, "🧪 ¡Hola! Este comando fue procesado por el plugin de plantilla [EXPERIMENTAL].")
+            return True
+        return False
+

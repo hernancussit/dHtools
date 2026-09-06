@@ -1572,6 +1572,32 @@
                 <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.78rem; margin-bottom:6px;">
                 <button type="button" id="btnTestUserFtp" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar FTP</button>
               </div>
+
+              <!-- CONECTORES CLOUD INYECTADOS POR PLUGINS [EXPERIMENTAL] -->
+              {% for opt in plugin_download_cloud_options %}
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid rgba(56,189,248,0.35);" class="plugin-cloud-card" data-plugin-id="{{ opt.id }}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text); margin:0; cursor:pointer;">
+                    <input type="checkbox" id="pluginCloud_{{ opt.id }}_enabled" class="plugin-cloud-check" data-plugin="{{ opt.id }}">
+                    <span>{{ opt.icon or '☁️' }} {{ opt.name }}</span>
+                  </label>
+                  <span class="badge" style="background:rgba(234,179,8,0.18); color:#fbbf24; font-size:0.65rem; font-weight:700;">{{ opt.badge or 'PLUGIN' }}</span>
+                </div>
+                {% if opt.description %}
+                <p style="font-size:0.72rem; color:var(--muted); margin-bottom:6px; line-height:1.3;">{{ opt.description }}</p>
+                {% endif %}
+                {% if opt.fields %}
+                  {% for f in opt.fields %}
+                  <input type="{{ f.type or 'text' }}" id="pluginCloud_{{ opt.id }}_{{ f.id }}" class="plugin-cloud-input" data-plugin="{{ opt.id }}" data-field="{{ f.id }}" placeholder="{{ f.placeholder or f.label }}" style="margin-bottom:4px; font-size:0.78rem;">
+                  {% endfor %}
+                {% endif %}
+                {% if opt.settings_url %}
+                <div style="text-align:right; margin-top:4px;">
+                  <a href="{{ opt.settings_url }}" target="_blank" style="font-size:0.72rem; color:var(--accent-blue); text-decoration:none;">⚙️ Ajustes</a>
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
             </div>
 
             <!-- MODO OFFLOAD -->
@@ -2153,6 +2179,19 @@ function loadUserCloudSettings() {
       userCloudOffload.checked = !!s.offload;
     }
     if (advDeezerArl) advDeezerArl.value = localStorage.getItem('deezer_arl') || '';
+
+    // Cargar opciones de plugins inyectados
+    if (s.plugins && typeof s.plugins === 'object') {
+      Object.keys(s.plugins).forEach(pid => {
+        const pData = s.plugins[pid] || {};
+        const chk = document.querySelector(`.plugin-cloud-check[data-plugin="${pid}"]`);
+        if (chk) chk.checked = !!pData.enabled;
+        document.querySelectorAll(`.plugin-cloud-input[data-plugin="${pid}"]`).forEach(inp => {
+          const fld = inp.dataset.field;
+          if (pData[fld] !== undefined) inp.value = pData[fld];
+        });
+      });
+    }
   } catch (e) {}
 }
 function saveUserCloudSettings() {
@@ -2178,8 +2217,23 @@ function saveUserCloudSettings() {
       host: userFtpHost ? userFtpHost.value.trim() : '',
       username: userFtpUser ? userFtpUser.value.trim() : '',
       password: userFtpPass ? userFtpPass.value.trim() : ''
-    }
+    },
+    plugins: {}
   };
+
+  // Guardar opciones de plugins dinámicos
+  document.querySelectorAll('.plugin-cloud-check').forEach(chk => {
+    const pid = chk.dataset.plugin;
+    if (!s.plugins[pid]) s.plugins[pid] = {};
+    s.plugins[pid].enabled = chk.checked;
+  });
+  document.querySelectorAll('.plugin-cloud-input').forEach(inp => {
+    const pid = inp.dataset.plugin;
+    const fld = inp.dataset.field;
+    if (!s.plugins[pid]) s.plugins[pid] = { enabled: false };
+    s.plugins[pid][fld] = inp.value.trim();
+  });
+
   localStorage.setItem('user_cloud_sync', JSON.stringify(s));
   if (advDeezerArl) localStorage.setItem('deezer_arl', advDeezerArl.value.trim());
   return s;
@@ -2189,6 +2243,10 @@ function saveUserCloudSettings() {
   if (el) el.addEventListener('input', saveUserCloudSettings);
   if (el && el.type === 'checkbox') el.addEventListener('change', saveUserCloudSettings);
 });
+
+document.querySelectorAll('.plugin-cloud-check').forEach(el => el.addEventListener('change', saveUserCloudSettings));
+document.querySelectorAll('.plugin-cloud-input').forEach(el => el.addEventListener('input', saveUserCloudSettings));
+
 loadUserCloudSettings();
 
 // User Cloud Presets Hub Management
@@ -2206,7 +2264,11 @@ async function loadUserCloudPresets() {
     loadedCloudPresets.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
-      const icon = p.type === 's3' ? '🪣' : (p.type === 'webdav' ? '☁️' : '📁');
+      let icon = '📁';
+      if (p.type === 's3') icon = '🪣';
+      else if (p.type === 'webdav') icon = '☁️';
+      else if (p.type === 'ftp') icon = '📁';
+      else if (p.type === 'plugin' || p.plugin_id) icon = '🧩';
       opt.textContent = `${icon} ${p.name}`;
       presetSelector.appendChild(opt);
     });
@@ -2223,6 +2285,9 @@ presetSelector?.addEventListener('change', () => {
   const preset = loadedCloudPresets.find(p => p.id === chosenId);
   if (!preset) return;
   if (btnDeletePreset) btnDeletePreset.style.display = 'inline-block';
+
+  // Desactivar checkboxes de plugins antes de aplicar preset
+  document.querySelectorAll('.plugin-cloud-check').forEach(c => c.checked = false);
 
   if (preset.type === 's3') {
     if (userS3Enabled) userS3Enabled.checked = true;
@@ -2248,19 +2313,34 @@ presetSelector?.addEventListener('change', () => {
     if (userFtpPass) userFtpPass.value = preset.config.password || '';
     if (userS3Enabled) userS3Enabled.checked = false;
     if (userWebdavEnabled) userWebdavEnabled.checked = false;
+  } else if (preset.type === 'plugin' || preset.plugin_id) {
+    const pid = preset.plugin_id || preset.config?.plugin_id || preset.type;
+    const chk = document.querySelector(`.plugin-cloud-check[data-plugin="${pid}"]`);
+    if (chk) chk.checked = true;
+    if (preset.config) {
+      document.querySelectorAll(`.plugin-cloud-input[data-plugin="${pid}"]`).forEach(inp => {
+        const fld = inp.dataset.field;
+        if (preset.config[fld] !== undefined) inp.value = preset.config[fld];
+      });
+    }
+    if (userS3Enabled) userS3Enabled.checked = false;
+    if (userWebdavEnabled) userWebdavEnabled.checked = false;
+    if (userFtpEnabled) userFtpEnabled.checked = false;
   }
   saveUserCloudSettings();
 });
 
 document.getElementById('btnSaveCloudPreset')?.addEventListener('click', async () => {
-  const name = prompt('Ingresá un nombre para este preset (ej. "Mi Bucket R2" o "Nextcloud Casa"):');
+  const name = prompt('Ingresá un nombre para este preset (ej. "Mi Bucket R2", "Google Drive" o "Nextcloud Casa"):');
   if (!name || !name.trim()) return;
 
   const isS3 = userS3Enabled && userS3Enabled.checked;
   const isWebdav = userWebdavEnabled && userWebdavEnabled.checked;
   const isFtp = userFtpEnabled && userFtpEnabled.checked;
-  if (!isS3 && !isWebdav && !isFtp) {
-    alert('Activá al menos S3, WebDAV o FTP con sus datos antes de guardar.');
+  const activePluginCheck = document.querySelector('.plugin-cloud-check:checked');
+
+  if (!isS3 && !isWebdav && !isFtp && !activePluginCheck) {
+    alert('Activá al menos un destino cloud (S3, WebDAV, FTP o Extensión) antes de guardar.');
     return;
   }
 
@@ -2283,19 +2363,27 @@ document.getElementById('btnSaveCloudPreset')?.addEventListener('click', async (
       username: userWebdavUser.value.trim(),
       password: userWebdavPass.value
     };
-  } else {
+  } else if (isFtp) {
     pType = 'ftp';
     pConfig = {
       host: userFtpHost.value.trim(),
       username: userFtpUser.value.trim(),
       password: userFtpPass.value
     };
+  } else if (activePluginCheck) {
+    const pid = activePluginCheck.dataset.plugin;
+    pType = 'plugin';
+    pConfig = { plugin_id: pid };
+    document.querySelectorAll(`.plugin-cloud-input[data-plugin="${pid}"]`).forEach(inp => {
+      pConfig[inp.dataset.field] = inp.value.trim();
+    });
   }
 
   const payload = {
     name: name.trim(),
     type: pType,
-    config: pConfig
+    config: pConfig,
+    plugin_id: pConfig.plugin_id || null
   };
 
   try {

@@ -1159,6 +1159,40 @@ docker run -d --name residential-socks5 \
           <button id="btnTestFtp" class="btn btn-secondary btn-sm">🧪 Probar Conexión FTP</button>
         </div>
 
+        <!-- CONECTORES CLOUD INYECTADOS POR PLUGINS [EXPERIMENTAL] -->
+        {% if plugin_cloud_admin_panels %}
+        <div style="margin-top:20px; margin-bottom:16px; border-top:1px dashed var(--border); padding-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-weight:700; font-size:0.95rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+              <span>🧩</span> Conectores Cloud de Extensiones
+              <span class="badge" style="background:rgba(234,179,8,0.18); color:#fbbf24; font-size:0.7rem; font-weight:700;">PLUGINS</span>
+            </span>
+            <span style="font-size:0.75rem; color:var(--muted);">Proporcionados dinámicamente por plugins activos</span>
+          </div>
+
+          {% for p in plugin_cloud_admin_panels %}
+          <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid rgba(56,189,248,0.25); margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+              <div style="font-weight:700; font-size:0.92rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+                <span>{{ p.icon or '☁️' }}</span> {{ p.title }}
+                <span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem;">{{ p.badge or 'PLUGIN' }}</span>
+              </div>
+              {% if p.settings_url %}
+              <a href="{{ p.settings_url }}" class="btn btn-secondary btn-sm" style="font-size:0.75rem; text-decoration:none;">
+                ⚙️ Configurar Extensión
+              </a>
+              {% endif %}
+            </div>
+            {% if p.html_content %}
+              {{ p.html_content | safe }}
+            {% elif p.description %}
+              <p style="font-size:0.82rem; color:var(--muted); margin:0;">{{ p.description }}</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
         <button id="btnSaveCloudConfig" class="btn btn-primary">💾 Guardar Configuración de Cloud Sync</button>
       </div>
     </div>

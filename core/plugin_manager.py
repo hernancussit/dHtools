@@ -209,6 +209,120 @@ class PluginManager:
                 for pid in self._instances
             ]
 
+    def get_admin_cloud_panels(self) -> List[Dict[str, Any]]:
+        """
+        [EXPERIMENTAL] Recolecta tarjetas/paneles de proveedores cloud provistos por plugins
+        para inyección directa en la pestaña Cloud Sync de /admin.
+        """
+        panels = []
+        with self._lock:
+            instances = list(self._instances.items())
+
+        for pid, inst in instances:
+            if hasattr(inst, "get_admin_cloud_panel"):
+                try:
+                    cfg = inst.get_config() if hasattr(inst, "get_config") else {}
+                    p = inst.get_admin_cloud_panel(cfg)
+                    if p and isinstance(p, dict):
+                        p.setdefault("plugin_id", pid)
+                        p.setdefault("title", self._plugins.get(pid, {}).get("name", pid))
+                        p.setdefault("icon", self._plugins.get(pid, {}).get("icon", "☁️"))
+                        panels.append(p)
+                except Exception as e:
+                    logger.error(f"Error obteniendo panel cloud de plugin '{pid}': {e}", exc_info=True)
+        return panels
+
+    def get_download_cloud_options(self) -> List[Dict[str, Any]]:
+        """
+        [EXPERIMENTAL] Recolecta opciones de destino cloud para inyección en el selector
+        de la interfaz principal de descargas y presets de usuario.
+        """
+        options = []
+        with self._lock:
+            instances = list(self._instances.items())
+
+        for pid, inst in instances:
+            if hasattr(inst, "get_download_cloud_option"):
+                try:
+                    opt = inst.get_download_cloud_option()
+                    if opt and isinstance(opt, dict):
+                        opt.setdefault("plugin_id", pid)
+                        opt.setdefault("name", self._plugins.get(pid, {}).get("name", pid))
+                        opt.setdefault("icon", self._plugins.get(pid, {}).get("icon", "☁️"))
+                        options.append(opt)
+                except Exception as e:
+                    logger.error(f"Error obteniendo opción de descarga de plugin '{pid}': {e}", exc_info=True)
+        return options
+
+    # =========================================================================
+    # TELEGRAM BOT INTEGRATION (Hooks & Dispatchers)
+    # =========================================================================
+
+    def dispatch_telegram_command(self, cmd: str, args: list, message: dict, bot) -> bool:
+        """
+        [EXPERIMENTAL] Despacha un comando de Telegram hacia los plugins activos.
+        Retorna True si algún plugin manejó el comando exitosamente.
+        """
+        with self._lock:
+            instances = list(self._instances.items())
+
+        for pid, inst in instances:
+            if hasattr(inst, "on_telegram_command"):
+                try:
+                    handled = inst.on_telegram_command(cmd, args, message, bot)
+                    if handled:
+                        logger.info(f"Comando de Telegram '{cmd}' manejado por plugin '{pid}'")
+                        return True
+                except Exception as e:
+                    logger.error(f"Excepción al ejecutar comando '{cmd}' en plugin '{pid}': {e}", exc_info=True)
+                    try:
+                        chat_id = message.get("chat", {}).get("id")
+                        if chat_id and hasattr(bot, "send_message"):
+                            bot.send_message(chat_id, f"⚠️ Error interno en la extensión '{pid}': {e}")
+                        return True
+                    except Exception:
+                        pass
+        return False
+
+    def dispatch_telegram_callback(self, query: dict, data: str, bot) -> bool:
+        """
+        [EXPERIMENTAL] Despacha una interacción de botón inline (callback_query)
+        hacia los plugins activos.
+        """
+        with self._lock:
+            instances = list(self._instances.items())
+
+        for pid, inst in instances:
+            if hasattr(inst, "on_telegram_callback"):
+                try:
+                    handled = inst.on_telegram_callback(query, data, bot)
+                    if handled:
+                        return True
+                except Exception as e:
+                    logger.error(f"Excepción en callback Telegram en plugin '{pid}': {e}", exc_info=True)
+        return False
+
+    def get_telegram_commands_help(self) -> List[Dict[str, str]]:
+        """
+        [EXPERIMENTAL] Recolecta la lista de comandos adicionales provistos por los plugins
+        para enriquecer el comando /ayuda de Telegram.
+        """
+        commands = []
+        with self._lock:
+            instances = list(self._instances.items())
+
+        for pid, inst in instances:
+            if hasattr(inst, "get_telegram_commands"):
+                try:
+                    cmds = inst.get_telegram_commands()
+                    if isinstance(cmds, list):
+                        for c in cmds:
+                            if isinstance(c, dict) and "command" in c:
+                                commands.append(c)
+                except Exception as e:
+                    logger.error(f"Error obteniendo comandos de Telegram de '{pid}': {e}")
+        return commands
+
     # =========================================================================
     # SDK HELPER API PARA PLUGINS (Acceso de conveniencia al Core)
     # =========================================================================
@@ -261,3 +375,4 @@ class PluginManager:
 
 # Singleton global
 plugin_manager = PluginManager()
+

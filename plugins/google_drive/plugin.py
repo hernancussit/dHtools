@@ -191,7 +191,7 @@ class Plugin:
         logger.info(f"Rutas de Google Drive registradas bajo /plugin/{self.plugin_id}/")
 
     # =========================================================================
-    # EXTENSIONES DE NAVEGACIÓN
+    # EXTENSIONES DE INTERFAZ (UI HOOK SLOTS)
     # =========================================================================
 
     def get_ui_nav_item(self):
@@ -202,6 +202,153 @@ class Plugin:
             "icon": "📁",
             "badge": "EXP"
         }
+
+    def get_admin_cloud_panel(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        [EXPERIMENTAL] Inyecta la tarjeta de Google Drive en la pestaña Cloud Sync de /admin.
+        """
+        cfg = config or self.get_config()
+        is_enabled = cfg.get("enabled", False)
+        auth_type = "Cuenta de Servicio" if cfg.get("auth_type") != "oauth2" else "OAuth 2.0"
+        folder_desc = cfg.get("folder_id") or "Raíz de Mi Unidad"
+
+        status_badge = (
+            '<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:700;">ACTIVO</span>'
+            if is_enabled else
+            '<span style="background:rgba(107,114,128,0.2); color:#9ca3af; padding:2px 8px; border-radius:4px; font-size:0.75rem;">DESACTIVADO</span>'
+        )
+
+        html = f"""
+        <div style="font-size:0.83rem; color:var(--muted); line-height:1.6;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span>Estado: {status_badge}</span>
+            <span>Método: <strong style="color:var(--text);">{auth_type}</strong></span>
+          </div>
+          <div>Carpeta Destino: <code style="color:var(--accent-blue);">{folder_desc}</code></div>
+          <div style="margin-top:8px; font-size:0.78rem;">
+            Streaming multipart en fragmentos de 10 MB (RAM-Safe). Subida directa y automática al finalizar descargas.
+          </div>
+        </div>
+        """
+
+        return {
+            "id": self.plugin_id,
+            "title": "Google Drive Cloud Sync",
+            "icon": "📁",
+            "badge": "EXP",
+            "settings_url": f"/plugin/{self.plugin_id}/settings",
+            "html_content": html
+        }
+
+    def get_download_cloud_option(self) -> Dict[str, Any]:
+        """
+        [EXPERIMENTAL] Inyecta la opción de Google Drive en el selector de descargas
+        y en los presets de usuario del Modo Avanzado.
+        """
+        cfg = self.get_config()
+        return {
+            "id": self.plugin_id,
+            "name": "Google Drive",
+            "icon": "📁",
+            "badge": "EXP",
+            "description": "Sube el archivo descargado a tu Google Drive mediante streaming resumible.",
+            "fields": [
+                {
+                    "id": "folder_id",
+                    "label": "Carpeta Destino (opcional)",
+                    "type": "text",
+                    "placeholder": f"ID de carpeta (vacío = {cfg.get('folder_id') or 'raíz'})"
+                }
+            ],
+            "settings_url": f"/plugin/{self.plugin_id}/settings"
+        }
+
+    # =========================================================================
+    # INTEGRACIÓN CON BOT DE TELEGRAM
+    # =========================================================================
+
+    def get_telegram_commands(self) -> list:
+        """Comandos que este plugin provee al asistente de Telegram."""
+        return [
+            {
+                "command": "/drive",
+                "description": "Consultar almacenamiento y estado de Google Drive"
+            }
+        ]
+
+    def on_telegram_command(self, cmd: str, args: list, message: dict, bot) -> bool:
+        """
+        Hook ejecutado cuando un usuario de Telegram envía un comando.
+        Retorna True si fue manejado por este plugin.
+        """
+        if cmd != "/drive":
+            return False
+
+        chat_id = message.get("chat", {}).get("id")
+        if not chat_id:
+            return True
+
+        from plugins.google_drive import drive_client
+        deps_ok, deps_err = drive_client.check_dependencies()
+        if not deps_ok:
+            bot.send_message(
+                chat_id,
+                "⚠️ <b>Google Drive no disponible:</b>\nFaltan dependencias en el servidor para Google API."
+            )
+            return True
+
+        cfg = self.get_config()
+        if not cfg.get("enabled"):
+            bot.send_message(
+                chat_id,
+                "📁 <b>Google Drive:</b> La sincronización está <i>desactivada</i> en la plataforma.\n"
+                "Podés activarla desde el panel de administración web: <code>/plugin/google_drive/settings</code>"
+            )
+            return True
+
+        # Enviar aviso provisional
+        sent = bot.send_message(chat_id, "🔍 <i>Consultando estado y cuota de Google Drive...</i>")
+        msg_id = sent.get("result", {}).get("message_id") if sent else None
+
+        ok, res = drive_client.test_connection(cfg, base_dir=self.plugin_dir)
+
+        def _format_b(b):
+            if not b:
+                return "0 B"
+            for u in ['B', 'KB', 'MB', 'GB', 'TB']:
+                if b < 1024:
+                    return f"{b:.1f} {u}"
+                b /= 1024
+            return f"{b:.1f} PB"
+
+        if ok:
+            used_str = _format_b(res.get("storage_used_bytes", 0))
+            tot_bytes = res.get("storage_total_bytes")
+            tot_str = _format_b(tot_bytes) if tot_bytes else "Ilimitado"
+            pct = round((res.get("storage_used_bytes", 0) / tot_bytes) * 100, 1) if tot_bytes else 0
+
+            text = (
+                f"📁 <b>Google Drive Cloud Sync</b>\n\n"
+                f"• <b>Cuenta:</b> {res.get('user_name', 'N/A')} (<code>{res.get('email', 'N/A')}</code>)\n"
+                f"• <b>Carpeta activa:</b> <i>{res.get('folder_name', 'Raíz')}</i>\n"
+                f"• <b>Almacenamiento:</b> {used_str} de {tot_str} ({pct}% en uso)\n"
+                f"• <b>Modo Offload:</b> {'✅ Activado (borra local)' if cfg.get('safe_offload') else '❌ Desactivado (mantiene local)'}\n\n"
+                f"💡 <i>Las descargas finalizadas se respaldarán automáticamente en esta unidad.</i>"
+            )
+        else:
+            err = res.get("error", "Error desconocido")
+            text = (
+                f"⚠️ <b>Error de conexión con Google Drive:</b>\n"
+                f"<code>{err}</code>\n\n"
+                f"Revisá la configuración en la web: <code>/plugin/google_drive/settings</code>"
+            )
+
+        if msg_id:
+            bot.edit_message(chat_id, msg_id, text)
+        else:
+            bot.send_message(chat_id, text)
+
+        return True
 
     # =========================================================================
     # HOOKS DEL CICLO DE VIDA
@@ -229,8 +376,21 @@ class Plugin:
         Sube el archivo a Google Drive si el plugin o la tarea lo tienen habilitado.
         """
         cfg = self.get_config()
-        if not cfg.get("enabled"):
+
+        # Verificar si hay personalización de nube en el trabajo o si es auto-sync global
+        user_cloud = job_data.get("user_cloud_sync") or {}
+        plugin_prefs = (user_cloud.get("plugins") or {}).get(self.plugin_id) or {}
+
+        # Determinar si este trabajo debe subir a Google Drive
+        should_upload = cfg.get("enabled", False) or plugin_prefs.get("enabled", False)
+        if not should_upload:
             return
+
+        # Si el usuario especificó una carpeta personalizada en la descarga
+        custom_folder = plugin_prefs.get("folder_id")
+        if custom_folder:
+            cfg = dict(cfg)
+            cfg["folder_id"] = custom_folder.strip()
 
         filepath = job_data.get("filepath")
         filename = job_data.get("filename")
@@ -240,8 +400,6 @@ class Plugin:
         if not filepath or not os.path.isfile(filepath):
             return
 
-        # Verificar si hay personalización de nube en el trabajo o si es auto-sync global
-        user_cloud = job_data.get("user_cloud_sync") or {}
         is_offload_requested = cfg.get("safe_offload", False) or user_cloud.get("offload", False)
 
         from plugins.google_drive import drive_client

@@ -290,7 +290,10 @@ class TelegramBot:
             elif cmd == "/ayuda" or cmd == "/help":
                 self._cmd_ayuda(chat_id, username)
             else:
-                self.send_message(chat_id, "❓ Comando no reconocido. Escribí /ayuda para ver los comandos disponibles.")
+                from core.plugin_manager import plugin_manager
+                handled = plugin_manager.dispatch_telegram_command(cmd, args, message, self)
+                if not handled:
+                    self.send_message(chat_id, "❓ Comando no reconocido. Escribí /ayuda para ver los comandos disponibles.")
             return
 
         # Check for conversational keywords (when not using slash commands)
@@ -591,6 +594,15 @@ class TelegramBot:
 
     def _cmd_ayuda(self, chat_id: int, username: str | None):
         status_line = f"👤 Sesión: <b>{username}</b>" if username else "🔒 Sesión: <i>No vinculada</i>"
+        
+        from core.plugin_manager import plugin_manager
+        ext_cmds = plugin_manager.get_telegram_commands_help()
+        ext_section = ""
+        if ext_cmds:
+            ext_section = "\n\n<b>🧩 Extensiones & Plugins [EXP]:</b>\n" + "\n".join(
+                f"• {c['command']} - {c.get('description', '')}" for c in ext_cmds
+            )
+
         msg = (
             f"⚡ <b>dHtools Telegram Assistant</b>\n{status_line}\n\n"
             f"<b>Comandos disponibles:</b>\n"
@@ -600,7 +612,7 @@ class TelegramBot:
             f"• /cuota - Verificá tu almacenamiento en disco.\n"
             f"• /vincular &lt;token&gt; - Conectá tu cuenta de Telegram.\n"
             f"• /desvincular - Desconectá tu cuenta.\n"
-            f"• /ayuda - Esta guía de ayuda.\n\n"
+            f"• /ayuda - Esta guía de ayuda.{ext_section}\n\n"
             f"💡 <i>Los archivos de hasta 50 MB se enviarán automáticamente a este chat cuando finalice la descarga.</i>"
         )
         self.send_message(chat_id, msg)
@@ -877,6 +889,13 @@ class TelegramBot:
                 f"<i>Iniciando worker de extracción...</i>",
                 reply_markup=cancel_kb
             )
+            return
+
+        # Plugin callback query fallback
+        from core.plugin_manager import plugin_manager
+        handled = plugin_manager.dispatch_telegram_callback(query, data, self)
+        if not handled:
+            self.answer_callback_query(q_id, "Acción no reconocida")
 
     # ==================== PROGRESS & COMPLETION HOOKS ====================
 

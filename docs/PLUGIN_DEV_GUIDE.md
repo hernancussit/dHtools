@@ -162,7 +162,72 @@ class Plugin:
 
 ---
 
-## 🛠️ 5. API del PluginManager disponible para tu Plugin
+---
+
+## 🎨 5. Inyección Segura en Paneles Web y Bot Principal de Telegram
+
+Tu plugin puede extender las interfaces y el bot principal de dHtools sin modificar una sola línea del núcleo:
+
+### 1. Inyección en la Pestaña "Cloud Sync" de `/admin`
+Implementa `get_admin_cloud_panel(self, config)` para añadir una tarjeta informativa o de control:
+```python
+def get_admin_cloud_panel(self, config=None):
+    return {
+        "id": self.plugin_id,
+        "title": "Mi Servicio Cloud",
+        "icon": "☁️",
+        "badge": "EXP",
+        "settings_url": f"/plugin/{self.plugin_id}/settings",
+        "html_content": "<p>Estado: <strong>Activo</strong></p>"
+    }
+```
+
+### 2. Inyección en el Selector de Descargas y Presets Web
+Implementa `get_download_cloud_option(self)` para añadir tu almacenamiento al acordeón de Nube Personal de la página principal:
+```python
+def get_download_cloud_option(self):
+    return {
+        "id": self.plugin_id,
+        "name": "Mi Destino Remoto",
+        "icon": "📁",
+        "badge": "EXP",
+        "description": "Sube el archivo descargado a tu almacenamiento remoto.",
+        "fields": [
+            {"id": "carpeta", "label": "Carpeta", "placeholder": "/ruta/destino"}
+        ],
+        "settings_url": f"/plugin/{self.plugin_id}/settings"
+    }
+```
+*Las selecciones del usuario en esta tarjeta se guardan automáticamente en sus **presets personales** y se transmiten en `job_data.get("user_cloud_sync", {}).get("plugins", {})`.*
+
+### 3. Extensión de Comandos en el Bot de Telegram Principal
+Si no deseas crear un segundo bot, sino agregar comandos al bot oficial existente de dHtools:
+```python
+def get_telegram_commands(self):
+    """Comandos para el menú /ayuda"""
+    return [
+        {"command": "/mi_comando", "description": "Acción personalizada de mi plugin"}
+    ]
+
+def on_telegram_command(self, cmd, args, message, bot):
+    """Retorna True si procesaste el comando"""
+    if cmd == "/mi_comando":
+        chat_id = message.get("chat", {}).get("id")
+        bot.send_message(chat_id, "¡Comando ejecutado desde el plugin!")
+        return True
+    return False
+
+def on_telegram_callback(self, query, data, bot):
+    """Manejo de botones inline en Telegram"""
+    if data.startswith("mi_accion:"):
+        bot.answer_callback_query(query.get("id"), "Acción ejecutada")
+        return True
+    return False
+```
+
+---
+
+## 🛠️ 6. API del PluginManager disponible para tu Plugin
 
 Desde `self.manager` puedes acceder a métodos seguros del core:
 
@@ -174,7 +239,7 @@ Desde `self.manager` puedes acceder a métodos seguros del core:
 
 ---
 
-## 📋 6. DIRECTIVA MAESTRA (Prompt para tu Nuevo Chat)
+## 📋 7. DIRECTIVA MAESTRA (Prompt para tu Nuevo Chat)
 
 > [!TIP]
 > **Copia y pega el siguiente bloque como PRIMER MENSAJE en tu nuevo chat de IA.**
@@ -198,10 +263,14 @@ El proyecto cuenta con una arquitectura de plugins en estado **[EXPERIMENTAL]** 
 - `on_startup(self, app, context)`: Inicializar clientes, conexiones o hilos daemon en segundo plano (`threading.Thread(daemon=True)`).
 - `on_download_complete(self, job_data)`: Recibe metadatos de descargas completadas (`job_id`, `title`, `filepath`, `filename`, `owner`, `url`, `format_type`, `quality`).
 - `on_download_error(self, job_data, error=None)`: Notificación de descargas fallidas.
+- `get_admin_cloud_panel(self, config)`: Inyectar tarjeta en la pestaña Cloud Sync de `/admin`.
+- `get_download_cloud_option(self)`: Inyectar opción en el acordeón de Nube Personal de la web de descargas y presets.
+- `get_telegram_commands(self)` y `on_telegram_command(self, cmd, args, message, bot)`: Añadir comandos y botones al Bot de Telegram oficial sin interferir con el polling principal.
 - Para solicitar descargas a dHtools: `self.manager.enqueue_download(url=..., quality="best", owner=...)`.
 
 ### 🎯 Objetivo específico de este plugin:
-[AQUÍ DESCRIBES TU IDEA: Por ejemplo: "Quiero implementar un segundo bot de Telegram que escuche en el token X, acepte el comando /subir y envíe los archivos terminados a mi canal privado con ID Y"].
+[AQUÍ DESCRIBES TU IDEA: Por ejemplo: "Quiero implementar comandos en Telegram /remoto y subir las descargas a mi nube privada"].
 
 Por favor, procedé a diseñar y estructurar los archivos necesarios (`plugin.json`, `plugin.py`, `config.json`) para este plugin.
 ```
+

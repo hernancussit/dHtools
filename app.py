@@ -38,7 +38,9 @@ def inject_globals():
     return {
         "version": APP_VERSION,
         "config": load_config(),
-        "plugins": plugin_manager.get_active_plugins_summary()
+        "plugins": plugin_manager.get_active_plugins_summary(),
+        "plugin_cloud_admin_panels": plugin_manager.get_admin_cloud_panels(),
+        "plugin_download_cloud_options": plugin_manager.get_download_cloud_options()
     }
 
 from core.telegram_bot import telegram_bot
