@@ -764,7 +764,24 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
+
+        if (res.status === 401 || res.redirected || (res.headers.get('content-type') && !res.headers.get('content-type').includes('application/json'))) {
+          box.className = 'test-result-box error';
+          box.innerHTML = '<strong>⚠️ Tu sesión en dHtools ha expirado:</strong><br>Por favor <a href="/login?next=/plugin/google_drive/settings" style="color:#67e8f9; text-decoration:underline; font-weight:700;">Iniciá sesión nuevamente aquí</a> para probar la conexión con Google Drive.';
+          box.style.display = 'block';
+          showToast('Sesión expirada. Por favor iniciá sesión nuevamente.', true);
+          return;
+        }
+
+        let data;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          box.className = 'test-result-box error';
+          box.innerHTML = '<strong>✗ Error del servidor:</strong><br>El servidor no devolvió una respuesta válida. Por favor recarga la página.';
+          box.style.display = 'block';
+          return;
+        }
 
         if (data.success && data.details) {
           const d = data.details;
@@ -827,6 +844,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+
+        if (res.status === 401 || res.redirected || (res.headers.get('content-type') && !res.headers.get('content-type').includes('application/json'))) {
+          showToast('Sesión expirada. Por favor iniciá sesión nuevamente.', true);
+          return false;
+        }
+
         const data = await res.json();
 
         if (data.success) {

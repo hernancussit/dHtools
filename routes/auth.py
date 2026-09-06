@@ -189,8 +189,8 @@ def protect_all_routes():
         return None
 
     # 4. Unauthenticated requests
-    if request.path.startswith("/api/"):
-        return jsonify({"error": "Autenticación requerida. Iniciá sesión en la web o enviá credenciales HTTP Basic."}), 401
+    if request.path.startswith("/api/") or "/api/" in request.path:
+        return jsonify({"error": "Autenticación requerida. Tu sesión ha expirado o debes iniciar sesión."}), 401
 
     next_param = request.full_path.rstrip("?") if request.path != "/" else None
     return redirect(url_for("auth_bp.login", next=next_param))
