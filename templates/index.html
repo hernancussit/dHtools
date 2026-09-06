@@ -128,6 +128,28 @@
     color: var(--text);
     text-decoration: none;
   }
+  .brand-horizontal-link {
+    display: block;
+    text-decoration: none;
+    margin-bottom: 8px;
+  }
+  .brand-horizontal-banner {
+    width: 100%;
+    height: auto;
+    max-height: 74px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: #080b12;
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.12);
+    transition: all 0.25s ease;
+    display: block;
+  }
+  .brand-horizontal-link:hover .brand-horizontal-banner {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.45);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5), 0 0 22px rgba(56, 189, 248, 0.22);
+  }
   .brand-badge {
     font-size: 0.72rem;
     font-weight: 600;
@@ -1095,21 +1117,17 @@
   <aside class="sidebar">
     <div>
       <div class="sidebar-header">
-        <a href="/" class="brand-title" style="display:flex; align-items:center; gap:10px;">
-          <img src="/static/icons/brand_logo.png" alt="dHtools" style="width:34px; height:34px; border-radius:9px; object-fit:cover; border:1px solid rgba(239,68,68,0.4); box-shadow:0 0 12px rgba(239,68,68,0.35);">
-          <span>{{ (config and config.site_title) or 'dHtools' }}</span>
+        <a href="/" class="brand-horizontal-link" title="dHtools - Suite Multimedia">
+          <img src="/static/icons/brand_horizontal.png" alt="dHtools Multimedia Suite" class="brand-horizontal-banner">
         </a>
 
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:0.75rem; color:var(--muted);">Suite Multimedia</span>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <span class="brand-badge">v{{ version }}</span>
-            {% if branch %}
-            <span style="font-size:0.65rem; font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px; {% if branch == 'dev' %}background:rgba(245,158,11,0.18); color:#fbbf24; border:1px solid rgba(245,158,11,0.35);{% else %}background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35);{% endif %}">
-              {{ branch }}
-            </span>
-            {% endif %}
-          </div>
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:-2px; margin-bottom:6px;">
+          <span class="brand-badge">v{{ version }}</span>
+          {% if branch %}
+          <span style="font-size:0.65rem; font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px; {% if branch == 'dev' %}background:rgba(245,158,11,0.18); color:#fbbf24; border:1px solid rgba(245,158,11,0.35);{% else %}background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.35);{% endif %}">
+            {{ branch }}
+          </span>
+          {% endif %}
         </div>
 
         <div class="user-badge-box">

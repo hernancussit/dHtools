@@ -91,7 +91,7 @@ def about():
         telegram_enabled=telegram_enabled,
         creator_name="Hernán Cussit",
         creator_company="Servicios Informáticos LT",
-        cafecito_url="https://cafecito.app/henu_",
+        cafecito_url="https://cafecito.app/henu_45",
         github_repo="https://github.com/hernancussit/dHtools",
     )
 

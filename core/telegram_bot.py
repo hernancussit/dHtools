@@ -432,11 +432,9 @@ class TelegramBot:
                     job = JOBS.get(jid)
                     if job:
                         item_owner = job.get("owner")
-            if not item_owner:
-                item_owner = "admin"
 
-            # Check if current user is owner or admin
-            if item_owner != username and not (username == "admin" or item_owner in ("admin", username)):
+            # STRICT USER FILTER: Only show downloads belonging to this user
+            if item_owner != username:
                 continue
 
             matched_disk_path = None
@@ -467,24 +465,22 @@ class TelegramBot:
                 "owner": item_owner
             })
 
-        # 2. Add standalone files in DOWNLOAD_DIR that might not be in meta
-        known_jids = {it["job_id"] for it in user_items}
+        # 2. Add orphan files in DOWNLOAD_DIR that might not be in meta, only if owned by this user
+        all_meta_jids = set(meta.keys())
         for entry, full_p in disk_files.items():
             parts = entry.split("_", 1)
             cand_jid = parts[0].replace(".zip", "")
-            if cand_jid in known_jids:
+            if cand_jid in all_meta_jids:
                 continue
-            clean_name = parts[1] if len(parts) > 1 else entry
-            stat = os.stat(full_p)
             item_owner = None
             with JOBS_LOCK:
                 job = JOBS.get(cand_jid)
                 if job:
                     item_owner = job.get("owner")
-            if not item_owner:
-                item_owner = "admin"
 
-            if item_owner == username or (username == "admin" or item_owner in ("admin", username)):
+            if item_owner == username:
+                clean_name = parts[1] if len(parts) > 1 else entry
+                stat = os.stat(full_p)
                 user_items.append({
                     "job_id": cand_jid,
                     "filename": clean_name,
@@ -754,10 +750,7 @@ class TelegramBot:
                     job = JOBS.get(matched_jid)
                     if job:
                         item_owner = job.get("owner")
-            if not item_owner:
-                item_owner = "admin"
-
-            if item_owner != username and not (username == "admin" or item_owner in ("admin", username)):
+            if item_owner != username:
                 self.answer_callback_query(q_id, "⛔ No tenés permiso para acceder a este archivo", show_alert=True)
                 return
 

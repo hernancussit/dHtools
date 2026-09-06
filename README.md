@@ -8,7 +8,7 @@
   <a href="https://github.com/hernancussit/dHtools"><img src="https://img.shields.io/badge/Release-v2.8.0--dev-blue.svg" alt="Release"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.11+-yellow.svg" alt="Python"></a>
   <a href="https://docker.com"><img src="https://img.shields.io/badge/Docker-Compose-2496ED.svg" alt="Docker"></a>
-  <a href="https://cafecito.app/henu_"><img src="https://img.shields.io/badge/Cafecito-Invitame_uno-00A8FF.svg?logo=coffeescript&logoColor=white" alt="Cafecito"></a>
+  <a href="https://cafecito.app/henu_45"><img src="https://img.shields.io/badge/Cafecito-Invitame_uno-00A8FF.svg?logo=coffeescript&logoColor=white" alt="Cafecito"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
 </p>
 
@@ -153,7 +153,7 @@ tu-dominio.com {
 Si **dHtools** te resulta útil para gestionar tus descargas multimedia y administrar tu servidor, podés invitarme un cafecito para apoyar el desarrollo continuo y mantenimiento de nuevas funciones:
 
 <div align="center">
-  <a href="https://cafecito.app/henu_" target="_blank" rel="noopener noreferrer">
+  <a href="https://cafecito.app/henu_45" target="_blank" rel="noopener noreferrer">
     <img src="https://cdn.cafecito.app/imgs/buttons/button_5.png" alt="Invitame un café en cafecito.app" height="48" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" />
   </a>
   <p><b>¡Muchas gracias por apoyar el software independiente y de código libre!</b></p>
@@ -166,7 +166,7 @@ Si **dHtools** te resulta útil para gestionar tus descargas multimedia y admini
 - **Creador y Desarrollador:** [Hernán Cussit](https://github.com/hernancussit)
 - **Estudio / Servicios:** [Servicios Informáticos LT](https://serviciosinformaticoslt.com)
 - **Contacto en Telegram:** [@henu_45](https://t.me/henu_45)
-- **Donaciones:** [cafecito.app/henu_](https://cafecito.app/henu_)
+- **Donaciones:** [cafecito.app/henu_45](https://cafecito.app/henu_45)
 
 ---
 
