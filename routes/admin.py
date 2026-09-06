@@ -1598,3 +1598,61 @@ def admin_plugins_reload():
         "plugins": plugin_manager.get_all_plugins()
     })
 
+
+@admin_bp.route("/api/admin/plugins/check-updates")
+@require_admin
+def admin_plugins_check_updates():
+    """[EXPERIMENTAL] Comprueba actualizaciones en GitHub para todos los plugins con soporte."""
+    from core.plugin_manager import plugin_manager
+    updates = plugin_manager.check_all_plugin_updates()
+    has_updates = any(u.get("update_available") for u in updates)
+    return jsonify({
+        "success": True,
+        "experimental": True,
+        "has_updates": has_updates,
+        "updates": updates,
+        "count": len(updates)
+    })
+
+
+@admin_bp.route("/api/admin/plugins/<plugin_id>/update", methods=["POST"])
+@require_admin
+def admin_plugin_update(plugin_id: str):
+    """[EXPERIMENTAL] Ejecuta la actualización de un plugin específico desde GitHub."""
+    from core.plugin_manager import plugin_manager
+    success, message, details = plugin_manager.update_plugin(plugin_id)
+    return jsonify({
+        "success": success,
+        "experimental": True,
+        "message": message,
+        "details": details
+    }), (200 if success else 400)
+
+
+@admin_bp.route("/api/admin/plugins/update-all", methods=["POST"])
+@require_admin
+def admin_plugins_update_all():
+    """[EXPERIMENTAL] Actualiza todos los plugins que tengan actualizaciones pendientes."""
+    from core.plugin_manager import plugin_manager
+    updates = plugin_manager.check_all_plugin_updates()
+    results = []
+    success_count = 0
+    fail_count = 0
+    for u in updates:
+        if u.get("update_available") and u.get("can_update"):
+            pid = u["plugin_id"]
+            ok, msg, det = plugin_manager.update_plugin(pid)
+            if ok:
+                success_count += 1
+            else:
+                fail_count += 1
+            results.append({"plugin_id": pid, "success": ok, "message": msg, "details": det})
+
+    return jsonify({
+        "success": fail_count == 0,
+        "experimental": True,
+        "message": f"Actualizaciones completadas: {success_count} exitosas, {fail_count} fallidas.",
+        "results": results,
+        "updated_count": success_count
+    })
+

@@ -21,7 +21,8 @@ Esta guía constituye la **especificación técnica completa del SDK de Plugins 
 9. [Diccionario de Datos y Payloads Normalizados](#-9-diccionario-de-datos-y-payloads-normalizados)
 10. [Ejemplo Completo: Plugin de Almacenamiento (OneDrive / Cloud)](#-10-ejemplo-completo-plugin-de-almacenamiento-onedrive--cloud)
 11. [Ejemplo Completo: Segundo Bot Autónomo (Notificador / Asistente)](#-11-ejemplo-completo-segundo-bot-autónomo-notificador--asistente)
-12. [Directiva Maestra (Master Prompt para Nuevos Chats de IA)](#-12-directiva-maestra-master-prompt-para-nuevos-chats-de-ia)
+12. [Actualizaciones Automáticas de Plugins vía GitHub](#-12-actualizaciones-automáticas-de-plugins-vía-github)
+13. [Directiva Maestra (Master Prompt para Nuevos Chats de IA)](#-13-directiva-maestra-master-prompt-para-nuevos-chats-de-ia)
 
 ---
 
@@ -61,6 +62,8 @@ plugins/
   "icon": "☁️",
   "status": "experimental",
   "enabled": true,
+  "repository": "https://github.com/tu-usuario/mi-plugin",
+  "branch": "main",
   "settings_url": "/plugin/mi_extension/settings"
 }
 ```
@@ -75,6 +78,8 @@ plugins/
 | `icon` | `string` | No | Emoji o icono identificador (ej. `"📁"`, `"☁️"`, `"🤖"`). |
 | `status` | `string` | No | `"experimental"` o `"stable"`. |
 | `enabled` | `bool` | **Sí** | Si es `false`, el sistema descubre la carpeta pero no la carga en memoria. |
+| `repository` | `string` | No | URL del repositorio de GitHub (ej. `"https://github.com/user/repo"` o `"user/repo"`). Permite comprobación y actualización en 1 clic desde el Panel de Admin. |
+| `branch` | `string` | No | Rama de Git a rastrear para actualizaciones (por defecto `"main"`). |
 | `settings_url` | `string` | No | Ruta web absoluta hacia la página de ajustes o dashboard del plugin. |
 
 ---
@@ -571,7 +576,49 @@ class Plugin:
 
 ---
 
-## 📋 12. Directiva Maestra (Master Prompt para Nuevos Chats de IA)
+---
+
+## 🚀 12. Actualizaciones Automáticas de Plugins vía GitHub
+
+dHtools permite que cualquier plugin (especialmente los desarrollados de manera externa en sus propios repositorios de GitHub, como `Remote Assist` o conectores privados) pueda ser comprobado y actualizado de forma segura y automática desde el **Panel de Administración (`/admin`)**.
+
+### Dos Métodos Soportados de Integración:
+
+1. **Sub-repositorio Git (Recomendado para desarrollo externo):**
+   * Puedes clonar tu plugin directamente dentro de la carpeta `plugins/`:
+     ```bash
+     git clone https://github.com/tu-usuario/remote-assist plugins/remote_assist
+     ```
+   * dHtools detecta automáticamente la carpeta `.git`, lee el commit local, la rama y consulta los commits remotos sin interferir con el control de versiones del Core (`plugins/*` está en `.gitignore`).
+
+2. **Declaración en `plugin.json` (Para plugins distribuidos como carpetas sin `.git`):**
+   * Añade los campos `"repository"` y `"branch"` en tu `plugin.json`:
+     ```json
+     {
+       "id": "remote_assist",
+       "name": "Remote Assist",
+       "version": "1.0.0",
+       "repository": "https://github.com/tu-usuario/remote-assist",
+       "branch": "main",
+       "enabled": true
+     }
+     ```
+   * dHtools consultará la API de GitHub (`/commits` y `/releases/latest`) para comparar commits y números de versión SemVer. Si se ejecuta una actualización, clonará e inicializará el seguimiento Git en esa carpeta.
+
+### 🛡️ Preservación Automática de Credenciales (`config.json`):
+Al pulsar **"Actualizar"** en el Panel de Administración:
+1. dHtools respalda en memoria los archivos de configuración privados (`config.json`, `credentials.json`, `token.json`, `data.json`, `.env`).
+2. Ejecuta la actualización del código (`git fetch` + `git pull --rebase` o `git reset --hard origin/<branch>`).
+3. Restaura automáticamente tus archivos de configuración para que **nunca pierdas tokens ni credenciales**.
+4. Recarga el plugin en memoria en caliente sin necesidad de reiniciar el servidor completo.
+
+### 🖥️ Gestión desde el Panel de Administración:
+* **Pestaña "Actualizador de Motores":** Incorpora la tarjeta **Actualizaciones de Plugins & Extensiones (GitHub)** junto con yt-dlp, Cobalt y Deno, con botones para *Comprobar Plugins* y *Actualizar Todos*.
+* **Pestaña "Extensiones & Plugins":** Cada tarjeta de plugin muestra su repositorio GitHub, su estado de versión respecto a remoto y un botón individual de actualización rápida.
+
+---
+
+## 📋 13. Directiva Maestra (Master Prompt para Nuevos Chats de IA)
 
 > [!TIP]
 > **Copia y pega el siguiente bloque como PRIMER MENSAJE en cualquier nuevo chat de IA.**
@@ -586,9 +633,9 @@ El proyecto cuenta con una arquitectura de plugins totalmente desacoplada del Co
 1. **Todo el código debe estar encapsulado dentro de la carpeta:** `plugins/<nombre_de_mi_plugin>/`.
 2. **NUNCA debes modificar ningún archivo fuera de mi carpeta de plugin** (ni app.py, ni core/, ni templates/).
 3. La carpeta contiene:
-   - `plugin.json`: Manifiesto con `id`, `name`, `version`, `author`, `description`, `"status": "experimental"`, `"enabled": true`.
+   - `plugin.json`: Manifiesto con `id`, `name`, `version`, `author`, `description`, `"status": "experimental"`, `"enabled": true`, `"repository": "https://github.com/usuario/repo"` (opcional para actualizaciones automáticas en 1 clic), `"branch": "main"`.
    - `plugin.py`: Clase `Plugin` con constructor `__init__(self, manager=None, metadata=None)`.
-   - `config.json`: Archivo local para mis credenciales y tokens privados (ignorado por Git).
+   - `config.json`: Archivo local para mis credenciales y tokens privados (ignorado por Git y preservado automáticamente en actualizaciones).
 
 ### 🧩 Métodos y Hooks Contractuales disponibles en la clase `Plugin`:
 - `register_routes(self, app)`: Registrar Blueprint Flask bajo el prefijo `/plugin/<mi_plugin_id>/`.
@@ -617,3 +664,4 @@ El proyecto cuenta con una arquitectura de plugins totalmente desacoplada del Co
 
 Por favor, procedé a diseñar y generar los archivos necesarios (`plugin.json`, `plugin.py`, etc.) respetando rigurosamente estos contratos.
 ```
+

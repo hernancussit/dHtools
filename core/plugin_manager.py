@@ -12,6 +12,9 @@ import importlib.util
 import threading
 import uuid
 import time
+import re
+import subprocess
+import requests
 from typing import Dict, List, Any, Optional, Tuple
 
 logger = logging.getLogger("dhtools.plugins")
@@ -191,6 +194,17 @@ class PluginManager:
                 info = dict(meta)
                 info["is_loaded"] = (pid in self._instances)
                 info["is_enabled"] = meta.get("enabled", False)
+                try:
+                    git_info = self.get_plugin_git_info(pid)
+                    info["git"] = git_info
+                    info["has_git"] = git_info.get("is_git_repo", False)
+                    info["repository"] = git_info.get("repo_url") or meta.get("repository") or meta.get("git_url")
+                    info["branch"] = git_info.get("branch") or meta.get("branch") or "main"
+                    info["can_update"] = git_info.get("can_update", False)
+                except Exception as e:
+                    info["git"] = {}
+                    info["has_git"] = False
+                    info["can_update"] = False
                 res.append(info)
             return res
 
@@ -546,6 +560,354 @@ class PluginManager:
                 "total": 0,
                 "error": str(e)
             }
+
+    def _ensure_git_safe_directory(self, path: Optional[str] = None):
+        """Configura safe.directory en Git para evitar errores de permisos en contenedores."""
+        try:
+            subprocess.run(["git", "config", "--global", "--add", "safe.directory", "*"], capture_output=True, timeout=2)
+            if path and os.path.exists(path):
+                subprocess.run(["git", "config", "--global", "--add", "safe.directory", path], capture_output=True, timeout=2)
+        except Exception:
+            pass
+
+    def get_plugin_git_info(self, plugin_id: str) -> Dict[str, Any]:
+        """
+        [EXPERIMENTAL] Obtiene información del repositorio Git o GitHub de un plugin.
+        Detecta tanto subcarpetas clonadas con .git como manifiestos con 'repository' declarado.
+        """
+        with self._lock:
+            meta = self._plugins.get(plugin_id, {})
+        plugin_path = meta.get("_path")
+
+        is_git_repo = False
+        repo_url = meta.get("repository") or meta.get("git_url") or meta.get("github") or ""
+        branch = meta.get("branch") or "main"
+        commit = "unknown"
+        commit_date = ""
+
+        if plugin_path and os.path.isdir(os.path.join(plugin_path, ".git")):
+            is_git_repo = True
+            self._ensure_git_safe_directory(plugin_path)
+            try:
+                r_url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=plugin_path, capture_output=True, text=True, timeout=3)
+                if r_url.returncode == 0 and r_url.stdout.strip():
+                    repo_url = r_url.stdout.strip()
+            except Exception:
+                pass
+
+            try:
+                r_head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=plugin_path, capture_output=True, text=True, timeout=3)
+                if r_head.returncode == 0 and r_head.stdout.strip():
+                    commit = r_head.stdout.strip()
+            except Exception:
+                pass
+
+            try:
+                r_br = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=plugin_path, capture_output=True, text=True, timeout=3)
+                if r_br.returncode == 0 and r_br.stdout.strip() and r_br.stdout.strip() != "HEAD":
+                    branch = r_br.stdout.strip()
+            except Exception:
+                pass
+
+            try:
+                r_date = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=short"], cwd=plugin_path, capture_output=True, text=True, timeout=3)
+                if r_date.returncode == 0 and r_date.stdout.strip():
+                    commit_date = r_date.stdout.strip()
+            except Exception:
+                pass
+
+        # Normalizar repo_url y extraer owner/repo de GitHub si corresponde
+        github_repo = None
+        if repo_url:
+            clean_url = repo_url.strip()
+            if clean_url.startswith("git@github.com:"):
+                clean_url = clean_url.replace("git@github.com:", "https://github.com/")
+            if clean_url.endswith(".git"):
+                clean_url = clean_url[:-4]
+            m = re.search(r"github\.com/([^/\s]+/[^/\s]+)", clean_url)
+            if m:
+                github_repo = m.group(1)
+            elif "/" in clean_url and not clean_url.startswith("http"):
+                github_repo = clean_url
+                clean_url = f"https://github.com/{clean_url}"
+            repo_url = clean_url
+
+        return {
+            "plugin_id": plugin_id,
+            "is_git_repo": is_git_repo,
+            "repo_url": repo_url,
+            "github_repo": github_repo,
+            "branch": branch,
+            "commit": commit,
+            "commit_date": commit_date,
+            "can_update": bool(repo_url or is_git_repo)
+        }
+
+    def check_plugin_update(self, plugin_id: str) -> Dict[str, Any]:
+        """
+        [EXPERIMENTAL] Consulta si existe una versión o commit más reciente en GitHub para el plugin.
+        """
+        with self._lock:
+            meta = self._plugins.get(plugin_id, {})
+        git_info = self.get_plugin_git_info(plugin_id)
+
+        current_version = meta.get("version", "1.0.0")
+        current_commit = git_info.get("commit")
+
+        result = {
+            "plugin_id": plugin_id,
+            "name": meta.get("name", plugin_id),
+            "version": current_version,
+            "repository": git_info.get("repo_url"),
+            "github_repo": git_info.get("github_repo"),
+            "branch": git_info.get("branch", "main"),
+            "current_commit": current_commit,
+            "is_git_repo": git_info.get("is_git_repo", False),
+            "remote_commit": None,
+            "remote_version": None,
+            "commit_message": None,
+            "commit_date": None,
+            "update_available": False,
+            "can_update": git_info.get("can_update", False),
+            "error": None
+        }
+
+        if not result["can_update"]:
+            result["error"] = "Plugin no declara repositorio ni es un repositorio Git."
+            return result
+
+        def _v_tuple(v):
+            try:
+                return tuple(int(x) for x in re.findall(r"\d+", str(v)))
+            except Exception:
+                return (0,)
+
+        gh_repo = git_info.get("github_repo")
+        branch = git_info.get("branch", "main")
+        checked_via_api = False
+
+        if gh_repo:
+            # 1. Consultar último commit en GitHub API
+            try:
+                commit_url = f"https://api.github.com/repos/{gh_repo}/commits/{branch}"
+                r = requests.get(commit_url, headers={"User-Agent": "dHtools-PluginManager"}, timeout=4)
+                if r.status_code == 200:
+                    cdata = r.json()
+                    sha = (cdata.get("sha") or "")[:7]
+                    result["remote_commit"] = sha
+                    result["commit_message"] = (cdata.get("commit", {}).get("message") or "").splitlines()[0]
+                    result["commit_date"] = cdata.get("commit", {}).get("committer", {}).get("date", "")[:10]
+                    checked_via_api = True
+
+                    if current_commit and current_commit != "unknown" and sha and sha != current_commit:
+                        result["update_available"] = True
+            except Exception as e:
+                logger.debug(f"Error consultando commits de GitHub para {plugin_id}: {e}")
+
+            # 2. Consultar releases / tags para comparar SemVer
+            try:
+                rel_url = f"https://api.github.com/repos/{gh_repo}/releases/latest"
+                r = requests.get(rel_url, headers={"User-Agent": "dHtools-PluginManager"}, timeout=4)
+                if r.status_code == 200:
+                    rel_data = r.json()
+                    tag = (rel_data.get("tag_name") or "").lstrip("v")
+                    if tag:
+                        result["remote_version"] = tag
+                        if _v_tuple(tag) > _v_tuple(current_version):
+                            result["update_available"] = True
+            except Exception as e:
+                logger.debug(f"Error consultando releases de GitHub para {plugin_id}: {e}")
+
+        # Si no se pudo verificar por API o no es de GitHub directo, usar git ls-remote si es posible
+        if not checked_via_api and git_info.get("repo_url"):
+            try:
+                self._ensure_git_safe_directory()
+                cmd = ["git", "ls-remote", git_info["repo_url"], f"refs/heads/{branch}"]
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+                if res.returncode == 0 and res.stdout.strip():
+                    parts = res.stdout.strip().split()
+                    if parts:
+                        remote_sha = parts[0][:7]
+                        result["remote_commit"] = remote_sha
+                        if current_commit and current_commit != "unknown" and remote_sha != current_commit:
+                            result["update_available"] = True
+            except Exception as e:
+                if not result.get("error"):
+                    result["error"] = str(e)
+
+        return result
+
+    def check_all_plugin_updates(self) -> List[Dict[str, Any]]:
+        """[EXPERIMENTAL] Comprueba actualizaciones de todos los plugins descubiertos."""
+        with self._lock:
+            plugin_ids = list(self._plugins.keys())
+
+        updates = []
+        for pid in plugin_ids:
+            try:
+                res = self.check_plugin_update(pid)
+                updates.append(res)
+            except Exception as e:
+                logger.error(f"Error al verificar actualización de '{pid}': {e}")
+                updates.append({
+                    "plugin_id": pid,
+                    "name": pid,
+                    "error": str(e),
+                    "can_update": False,
+                    "update_available": False
+                })
+        return updates
+
+    def update_plugin(self, plugin_id: str) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        [EXPERIMENTAL] Actualiza un plugin desde GitHub o su repositorio Git.
+        Preserva automáticamente config.json y credenciales privadas del plugin.
+        """
+        with self._lock:
+            meta = self._plugins.get(plugin_id)
+            if not meta:
+                return False, f"Plugin '{plugin_id}' no encontrado.", {}
+
+        plugin_path = meta.get("_path")
+        if not plugin_path or not os.path.isdir(plugin_path):
+            return False, f"Directorio de plugin inválido: {plugin_path}", {}
+
+        git_info = self.get_plugin_git_info(plugin_id)
+        if not git_info.get("can_update"):
+            return False, f"El plugin '{plugin_id}' no posee un repositorio configurado ni es un repositorio Git.", {}
+
+        repo_url = git_info.get("repo_url")
+        branch = git_info.get("branch") or "main"
+
+        # 1. Respaldar archivos privados (config.json, credenciales, etc.)
+        preserved_files = {}
+        for fname in ["config.json", "credentials.json", "token.json", "data.json", ".env"]:
+            fpath = os.path.join(plugin_path, fname)
+            if os.path.exists(fpath):
+                try:
+                    with open(fpath, "rb") as f:
+                        preserved_files[fname] = f.read()
+                    logger.info(f"Archivo protegido respaldado para actualización: {fname} en '{plugin_id}'")
+                except Exception as err:
+                    logger.warning(f"No se pudo respaldar {fname} en '{plugin_id}': {err}")
+
+        self._ensure_git_safe_directory(plugin_path)
+        output_log = []
+
+        try:
+            if git_info.get("is_git_repo"):
+                # Actualización de repositorio Git existente
+                logger.info(f"Actualizando plugin Git '{plugin_id}' desde {repo_url} (rama {branch})...")
+                fetch_res = subprocess.run(["git", "fetch", "origin"], cwd=plugin_path, capture_output=True, text=True, timeout=45)
+                output_log.append(f"[git fetch]\n{fetch_res.stdout}\n{fetch_res.stderr}")
+
+                pull_res = subprocess.run(["git", "pull", "--rebase", "origin", branch], cwd=plugin_path, capture_output=True, text=True, timeout=60)
+                output_log.append(f"[git pull --rebase]\n{pull_res.stdout}\n{pull_res.stderr}")
+
+                if pull_res.returncode != 0:
+                    logger.warning(f"Pull con rebase falló en '{plugin_id}', aplicando reset a origin/{branch}...")
+                    reset_res = subprocess.run(["git", "reset", "--hard", f"origin/{branch}"], cwd=plugin_path, capture_output=True, text=True, timeout=30)
+                    output_log.append(f"[git reset --hard]\n{reset_res.stdout}\n{reset_res.stderr}")
+                    if reset_res.returncode != 0:
+                        raise RuntimeError(f"Fallo al restaurar repositorio a origin/{branch}: {reset_res.stderr}")
+            else:
+                # Inicializar y clonar rama en directorio existente sin .git
+                logger.info(f"Inicializando Git y descargando '{plugin_id}' desde {repo_url}...")
+                subprocess.run(["git", "init"], cwd=plugin_path, capture_output=True, timeout=15)
+                subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=plugin_path, capture_output=True, timeout=15)
+                fetch_res = subprocess.run(["git", "fetch", "origin"], cwd=plugin_path, capture_output=True, text=True, timeout=60)
+                output_log.append(f"[git init & fetch]\n{fetch_res.stdout}\n{fetch_res.stderr}")
+                co_res = subprocess.run(["git", "checkout", "-f", "-B", branch, f"origin/{branch}"], cwd=plugin_path, capture_output=True, text=True, timeout=30)
+                output_log.append(f"[git checkout]\n{co_res.stdout}\n{co_res.stderr}")
+                if co_res.returncode != 0:
+                    raise RuntimeError(f"Fallo en checkout de {branch}: {co_res.stderr}")
+
+            # 2. Restaurar archivos privados protegidos
+            for fname, data in preserved_files.items():
+                dest_path = os.path.join(plugin_path, fname)
+                try:
+                    with open(dest_path, "wb") as f:
+                        f.write(data)
+                    logger.info(f"Archivo protegido restaurado con éxito: {fname} en '{plugin_id}'")
+                except Exception as err:
+                    logger.error(f"Error al restaurar {fname} en '{plugin_id}': {err}")
+
+            # 3. Recargar manifiesto actualizado
+            manifest_file = os.path.join(plugin_path, "plugin.json")
+            if os.path.exists(manifest_file):
+                try:
+                    with open(manifest_file, "r", encoding="utf-8") as f:
+                        new_manifest = json.load(f)
+                    new_manifest["_folder"] = meta.get("_folder", plugin_id)
+                    new_manifest["_path"] = plugin_path
+                    new_manifest["_entry"] = os.path.join(plugin_path, "plugin.py")
+                    new_manifest["experimental"] = True
+                    with self._lock:
+                        self._plugins[plugin_id] = new_manifest
+                except Exception as err:
+                    logger.error(f"Error releyendo manifiesto de '{plugin_id}': {err}")
+
+            # 4. Recargar plugin en memoria
+            reloaded = self.reload_plugin(plugin_id)
+            new_git = self.get_plugin_git_info(plugin_id)
+            new_ver = self._plugins.get(plugin_id, {}).get("version", "1.0.0")
+
+            msg = f"Plugin '{plugin_id}' actualizado exitosamente a v{new_ver} (commit {new_git.get('commit')})."
+            if reloaded:
+                msg += " Plugin recargado en memoria."
+            logger.info(msg)
+
+            return True, msg, {
+                "plugin_id": plugin_id,
+                "version": new_ver,
+                "commit": new_git.get("commit"),
+                "reloaded": reloaded,
+                "output": "\n".join(output_log)
+            }
+
+        except Exception as e:
+            logger.error(f"Error actualizando plugin '{plugin_id}': {e}", exc_info=True)
+            # Restaurar archivos protegidos incluso en caso de fallo
+            for fname, data in preserved_files.items():
+                dest_path = os.path.join(plugin_path, fname)
+                try:
+                    with open(dest_path, "wb") as f:
+                        f.write(data)
+                except Exception:
+                    pass
+            return False, f"Error al actualizar plugin '{plugin_id}': {str(e)}", {
+                "plugin_id": plugin_id,
+                "output": "\n".join(output_log)
+            }
+
+    def reload_plugin(self, plugin_id: str) -> bool:
+        """
+        [EXPERIMENTAL] Recarga en caliente un plugin específico en memoria sin reiniciar dHtools.
+        """
+        with self._lock:
+            meta = self._plugins.get(plugin_id)
+            if not meta:
+                return False
+
+            # Limpiar instancia previa si existe
+            if plugin_id in self._instances:
+                old_inst = self._instances.pop(plugin_id, None)
+                if hasattr(old_inst, "on_unload"):
+                    try:
+                        old_inst.on_unload()
+                    except Exception as e:
+                        logger.warning(f"Error en on_unload de '{plugin_id}': {e}")
+
+            # Limpiar módulo de sys.modules si estaba cargado
+            module_name = f"dhtools_plugin_{plugin_id}"
+            if module_name in sys.modules:
+                sys.modules.pop(module_name, None)
+
+            # Volver a cargar si está habilitado
+            if meta.get("enabled", False):
+                self._load_plugin(plugin_id, meta)
+                return plugin_id in self._instances
+            return True
 
 
 # Singleton global

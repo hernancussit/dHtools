@@ -727,6 +727,30 @@
           <div id="gitUpdateNotice" style="display:none; margin-top:12px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
         </div>
 
+        <!-- Plugin GitHub Updates Card -->
+        <div style="margin-top:20px; background:#0d1527; padding:18px; border-radius:10px; border:1px solid var(--border-highlight); box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.3rem;">🧩</span>
+              <div>
+                <strong style="font-size:0.95rem; color:var(--text);">Actualizaciones de Plugins & Extensiones (GitHub)</strong>
+                <div style="font-size:0.75rem; color:var(--muted);">Gestión de versiones remotas y pull automático para extensiones externas independientes.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button id="btnCheckPluginsUpdatesEngine" class="btn btn-secondary btn-sm">🔍 Comprobar Plugins</button>
+              <button id="btnUpdateAllPluginsEngine" class="btn btn-primary btn-sm" style="display:none;">🚀 Actualizar Todos</button>
+            </div>
+          </div>
+
+          <div id="pluginUpdatesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; font-size:0.8rem;">
+            <div style="grid-column:1/-1; color:var(--muted); text-align:center; padding:14px; background:#090e1a; border-radius:8px; border:1px dashed var(--border);">
+              Hacé clic en <strong>"Comprobar Plugins"</strong> para consultar repositorios GitHub de tus extensiones.
+            </div>
+          </div>
+          <div id="pluginUpdatesNotice" style="display:none; margin-top:12px; padding:8px 12px; border-radius:8px; font-size:0.82rem;"></div>
+        </div>
+
         <div id="engineLogsBox" style="display:none; margin-top:16px; background:#0b1220; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.8rem; max-height:220px; overflow-y:auto; color:#a5f3fc; white-space:pre-wrap;"></div>
       </div>
     </div>
@@ -1357,9 +1381,12 @@ docker run -d --name residential-socks5 \
     <!-- TAB: PLUGINS [EXPERIMENTAL] -->
     <div id="tab-plugins" class="tab-pane">
       <div class="card">
-        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <span>🧩 Extensiones & Plugins <span style="font-size:0.75rem; background:rgba(234,179,8,0.18); color:#fbbf24; padding:3px 8px; border-radius:6px; font-weight:700;">EXPERIMENTAL</span></span>
-          <button id="btnReloadPlugins" class="btn btn-secondary btn-sm">⟳ Re-escanear</button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button id="btnCheckPluginsUpdatesTab" class="btn btn-secondary btn-sm">🔍 Buscar Actualizaciones (GitHub)</button>
+            <button id="btnReloadPlugins" class="btn btn-secondary btn-sm">⟳ Re-escanear</button>
+          </div>
         </div>
         <div style="background:rgba(234,179,8,0.08); border-left:4px solid #eab308; padding:12px 16px; border-radius:8px; margin-bottom:16px; font-size:0.85rem; color:#fde047; line-height:1.5;">
           <strong>⚠️ Módulo Experimental:</strong> Los plugins permiten extender dHtools (segundos bots de Telegram, alertas en Discord/WhatsApp, integraciones privadas) de forma 100% desacoplada. Todos los plugins residen en <code>plugins/</code> y están completamente ignorados por Git para proteger tu privacidad.
@@ -1444,7 +1471,12 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (targetPane) targetPane.classList.add('active');
     const titleEl = document.getElementById('currentSectionTitle');
     if (titleEl && sectionTitles[tabId]) titleEl.textContent = sectionTitles[tabId];
-    if (tabId === 'tab-plugins') loadPluginsList();
+    if (tabId === 'tab-plugins') {
+      loadPluginsList();
+    } else if (tabId === 'tab-engines') {
+      if (typeof loadEnginesInfo === 'function') loadEnginesInfo();
+      if (typeof loadGitStatus === 'function') loadGitStatus();
+    }
   });
 });
 
@@ -1490,13 +1522,25 @@ async function loadPluginsList() {
           <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">
             ID: <code>${p.id}</code> | Versión: <code>v${p.version || '1.0'}</code> | Autor: ${p.author || 'Anónimo'}
           </div>
+          ${p.repository ? `
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span>🔗 GitHub:</span>
+              <a href="${p.repository.startsWith('http') ? p.repository : 'https://github.com/' + p.repository}" target="_blank" style="color:var(--accent-blue); text-decoration:none;">
+                ${p.git?.github_repo || p.repository}
+              </a>
+              <span style="background:rgba(244,114,182,0.15); color:#f472b6; padding:1px 6px; border-radius:4px; font-size:0.7rem;">${p.branch || 'main'}</span>
+              ${p.git?.commit && p.git.commit !== 'unknown' ? `<code style="color:#a5f3fc; font-size:0.7rem;">(${p.git.commit})</code>` : ''}
+            </div>
+          ` : ''}
+          <div id="plugin-update-info-${p.id}" style="margin-bottom:6px; font-size:0.78rem;"></div>
           <p style="font-size:0.83rem; color:var(--muted); margin:0; line-height:1.4;">
             ${p.description || 'Sin descripción'}
           </p>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px; font-size:0.75rem; color:var(--muted);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px; font-size:0.75rem; color:var(--muted); flex-wrap:wrap; gap:8px;">
           <span>Carpeta: <code>plugins/${p._folder || p.id}</code></span>
           <div style="display:flex; align-items:center; gap:8px;">
+            ${p.can_update ? `<button onclick="updateSinglePlugin('${p.id}', this)" class="btn btn-primary btn-sm btn-update-plugin-${p.id}" style="font-size:0.72rem; padding:3px 8px; display:none;">🚀 Actualizar</button>` : ''}
             ${p.settings_url ? `<a href="${p.settings_url}" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; text-decoration:none; color:var(--accent-blue);">⚙️ Configurar</a>` : ''}
             <span style="background:rgba(234,179,8,0.15); color:#fbbf24; padding:2px 6px; border-radius:4px; font-size:0.68rem; font-weight:700;">EXPERIMENTAL</span>
           </div>
@@ -2040,6 +2084,182 @@ document.getElementById('btnGitRollback')?.addEventListener('click', async () =>
   } catch (e) {
     showToast('Error al ejecutar rollback: ' + e.message, 'error');
   }
+});
+
+// Plugin Updates via GitHub
+async function checkPluginUpdates(sourceBtn = null) {
+  if (sourceBtn) {
+    sourceBtn.disabled = true;
+    sourceBtn.textContent = '⏳ Comprobando...';
+  }
+  showToast('Consultando repositorios GitHub de plugins...', 'info');
+
+  const container = document.getElementById('pluginUpdatesContainer');
+  const notice = document.getElementById('pluginUpdatesNotice');
+  const btnAll = document.getElementById('btnUpdateAllPluginsEngine');
+
+  if (container) {
+    container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:15px; color:var(--muted);">⏳ Consultando GitHub API y repositorios remotos...</div>';
+  }
+
+  try {
+    const res = await fetch('/api/admin/plugins/check-updates');
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Error al consultar actualizaciones');
+
+    const updates = data.updates || [];
+    let hasAnyUpdate = false;
+
+    if (container) {
+      if (updates.length === 0) {
+        container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:15px; color:var(--muted);">No hay plugins con repositorios GitHub configurados.</div>';
+      } else {
+        container.innerHTML = updates.map(u => {
+          if (u.update_available) hasAnyUpdate = true;
+          return `
+            <div style="background:#090e1a; padding:12px; border-radius:8px; border:1px solid ${u.update_available ? 'var(--warning)' : 'var(--border)'};">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                <strong style="color:var(--text);">${u.name || u.plugin_id}</strong>
+                <span class="status-badge" style="font-size:0.68rem; ${u.update_available ? 'background:rgba(245,158,11,0.2); color:var(--warning);' : 'background:rgba(16,185,129,0.15); color:var(--success);'}">
+                  ${u.update_available ? '⚠️ Actualización disponible' : (u.can_update ? '✅ Al día' : 'ℹ️ Sin Git')}
+                </span>
+              </div>
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:6px;">
+                Versión local: <code>v${u.version}</code> ${u.current_commit && u.current_commit !== 'unknown' ? `(${u.current_commit})` : ''}
+                ${u.remote_commit ? ` • Remoto: <code style="color:#38bdf8;">${u.remote_commit}</code>` : ''}
+              </div>
+              ${u.commit_message ? `<div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">"${u.commit_message}"</div>` : ''}
+              ${u.update_available ? `
+                <button onclick="updateSinglePlugin('${u.plugin_id}', this)" class="btn btn-primary btn-sm" style="width:100%; font-size:0.75rem; padding:4px 8px;">
+                  🚀 Actualizar a ${u.remote_version ? 'v' + u.remote_version : u.remote_commit}
+                </button>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    if (btnAll) {
+      btnAll.style.display = hasAnyUpdate ? 'inline-flex' : 'none';
+    }
+
+    if (notice) {
+      notice.style.display = 'block';
+      if (hasAnyUpdate) {
+        notice.style.background = 'rgba(245, 158, 11, 0.15)';
+        notice.style.border = '1px solid var(--warning)';
+        notice.style.color = 'var(--warning)';
+        notice.innerHTML = '⚠️ <strong>Actualizaciones encontradas:</strong> Hay plugins con versiones más recientes en GitHub.';
+      } else {
+        notice.style.background = 'rgba(16, 185, 129, 0.15)';
+        notice.style.border = '1px solid var(--success)';
+        notice.style.color = 'var(--success)';
+        notice.innerHTML = '✅ <strong>Todos los plugins están al día:</strong> Coinciden con sus repositorios remotos en GitHub.';
+      }
+    }
+
+    // Actualizar también los badges en la pestaña de Plugins
+    updates.forEach(u => {
+      const infoEl = document.getElementById(`plugin-update-info-${u.plugin_id}`);
+      const btnUpdate = document.querySelector(`.btn-update-plugin-${u.plugin_id}`);
+      if (infoEl) {
+        if (u.update_available) {
+          infoEl.innerHTML = `
+            <span style="background:rgba(245,158,11,0.2); color:var(--warning); padding:3px 8px; border-radius:6px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+              ⚠️ Nueva versión disponible (${u.remote_version ? 'v' + u.remote_version : ''} ${u.remote_commit || ''})
+            </span>
+          `;
+          if (btnUpdate) btnUpdate.style.display = 'inline-flex';
+        } else if (u.can_update) {
+          infoEl.innerHTML = `
+            <span style="background:rgba(16,185,129,0.15); color:var(--success); padding:3px 8px; border-radius:6px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+              ✅ Al día con GitHub
+            </span>
+          `;
+          if (btnUpdate) btnUpdate.style.display = 'none';
+        }
+      }
+    });
+
+    showToast('Comprobación de plugins completada.', 'success');
+  } catch (err) {
+    showToast('Error al comprobar plugins: ' + err.message, 'error');
+    if (notice) {
+      notice.style.display = 'block';
+      notice.style.background = 'rgba(239, 68, 68, 0.15)';
+      notice.style.border = '1px solid var(--danger)';
+      notice.style.color = 'var(--danger)';
+      notice.textContent = 'Error: ' + err.message;
+    }
+  } finally {
+    if (sourceBtn) {
+      sourceBtn.disabled = false;
+      sourceBtn.textContent = sourceBtn.id === 'btnCheckPluginsUpdatesTab' ? '🔍 Buscar Actualizaciones (GitHub)' : '🔍 Comprobar Plugins';
+    }
+  }
+}
+
+async function updateSinglePlugin(pluginId, btnElement = null) {
+  if (!confirm(`¿Actualizar plugin "${pluginId}" desde su repositorio GitHub? Sus credenciales y ajustes (config.json) serán preservados automáticamente.`)) return;
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.textContent = '⏳ Actualizando...';
+  }
+  showToast(`Actualizando plugin "${pluginId}" desde GitHub...`, 'info');
+
+  try {
+    const res = await fetch(`/api/admin/plugins/${pluginId}/update`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || data.error || 'Error en actualización');
+
+    showToast(data.message, 'success');
+    await loadPluginsList();
+    await checkPluginUpdates();
+  } catch (err) {
+    showToast(`Error al actualizar "${pluginId}": ` + err.message, 'error');
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.textContent = '🚀 Actualizar';
+    }
+  }
+}
+
+async function updateAllPlugins(btnElement = null) {
+  if (!confirm('¿Deseas actualizar TODOS los plugins que tienen cambios pendientes en GitHub?')) return;
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.textContent = '⏳ Actualizando todo...';
+  }
+  showToast('Actualizando todos los plugins pendientes...', 'info');
+
+  try {
+    const res = await fetch('/api/admin/plugins/update-all', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message || 'Actualizaciones completadas', data.success ? 'success' : 'warning');
+    await loadPluginsList();
+    await checkPluginUpdates();
+  } catch (err) {
+    showToast('Error en actualización masiva: ' + err.message, 'error');
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.textContent = '🚀 Actualizar Todos';
+    }
+  }
+}
+
+document.getElementById('btnCheckPluginsUpdatesEngine')?.addEventListener('click', function() {
+  checkPluginUpdates(this);
+});
+
+document.getElementById('btnCheckPluginsUpdatesTab')?.addEventListener('click', function() {
+  checkPluginUpdates(this);
+});
+
+document.getElementById('btnUpdateAllPluginsEngine')?.addEventListener('click', function() {
+  updateAllPlugins(this);
 });
 
 // 3. Settings & Cookies
