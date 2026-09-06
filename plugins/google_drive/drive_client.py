@@ -45,18 +45,24 @@ def sanitize_folder_id(raw_id: str) -> str:
     return val.strip().strip("/")
 
 
-def _resolve_path(path_str: str, base_dir: Optional[str] = None) -> str:
-    """Resuelve rutas relativas contra el directorio del plugin."""
+def _resolve_path(path_str: str, base_dir: Optional[str] = None, fallback_dir: Optional[str] = None) -> str:
+    """Resuelve rutas relativas contra el directorio provisto con fallback opcional."""
     if not path_str:
         return ""
     if os.path.isabs(path_str):
         return path_str
     if base_dir:
-        return os.path.join(base_dir, path_str)
-    return path_str
+        cand = os.path.join(base_dir, path_str)
+        if os.path.exists(cand) or not fallback_dir:
+            return cand
+    if fallback_dir:
+        cand = os.path.join(fallback_dir, path_str)
+        if os.path.exists(cand):
+            return cand
+    return os.path.join(base_dir, path_str) if base_dir else path_str
 
 
-def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None):
+def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None, fallback_dir: Optional[str] = None):
     """
     Construye y retorna el cliente de servicio googleapiclient para Google Drive v3.
     """
@@ -72,7 +78,7 @@ def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None):
     auth_type = config.get("auth_type", "service_account")
 
     if auth_type == "service_account":
-        sa_file = _resolve_path(config.get("service_account_file", "service_account.json"), base_dir)
+        sa_file = _resolve_path(config.get("service_account_file", "service_account.json"), base_dir, fallback_dir)
         sa_content = config.get("service_account_json_content")
 
         if sa_content and isinstance(sa_content, (dict, str)):
@@ -97,7 +103,8 @@ def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None):
 
     elif auth_type == "oauth2":
         oauth_cfg = config.get("oauth", {})
-        token_file = _resolve_path(oauth_cfg.get("token_file", "token.json"), base_dir)
+        token_file = _resolve_path(oauth_cfg.get("token_file", "token.json"), base_dir, fallback_dir)
+
         creds = None
 
         # Soporte para token provisto en caliente vía config (pruebas o contenido pegado)
@@ -159,12 +166,12 @@ def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None):
         raise ValueError(f"Tipo de autenticación desconocido: '{auth_type}'")
 
 
-def test_connection(config: Dict[str, Any], base_dir: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
+def test_connection(config: Dict[str, Any], base_dir: Optional[str] = None, fallback_dir: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
     """
     Prueba la conexión con Google Drive, devuelve información de cuota y valida la carpeta.
     """
     try:
-        service = get_drive_service(config, base_dir)
+        service = get_drive_service(config, base_dir, fallback_dir)
         
         # 1. Obtener información de usuario y cuota
         about = service.about().get(fields="user,storageQuota").execute()
@@ -230,6 +237,7 @@ def upload_file_resumable(
     filename: str,
     config: Dict[str, Any],
     base_dir: Optional[str] = None,
+    fallback_dir: Optional[str] = None,
     owner: str = "admin",
     progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Tuple[bool, Dict[str, Any]]:
@@ -241,9 +249,10 @@ def upload_file_resumable(
         return False, {"error": "Archivo local no encontrado"}
 
     try:
-        service = get_drive_service(config, base_dir)
+        service = get_drive_service(config, base_dir, fallback_dir)
     except Exception as e:
         return False, {"error": f"Error de autenticación con Google Drive: {e}"}
+
 
     from googleapiclient.http import MediaFileUpload
 

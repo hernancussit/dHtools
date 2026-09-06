@@ -3513,6 +3513,7 @@ function renderRecentDownloads(data) {
                       <span>${sub.size_formatted}</span>
                       <div style="display:flex; gap:4px; align-items:center;">
                         ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>`}
+                        ${(!sub.offloaded) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="uploadToGoogleDrive('${sub.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
                         ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
                         <button class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="deleteUserDownload('${sub.job_id}')">🗑️</button>
                       </div>
@@ -3552,6 +3553,7 @@ function renderRecentDownloads(data) {
           </div>
           <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px; align-items:center;">
             ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:4px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>`}
+            ${(!item.offloaded) ? `<button class="btn btn-secondary btn-sm" onclick="uploadToGoogleDrive('${item.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
             ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
           </div>
@@ -3640,6 +3642,54 @@ window.sendToTelegram = async function(jobId, btnEl) {
     }
   }
 };
+
+window.uploadToGoogleDrive = async function(jobId, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.dataset.origHtml = btnEl.innerHTML;
+    btnEl.innerHTML = '⏳ Subiendo...';
+  }
+  try {
+    const res = await fetch('/plugin/google_drive/api/upload-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: jobId })
+    });
+
+    if (res.status === 401) {
+      showToast('Tu sesión ha expirado. Por favor iniciá sesión nuevamente.', 'error');
+      return;
+    }
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message || '¡Archivo subido exitosamente a Google Drive!', 'success');
+      if (btnEl) {
+        btnEl.innerHTML = '✅ En Drive';
+        btnEl.style.color = '#34d399';
+        btnEl.style.borderColor = '#059669';
+        if (data.web_link) {
+          btnEl.title = 'Abrir en Google Drive';
+          btnEl.onclick = () => window.open(data.web_link, '_blank');
+        }
+      }
+      setTimeout(loadRecentDownloads, 2000);
+    } else {
+      showToast(data.error || 'No se pudo subir a Google Drive.', 'error');
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = btnEl.dataset.origHtml || '📁 Drive';
+      }
+    }
+  } catch (e) {
+    showToast(e.message || 'Error de red o comunicación con Google Drive.', 'error');
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = btnEl.dataset.origHtml || '📁 Drive';
+    }
+  }
+};
+
 
 document.getElementById('btnCleanMyDownloads')?.addEventListener('click', async () => {
   if (!confirm('¿Deseas eliminar TODAS tus descargas recientes y liberar espacio?')) return;

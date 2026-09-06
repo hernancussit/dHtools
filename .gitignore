@@ -46,4 +46,6 @@ plugins/google_drive/config.json
 plugins/google_drive/service_account.json
 plugins/google_drive/token.json
 plugins/google_drive/*.credentials.json
+plugins/google_drive/users_data/
+
 

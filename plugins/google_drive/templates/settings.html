@@ -52,7 +52,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       padding-bottom: 16px;
       border-bottom: 1px solid rgba(55, 65, 81, 0.5);
     }
@@ -107,6 +107,16 @@
       font-weight: 600;
     }
 
+    .badge-user {
+      background: rgba(59, 130, 246, 0.18);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
     .nav-links {
       display: flex;
       gap: 12px;
@@ -148,68 +158,46 @@
     }
 
     .btn-test {
-      background: rgba(59, 130, 246, 0.15);
-      border-color: rgba(59, 130, 246, 0.4);
-      color: #93c5fd;
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: var(--accent-green);
     }
     .btn-test:hover {
-      background: rgba(59, 130, 246, 0.25);
-      color: #fff;
+      background: rgba(16, 185, 129, 0.25);
     }
 
     .card {
       background: var(--bg-card);
-      backdrop-filter: blur(12px);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
       padding: 24px;
       margin-bottom: 20px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(10px);
     }
 
     .card-title {
       font-size: 1.05rem;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #e5e7eb;
-    }
-
-    .alert {
-      padding: 12px 16px;
-      border-radius: var(--radius-md);
-      font-size: 0.85rem;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      line-height: 1.4;
-    }
-
-    .alert-amber {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      color: #fcd34d;
-    }
-
-    .alert-rose {
-      background: rgba(244, 63, 94, 0.1);
-      border: 1px solid rgba(244, 63, 94, 0.3);
-      color: #fda4af;
+      color: var(--text-primary);
+      border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+      padding-bottom: 12px;
     }
 
     .form-group {
       margin-bottom: 18px;
     }
 
-    .form-group label {
+    label {
       display: block;
       font-size: 0.82rem;
       font-weight: 600;
-      margin-bottom: 6px;
       color: var(--text-secondary);
+      margin-bottom: 6px;
     }
 
     .form-control {
@@ -217,29 +205,59 @@
       background: var(--bg-input);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 10px 14px;
       color: var(--text-primary);
+      padding: 10px 14px;
       font-size: 0.88rem;
+      font-family: inherit;
       transition: border-color 0.2s;
     }
+
     .form-control:focus {
       outline: none;
       border-color: var(--accent-cyan);
-      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
     }
 
     textarea.form-control {
+      min-height: 110px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.78rem;
       resize: vertical;
-      min-height: 110px;
     }
 
     .form-hint {
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       color: var(--text-muted);
-      margin-top: 4px;
-      line-height: 1.35;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    .alert {
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      font-size: 0.82rem;
+      margin-bottom: 18px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      line-height: 1.5;
+    }
+
+    .alert-amber {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fde68a;
+    }
+
+    .alert-rose {
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fecdd3;
+    }
+
+    .alert-blue {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #bfdbfe;
     }
 
     .toggle-row {
@@ -269,6 +287,7 @@
       display: inline-block;
       width: 44px;
       height: 24px;
+      flex-shrink: 0;
     }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
@@ -319,6 +338,71 @@
       background: var(--bg-card);
       color: var(--accent-cyan);
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    /* STEP GUIDES */
+    .steps-container {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+
+    .steps-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #93c5fd;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 0.79rem;
+      line-height: 1.45;
+      color: var(--text-secondary);
+    }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-text strong {
+      color: var(--text-primary);
+    }
+
+    .step-text a {
+      color: var(--accent-cyan);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .crucial-alert {
+      background: rgba(244, 63, 94, 0.12);
+      border-left: 4px solid var(--accent-rose);
+      padding: 10px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0;
+      font-size: 0.78rem;
+      color: #fecdd3;
+      line-height: 1.45;
     }
 
     .test-result-box {
@@ -389,22 +473,42 @@
         <div class="header-title">
           <h1>Google Drive Cloud Sync <span class="badge-exp">EXPERIMENTAL</span></h1>
           <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-            Plugin Oficial Bundled para dHtools (Streaming Resumable &amp; Safe Offload)
+            Plugin Oficial Multi-Usuario para dHtools (Streaming Resumable &amp; Safe Offload)
           </p>
         </div>
       </a>
       <div class="nav-links">
+        {% if is_admin %}
         <a href="/admin" class="btn btn-secondary">⚙️ Admin</a>
+        {% endif %}
         <a href="/" class="btn btn-secondary">🏠 Inicio</a>
       </div>
     </header>
+
+    <!-- BANNER CONTEXTUAL DE USUARIO -->
+    <div style="background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); border-radius:var(--radius-md); padding:10px 14px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; align-items:center; gap:8px; font-size:0.85rem;">
+        <span style="font-size:1.1rem;">👤</span>
+        <span>Configurando unidad de Google Drive para el usuario: <strong style="color:var(--accent-cyan);">{{ target_username }}</strong> <span class="badge-user">{{ 'ADMINISTRADOR' if target_username == 'admin' else 'USUARIO' }}</span></span>
+      </div>
+      {% if is_admin and all_usernames and all_usernames|length > 1 %}
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label for="forUserSelect" style="font-size:0.75rem; color:var(--text-muted); margin:0;">Cambiar perfil:</label>
+        <select id="forUserSelect" class="form-control" style="padding:4px 10px; font-size:0.78rem; width:auto; border-color:rgba(59,130,246,0.4);" onchange="window.location.href='/plugin/google_drive/settings?for_user=' + encodeURIComponent(this.value)">
+          {% for u in all_usernames %}
+          <option value="{{ u }}" {{ 'selected' if u == target_username else '' }}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+    </div>
 
     {% if request.args.get('oauth_status') == 'success' %}
     <div class="alert" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; margin-bottom: 20px;">
       <span style="font-size: 1.3rem;">🎉</span>
       <div>
         <strong>¡Autorización con Google completada exitosamente!</strong><br>
-        El token de acceso (<code>token.json</code>) ha sido guardado. Tu cuenta de Google Drive ya está vinculada y lista para sincronizar.
+        El token de acceso de <strong>{{ target_username }}</strong> ha sido guardado de forma aislada. Tu cuenta de Google Drive ya está vinculada y lista para sincronizar.
       </div>
     </div>
     {% endif %}
@@ -436,17 +540,30 @@
       <!-- TARJETA 1: ESTADO Y CONTROL GENERAL -->
       <div class="card">
         <div class="card-title">
-          <span>⚡ Estado de Sincronización</span>
+          <span>⚡ Estado y Modo de Subida</span>
           <span class="badge-ok" id="statusBadge">{{ 'ACTIVO' if config.enabled else 'DESACTIVADO' }}</span>
         </div>
 
         <div class="toggle-row">
           <div class="toggle-info">
-            <h4>Activar Plugin de Google Drive</h4>
-            <p>Habilita la subida automática a Drive tras finalizar cualquier descarga.</p>
+            <h4>Habilitar Integración con Google Drive</h4>
+            <p>Habilita la sincronización y hace visible Google Drive en tus opciones de descarga y menú de usuario.</p>
           </div>
           <label class="switch">
             <input type="checkbox" id="enabledSwitch" {{ 'checked' if config.enabled else '' }}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <h4>Modo de Subida Automática</h4>
+            <p id="autoUploadDesc">
+              {{ '⚡ Automático: Toda descarga que finalices se enviará inmediatamente a tu Google Drive.' if config.auto_upload else '🎯 Bajo Demanda: Las descargas se guardan en el VPS. Solo se enviarán a Drive si lo tildás al descargar o pulsás "Subir a Drive" en Mis Descargas.' }}
+            </p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="autoUploadSwitch" {{ 'checked' if config.auto_upload else '' }} onchange="updateAutoUploadLabel(this.checked)">
             <span class="slider"></span>
           </label>
         </div>
@@ -479,7 +596,7 @@
 
         <div class="tabs">
           <button type="button" class="tab-btn {{ 'active' if config.auth_type != 'oauth2' else '' }}" id="tabServiceAccountBtn" onclick="switchAuthTab('service_account')">
-            🛡️ Cuenta de Servicio (Recomendada para VPS)
+            🛡️ Cuenta de Servicio (Recomendada para VPS / Automatización)
           </button>
           <button type="button" class="tab-btn {{ 'active' if config.auth_type == 'oauth2' else '' }}" id="tabOAuthBtn" onclick="switchAuthTab('oauth2')">
             👤 OAuth 2.0 (Cuentas Personales @gmail)
@@ -488,13 +605,58 @@
 
         <!-- SECCIÓN 1: SERVICE ACCOUNT -->
         <div id="sectionServiceAccount" style="{{ 'display:block;' if config.auth_type != 'oauth2' else 'display:none;' }}">
-          <div class="alert alert-amber">
-            <span>💡</span>
-            <div>
-              <strong>¿Cómo funciona la Cuenta de Servicio?</strong><br>
-              1. En Google Cloud Console, creá una <em>Cuenta de Servicio</em> y descargá la clave JSON.<br>
-              2. Compartí tu carpeta de Drive con el correo de la cuenta de servicio (ej: <code>app@proyecto.iam.gserviceaccount.com</code>) con rol de <strong>Editor</strong>.<br>
-              3. Pegá el contenido JSON abajo o dejá el archivo <code>service_account.json</code> en la carpeta del plugin.
+          
+          <div class="steps-container">
+            <div class="steps-header">
+              <span>📋 Guía Paso a Paso: Configurar Cuenta de Servicio</span>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <div class="step-text">
+                Ingresá a <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> y creá o seleccioná tu proyecto.
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <div class="step-text">
+                Habilitá la <strong>Google Drive API</strong> haciendo clic en <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank">Biblioteca de Google Drive API ➔</a> y pulsando <strong>"Habilitar"</strong>.
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <div class="step-text">
+                Ve a <strong>IAM y administración &gt; Cuentas de servicio</strong> y hacé clic en <strong>"Crear cuenta de servicio"</strong> (ej: <code>dhtools-uploader</code>).
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">4</span>
+              <div class="step-text">
+                Hacé clic en la cuenta de servicio creada &gt; pestaña <strong>Claves (Keys)</strong> &gt; <strong>Agregar clave &gt; Crear clave nueva &gt; Tipo JSON</strong>. Se descargará un archivo <code>.json</code> en tu computadora.
+              </div>
+            </div>
+
+            <div class="crucial-alert">
+              <strong>⚠️ ¡PASO CRUCIAL PARA QUE FUNCIONE!</strong><br>
+              Abrí <a href="https://drive.google.com" target="_blank" style="color:#fff; text-decoration:underline; font-weight:700;">Google Drive</a>, creá o abrí la carpeta donde guardarás las descargas, hacé clic en <strong>Compartir</strong> y agregá el correo de la cuenta de servicio (ej: <code>dhtools-uploader@tu-proyecto.iam.gserviceaccount.com</code>) con rol de <strong>Editor</strong>.<br>
+              <em>Sin este paso, Google rechazará cualquier intento de subida por falta de permisos.</em>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">5</span>
+              <div class="step-text">
+                Copiá la clave alfanumérica de la URL de tu carpeta de Drive (después de <code>/folders/...</code>) y pegala en <strong>ID de Carpeta Destino</strong> arriba.
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">6</span>
+              <div class="step-text">
+                Abrí el archivo JSON descargado con el bloc de notas, copiá todo su contenido y pegalo en el recuadro de abajo.
+              </div>
             </div>
           </div>
 
@@ -503,9 +665,9 @@
             <textarea id="saJsonTextarea" class="form-control" placeholder='{ "type": "service_account", "project_id": "...", "private_key_id": "...", ... }'></textarea>
             <div class="form-hint">
               {% if service_account_exists %}
-                <span style="color: var(--accent-green); font-weight:600;">✓ Archivo service_account.json detectado actualmente en el servidor.</span> Si pegás uno nuevo, se sobrescribirá de forma segura.
+                <span style="color: var(--accent-green); font-weight:600;">✓ Archivo service_account.json activo detectado para este usuario.</span> Si pegás uno nuevo, se actualizará de forma segura.
               {% else %}
-                No se detectó archivo <code>service_account.json</code> previo. Pegá el JSON aquí arriba para crearlo.
+                No se detectó clave de <code>service_account.json</code> previa para este usuario. Pegá el JSON aquí arriba para guardarla.
               {% endif %}
             </div>
           </div>
@@ -513,39 +675,73 @@
 
         <!-- SECCIÓN 2: OAUTH 2.0 -->
         <div id="sectionOAuth" style="{{ 'display:block;' if config.auth_type == 'oauth2' else 'display:none;' }}">
-          <div class="alert alert-amber">
-            <span>👤</span>
-            <div>
-              <strong>Modo OAuth 2.0 para Cuentas Personales (@gmail):</strong><br>
-              Permite sincronizar tus descargas directamente con los 15 GB de tu cuenta personal de Google Drive. Requiere registrar la aplicación en Google Cloud y autorizar el acceso una única vez en el navegador.
-              <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(245, 158, 11, 0.3); font-size:0.77rem; color:#fef3c7; line-height:1.4;">
-                💡 <strong>Si te aparece la alerta de app no verificada:</strong><br>
-                1. En Google Cloud Console ve a <strong>Pantalla de consentimiento de OAuth &gt; Usuarios de prueba</strong> y haz clic en <em>"+ Agregar usuarios"</em> con tu cuenta de Gmail.<br>
-                2. Al iniciar sesión, si Google muestra <em>"Google no verificó esta app"</em>, haz clic en <strong>Configuración avanzada &gt; Ir a tu sitio (no seguro)</strong> para conceder los permisos.
+          
+          <div class="steps-container">
+            <div class="steps-header">
+              <span>📋 Guía Paso a Paso: Vincular Cuenta Personal con OAuth 2.0</span>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <div class="step-text">
+                En <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank">Google Cloud Console &gt; Drive API</a> verificá que la API esté <strong>Habilitada</strong>.
+              </div>
+            </div>
+
+            <div class="crucial-alert" style="background:rgba(245, 158, 11, 0.15); border-color:var(--accent-amber); color:#fef3c7;">
+              <strong>🛡️ SOLUCIÓN AL ERROR "APP EN PRUEBA / NO COMPLETÓ LA VERIFICACIÓN":</strong><br>
+              1. En Google Cloud Console ve a <strong>Pantalla de consentimiento de OAuth &gt; pestaña Usuarios de prueba (Test Users)</strong>.<br>
+              2. Hacé clic en <strong>"+ AGREGAR USUARIOS"</strong> y escribí tu dirección de correo electrónico personal de Google (<code>tu_correo@gmail.com</code>).<br>
+              3. Guardá los cambios. Esto desbloquea el acceso a tu cuenta inmediatamente sin requerir verificación oficial de Google.
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <div class="step-text">
+                Ve a <strong>Credenciales &gt; Crear credenciales &gt; ID de cliente de OAuth</strong> (Tipo: <em>Aplicación web</em>).
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <div class="step-text">
+                En el campo <strong>URIs de redirección autorizados</strong>, agregá exactamente la siguiente dirección:
+              </div>
+            </div>
+
+            <!-- PASO 3: URI DE REDIRECCIÓN -->
+            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: var(--radius-md); padding: 10px 14px; margin: 8px 0 14px 32px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 0.76rem; font-weight: 700; color: #93c5fd;">URI de Redirección Autorizada:</span>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="copyRedirectUri()">📋 Copiar URI</button>
+              </div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--accent-cyan); overflow-x: auto; word-break: break-all;" id="redirectUriBox">{{ redirect_uri }}</div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">4</span>
+              <div class="step-text">
+                Copiá el <strong>Client ID</strong> y <strong>Client Secret</strong> generados y pegalos en los campos de abajo.
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-num">5</span>
+              <div class="step-text">
+                Hacé clic en <strong>"Conectar con Google"</strong>. Si Google muestra <em>"Google no verificó esta app"</em>, hacé clic en <strong>Configuración avanzada</strong> (o <em>Advanced</em>) abajo a la izquierda y luego en <strong>Ir a tudominio.com (no seguro)</strong>. Marcá la casilla para conceder permisos y confirmá.
               </div>
             </div>
           </div>
 
-          <!-- PASO 1: URI DE REDIRECCIÓN -->
-          <div style="background: rgba(31, 41, 55, 0.6); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-md); padding: 14px; margin-bottom: 18px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="font-size: 0.82rem; font-weight: 700; color: #93c5fd;">
-                📋 Paso 1: Configurar URI de Redirección Autorizada en Google Cloud Console
-              </span>
-              <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="copyRedirectUri()">
-                📋 Copiar URI
-              </button>
-            </div>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
-              En Google Cloud Console &gt; <em>Credenciales</em> &gt; tu <em>ID de cliente de OAuth (Tipo: Aplicación web)</em>, agregá exactamente esta URL en <strong>URIs de redirección autorizados</strong>:
-            </p>
-            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--accent-cyan); overflow-x: auto; word-break: break-all;" id="redirectUriBox">{{ redirect_uri }}</div>
-          </div>
-
-          <!-- PASO 2: CREDENCIALES CLIENT ID Y SECRET -->
+          <!-- CREDENCIALES CLIENT ID Y SECRET -->
           <div class="form-group">
             <label for="oauthClientId">Client ID de Google Cloud</label>
             <input type="text" id="oauthClientId" class="form-control" placeholder="123456789-abc.apps.googleusercontent.com" value="{{ config.oauth.client_id if config.oauth else '' }}">
+            {% if config.oauth and config.oauth.get('_inherited_client_id') %}
+            <div class="form-hint" style="color:var(--accent-cyan);">
+              ℹ️ Heredando Client ID global configurado por el administrador. Podés conectar directamente sin configurar uno propio, o sobrescribirlo si lo deseás.
+            </div>
+            {% endif %}
           </div>
 
           <div class="form-group">
@@ -554,16 +750,16 @@
             <div class="form-hint">Por seguridad el Client Secret no se muestra en pantalla. Si ya lo guardaste anteriormente, dejalo en blanco para conservarlo.</div>
           </div>
 
-          <!-- PASO 3: ESTADO DE AUTORIZACIÓN Y BOTÓN CONECTAR -->
+          <!-- ESTADO DE AUTORIZACIÓN Y BOTÓN CONECTAR -->
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(55, 65, 81, 0.5);">
             {% if oauth_token_exists %}
               <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div>
                   <div style="color: var(--accent-green); font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
-                    <span>✓</span> Cuenta de Google vinculada y activa
+                    <span>✓</span> Cuenta de Google vinculada y activa para {{ target_username }}
                   </div>
                   <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 2px;">
-                    El archivo <code>token.json</code> está presente en el servidor con permisos de Google Drive.
+                    El token personal (<code>token.json</code>) está almacenado y listo para sincronizar descargas.
                   </div>
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -581,7 +777,7 @@
                   ⚠️ Autorización pendiente con tu cuenta de Google
                 </div>
                 <p style="font-size: 0.78rem; color: var(--text-secondary); max-width: 540px; margin: 0 auto 14px auto; line-height: 1.5;">
-                  Para otorgar acceso a dHtools para subir descargas a tu Google Drive, haz clic en el siguiente botón. Se abrirá la pantalla de autorización oficial de Google.
+                  Para otorgar acceso a dHtools para subir tus descargas a tu Google Drive, hacé clic en el siguiente botón. Se abrirá la pantalla de autorización oficial de Google.
                 </p>
                 <button type="button" class="btn btn-primary" id="btnStartOAuth" style="padding: 10px 22px; font-size: 0.92rem;" onclick="startOAuthFlow()">
                   🔗 Conectar con Google (Iniciar Autorización)
@@ -608,7 +804,7 @@
         </div>
 
         <!-- BOTONES DE ACCIÓN -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid rgba(55, 65, 81, 0.4);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid rgba(55, 65, 81, 0.4); flex-wrap:wrap; gap:10px;">
           <button type="button" class="btn btn-test" id="btnTestConn" onclick="testConnection()">
             🔌 Probar Conexión con Google Drive
           </button>
@@ -628,6 +824,7 @@
 
   <script>
     let currentAuthType = "{{ config.auth_type or 'service_account' }}";
+    const targetUsername = "{{ target_username }}";
 
     // Sincronizar URI de redirección con el origen exacto del navegador
     document.addEventListener('DOMContentLoaded', () => {
@@ -636,6 +833,15 @@
         uriBox.textContent = window.location.origin + '/plugin/google_drive/oauth/callback';
       }
     });
+
+    function updateAutoUploadLabel(isChecked) {
+      const el = document.getElementById('autoUploadDesc');
+      if (el) {
+        el.textContent = isChecked
+          ? '⚡ Automático: Toda descarga que finalices se enviará inmediatamente a tu Google Drive.'
+          : '🎯 Bajo Demanda: Las descargas se guardan en el VPS. Solo se enviarán a Drive si lo tildás al descargar o pulsás "Subir a Drive" en Mis Descargas.';
+      }
+    }
 
     function switchAuthTab(type) {
       currentAuthType = type;
@@ -676,39 +882,34 @@
       const clientId = document.getElementById('oauthClientId').value.trim();
       const clientSecret = document.getElementById('oauthClientSecret').value.trim();
 
-      if (!clientId) {
-        showToast('Debes ingresar el Client ID antes de conectar con Google', true);
-        document.getElementById('oauthClientId').focus();
-        return;
-      }
+      // Guardar configuración primero para asegurar que Client ID y Secret estén persistidos
+      await saveConfiguration(false);
 
       const btn = document.getElementById('btnStartOAuth');
       if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ Guardando y redirigiendo...';
+        btn.textContent = '⏳ Redirigiendo a Google...';
       }
-
-      // Guardar configuración primero para asegurar que Client ID y Secret estén persistidos
-      await saveConfiguration(false);
 
       const redirectUri = window.location.origin + '/plugin/google_drive/oauth/callback';
       window.location.href = `/plugin/google_drive/oauth/start?redirect_uri=${encodeURIComponent(redirectUri)}`;
     }
 
     async function revokeOAuthToken() {
-      if (!confirm('¿Estás seguro de que deseas desvincular tu cuenta de Google y borrar el archivo token.json?')) {
+      if (!confirm(`¿Estás seguro de que deseas desvincular la cuenta de Google Drive para el usuario '${targetUsername}'?`)) {
         return;
       }
 
       try {
         const res = await fetch('/plugin/google_drive/oauth/revoke', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ for_user: targetUsername })
         });
         const data = await res.json();
         if (data.success) {
           showToast(data.message || 'Token eliminado correctamente.');
-          setTimeout(() => { window.location.href = '/plugin/google_drive/settings'; }, 1000);
+          setTimeout(() => { window.location.href = `/plugin/google_drive/settings?for_user=${encodeURIComponent(targetUsername)}`; }, 1000);
         } else {
           showToast(data.error || 'Error al eliminar token.', true);
         }
@@ -728,12 +929,12 @@
         const res = await fetch('/plugin/google_drive/oauth/manual-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token_content: content })
+          body: JSON.stringify({ token_content: content, for_user: targetUsername })
         });
         const data = await res.json();
         if (data.success) {
           showToast(data.message || 'Token guardado exitosamente.');
-          setTimeout(() => { window.location.href = '/plugin/google_drive/settings?oauth_status=success'; }, 1000);
+          setTimeout(() => { window.location.href = `/plugin/google_drive/settings?for_user=${encodeURIComponent(targetUsername)}&oauth_status=success`; }, 1000);
         } else {
           showToast(data.error || 'JSON de token inválido.', true);
         }
@@ -750,6 +951,7 @@
       box.style.display = 'none';
 
       const payload = {
+        for_user: targetUsername,
         auth_type: currentAuthType,
         folder_id: document.getElementById('folderIdInput').value.trim(),
         service_account_json_content: document.getElementById('saJsonTextarea').value.trim(),
@@ -791,7 +993,7 @@
 
           box.className = 'test-result-box success';
           box.innerHTML = `
-            <strong>✓ Conexión establecida con éxito con Google Drive</strong><br>
+            <strong>✓ Conexión establecida con éxito con Google Drive (${targetUsername})</strong><br>
             <div style="margin-top:6px; font-size:0.78rem;">
               • <strong>Cuenta:</strong> ${d.user_name} (${d.email})<br>
               • <strong>Carpeta destino:</strong> ${d.folder_name} ${d.folder_id ? '<code>['+d.folder_id+']</code>' : '(Raíz)'}<br>
@@ -829,7 +1031,9 @@
       }
 
       const payload = {
+        for_user: targetUsername,
         enabled: document.getElementById('enabledSwitch').checked,
+        auto_upload: document.getElementById('autoUploadSwitch').checked,
         safe_offload: document.getElementById('offloadSwitch').checked,
         folder_id: document.getElementById('folderIdInput').value.trim(),
         auth_type: currentAuthType,
