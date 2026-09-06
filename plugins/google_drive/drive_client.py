@@ -205,11 +205,22 @@ def test_connection(config: Dict[str, Any], base_dir: Optional[str] = None) -> T
                     "error": f"No se pudo acceder a la carpeta destino ('{folder_id}'): {fe}"
                 }
 
-        return True, result
-
     except Exception as e:
         logger.error(f"Error al verificar conexión Google Drive: {e}")
-        return False, {"status": "error", "error": str(e)}
+        err_msg = str(e)
+        if "has not been used in project" in err_msg or "it is disabled" in err_msg:
+            err_msg = (
+                "La <strong>Google Drive API</strong> no está habilitada en tu proyecto de Google Cloud.<br>"
+                "<div style='margin-top:8px;'>"
+                "👉 <a href='https://console.cloud.google.com/apis/library/drive.googleapis.com' target='_blank' style='color:#67e8f9; text-decoration:underline; font-weight:700;'>"
+                "Habilitar Google Drive API en Google Cloud Console ➔"
+                "</a><br>"
+                "<span style='font-size:0.75rem; color:#9ca3af;'>Una vez que hagas clic en 'Habilitar' en la consola, aguarda unos segundos y vuelve a pulsar Probar Conexión.</span>"
+                "</div>"
+            )
+        else:
+            err_msg = err_msg.replace("<", "&lt;").replace(">", "&gt;")
+        return False, {"status": "error", "error": err_msg}
 
 
 def upload_file_resumable(
