@@ -414,6 +414,16 @@ class TelegramBot:
             self.send_message(chat_id, "🔒 Vinculá tu cuenta con /vincular para ver tus descargas.")
             return
 
+        from core.plugin_manager import plugin_manager
+        gdrive = plugin_manager.get_plugin_instance("google_drive")
+        user_drive_enabled = False
+        if gdrive and hasattr(gdrive, "get_user_config"):
+            try:
+                u_cfg = gdrive.get_user_config(username)
+                user_drive_enabled = bool(u_cfg.get("enabled", False))
+            except Exception:
+                user_drive_enabled = False
+
         meta = load_downloads_meta()
         user_items = []
 
@@ -524,11 +534,14 @@ class TelegramBot:
             )
 
             buttons = []
-            if it.get("disk_path") and os.path.exists(it["disk_path"]):
+            file_on_disk = bool(it.get("disk_path") and os.path.exists(it["disk_path"]))
+            if file_on_disk:
                 if size_mb <= 50:
                     buttons.append([{"text": "📥 Enviar a este chat", "callback_data": f"send:{jid[:40]}"}])
                 else:
                     buttons.append([{"text": "🌐 Descargar desde la Web (>50MB)", "url": "https://dhtools.example.com"}])
+                if user_drive_enabled:
+                    buttons.append([{"text": "📁 Subir a Google Drive", "callback_data": f"drive_upload:{jid[:40]}"}])
             else:
                 buttons.append([{"text": "🌐 Abrir en dHtools", "url": "https://dhtools.example.com"}])
 
@@ -619,6 +632,30 @@ class TelegramBot:
 
     # ==================== URL INSPECTION & QUALITY SELECTION ====================
 
+    def _build_media_keyboard(self, cache_id: str, cached: dict) -> dict:
+        rows = [
+            [
+                {"text": "🎬 1080p", "callback_data": f"dl:1080p:mp4:{cache_id}"},
+                {"text": "🎬 720p", "callback_data": f"dl:720p:mp4:{cache_id}"},
+                {"text": "🎬 480p", "callback_data": f"dl:480p:mp4:{cache_id}"},
+            ],
+            [
+                {"text": "🎵 MP3 320k", "callback_data": f"dl:audio_320:mp3:{cache_id}"},
+                {"text": "🎵 MP3 192k", "callback_data": f"dl:audio_192:mp3:{cache_id}"},
+                {"text": "🎵 FLAC", "callback_data": f"dl:flac:flac:{cache_id}"},
+            ]
+        ]
+        if cached.get("drive_available"):
+            drive_active = bool(cached.get("drive_upload"))
+            toggle_text = "📁 Subir a Drive: ✅ SÍ" if drive_active else "📁 Subir a Drive: ⬜ NO"
+            rows.append([
+                {"text": toggle_text, "callback_data": f"toggle_drive:{cache_id}"}
+            ])
+        rows.append([
+            {"text": "❌ Cancelar", "callback_data": f"cancel_select:{cache_id}"}
+        ])
+        return {"inline_keyboard": rows}
+
     def _handle_media_url(self, chat_id: int, url: str, username: str):
         # Validate URL
         if not validate_media_url(url):
@@ -652,41 +689,38 @@ class TelegramBot:
             except Exception as e:
                 logger.warning(f"[TelegramBot] Quick inspect failed: {e}")
 
+            from core.plugin_manager import plugin_manager
+            gdrive = plugin_manager.get_plugin_instance("google_drive")
+            drive_avail = False
+            drive_auto = False
+            if gdrive and hasattr(gdrive, "get_user_config"):
+                try:
+                    u_cfg = gdrive.get_user_config(username)
+                    drive_avail = bool(u_cfg.get("enabled", False))
+                    drive_auto = bool(u_cfg.get("auto_upload", False))
+                except Exception:
+                    drive_avail = False
+
             cache_id = uuid.uuid4().hex[:8]
-            with TELEGRAM_MEDIA_CACHE_LOCK:
-                TELEGRAM_MEDIA_CACHE[cache_id] = {
-                    "url": clean_url,
-                    "title": title,
-                    "owner": username,
-                    "platform": platform,
-                    "created_at": time.time()
-                }
-
-            # Build inline keyboard
-            # Row 1: Video
-            # Row 2: Audio
-            # Row 3: Cancel
-            keyboard = {
-                "inline_keyboard": [
-                    [
-                        {"text": "🎬 1080p", "callback_data": f"dl:1080p:mp4:{cache_id}"},
-                        {"text": "🎬 720p", "callback_data": f"dl:720p:mp4:{cache_id}"},
-                        {"text": "🎬 480p", "callback_data": f"dl:480p:mp4:{cache_id}"},
-                    ],
-                    [
-                        {"text": "🎵 MP3 320k", "callback_data": f"dl:audio_320:mp3:{cache_id}"},
-                        {"text": "🎵 MP3 192k", "callback_data": f"dl:audio_192:mp3:{cache_id}"},
-                        {"text": "🎵 FLAC", "callback_data": f"dl:flac:flac:{cache_id}"},
-                    ],
-                    [
-                        {"text": "❌ Cancelar", "callback_data": f"cancel_select:{cache_id}"}
-                    ]
-                ]
+            cached_data = {
+                "url": clean_url,
+                "title": title,
+                "owner": username,
+                "platform": platform,
+                "duration_str": duration_str,
+                "drive_available": drive_avail,
+                "drive_upload": drive_auto if drive_avail else False,
+                "created_at": time.time()
             }
+            with TELEGRAM_MEDIA_CACHE_LOCK:
+                TELEGRAM_MEDIA_CACHE[cache_id] = cached_data
 
+            keyboard = self._build_media_keyboard(cache_id, cached_data)
+
+            drive_note = "\n📁 <i>Respaldo en tu Google Drive: <b>Activado</b></i>" if cached_data.get("drive_upload") else ""
             text = (
                 f"📌 <b>{title}</b>\n"
-                f"🌐 Origen: <b>{platform}</b> | ⏱️ Duración: <b>{duration_str}</b>\n\n"
+                f"🌐 Origen: <b>{platform}</b> | ⏱️ Duración: <b>{duration_str}</b>{drive_note}\n\n"
                 f"Elegí el formato y calidad para comenzar la descarga:"
             )
 
@@ -805,6 +839,75 @@ class TelegramBot:
                 )
             return
 
+        if data.startswith("toggle_drive:"):
+            cache_id = data.split(":", 1)[1] if ":" in data else ""
+            with TELEGRAM_MEDIA_CACHE_LOCK:
+                cached = TELEGRAM_MEDIA_CACHE.get(cache_id)
+            if not cached:
+                self.answer_callback_query(q_id, "La sesión de descarga expiró.", show_alert=True)
+                return
+            if cached.get("owner") != username:
+                self.answer_callback_query(q_id, "⛔ Esta solicitud pertenece a otro usuario", show_alert=True)
+                return
+
+            cached["drive_upload"] = not cached.get("drive_upload", False)
+            state_label = "activada" if cached["drive_upload"] else "desactivada"
+            self.answer_callback_query(q_id, f"Subida a Drive: {state_label}")
+
+            new_kb = self._build_media_keyboard(cache_id, cached)
+            title = cached.get("title", "")
+            platform = cached.get("platform", "")
+            duration_str = cached.get("duration_str", "Desconocida")
+            drive_note = "\n📁 <i>Respaldo en tu Google Drive: <b>Activado</b></i>" if cached["drive_upload"] else ""
+
+            text = (
+                f"📌 <b>{title}</b>\n"
+                f"🌐 Origen: <b>{platform}</b> | ⏱️ Duración: <b>{duration_str}</b>{drive_note}\n\n"
+                f"Elegí el formato y calidad para comenzar la descarga:"
+            )
+            self.edit_message(chat_id, message_id, text, reply_markup=new_kb)
+            return
+
+        if data.startswith("drive_upload:"):
+            target_key = data.split(":", 1)[1]
+            from core.plugin_manager import plugin_manager
+            gdrive = plugin_manager.get_plugin_instance("google_drive")
+            if not gdrive or not hasattr(gdrive, "get_user_config"):
+                self.answer_callback_query(q_id, "Plugin Google Drive no disponible", show_alert=True)
+                return
+
+            u_cfg = gdrive.get_user_config(username)
+            if not u_cfg.get("enabled", False):
+                self.answer_callback_query(q_id, "⚠️ Google Drive está desactivado en tus ajustes web", show_alert=True)
+                return
+
+            self.answer_callback_query(q_id, "🚀 Iniciando subida a Google Drive...")
+
+            def do_drive_upload():
+                sent = self.send_message(chat_id, "⏳ <i>Subiendo archivo a tu Google Drive...</i>")
+                stat_msg_id = sent.get("result", {}).get("message_id") if sent else None
+
+                ok, res = gdrive.upload_job_for_user(target_key, username)
+                if ok:
+                    web_link = res.get("web_link", "")
+                    fname = res.get("filename", "archivo")
+                    link_html = f'\n🔗 <a href="{web_link}">Abrir en Google Drive</a>' if web_link else ""
+                    msg_text = (
+                        f"✅ <b>¡Subida a Google Drive exitosa!</b>\n\n"
+                        f"📄 Archivo: <b>{fname}</b>{link_html}"
+                    )
+                else:
+                    err = res.get("error", "Error desconocido al transferir")
+                    msg_text = f"❌ <b>Error al subir a Google Drive:</b>\n<code>{err}</code>"
+
+                if stat_msg_id:
+                    self.edit_message(chat_id, stat_msg_id, msg_text)
+                else:
+                    self.send_message(chat_id, msg_text)
+
+            threading.Thread(target=do_drive_upload, daemon=True).start()
+            return
+
         if data.startswith("dl:"):
             # dl:<quality>:<fmt>:<cache_id>
             parts = data.split(":")
@@ -835,6 +938,16 @@ class TelegramBot:
 
             self.answer_callback_query(q_id, "¡Encolado para descarga!")
 
+            user_cloud_sync = None
+            if cached.get("drive_upload"):
+                user_cloud_sync = {
+                    "plugins": {
+                        "google_drive": {
+                            "enabled": True
+                        }
+                    }
+                }
+
             job_id = uuid.uuid4().hex
             job_spec = {
                 "id": job_id,
@@ -856,6 +969,7 @@ class TelegramBot:
                 "playlist": False,
                 "engine": "auto",
                 "video_title": cached["title"],
+                "user_cloud_sync": user_cloud_sync,
                 "created_at": time.time(),
                 "telegram_chat_id": chat_id,
                 "telegram_message_id": message_id,
@@ -880,12 +994,13 @@ class TelegramBot:
                 ]
             }
 
+            drive_note = "\n📁 <i>Se respaldará en tu Google Drive al finalizar.</i>" if cached.get("drive_upload") else ""
             self.edit_message(
                 chat_id,
                 message_id,
                 f"⏳ <b>Encolado para descarga en segundo plano</b>\n"
                 f"📌 <b>{cached['title']}</b>\n"
-                f"⚙️ Calidad seleccionada: <code>{quality}</code> ({video_format.upper()})\n\n"
+                f"⚙️ Calidad seleccionada: <code>{quality}</code> ({video_format.upper()}){drive_note}\n\n"
                 f"<i>Iniciando worker de extracción...</i>",
                 reply_markup=cancel_kb
             )

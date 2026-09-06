@@ -219,12 +219,17 @@ class Plugin:
         Bajo ninguna circunstancia se permite suplantar o acceder a credenciales de otro usuario,
         garantizando privacidad y aislamiento total entre cuentas (incluso para administradores).
         """
-        user = getattr(request, "current_user", {}) or {}
-        username = user.get("username") or getattr(request, "current_username", None)
-        if not username:
-            username = session.get("username", "admin")
-
-        return (username or "admin").strip().lower()
+        try:
+            from flask import has_request_context
+            if not has_request_context():
+                return "admin"
+            user = getattr(request, "current_user", {}) or {}
+            username = user.get("username") or getattr(request, "current_username", None)
+            if not username:
+                username = session.get("username", "admin")
+            return (username or "admin").strip().lower()
+        except Exception:
+            return "admin"
 
     def _get_redirect_uri(self) -> str:
         """Determina la URI de redirección canónica para OAuth2."""
@@ -647,136 +652,155 @@ class Plugin:
             current_user = getattr(request, "current_user", {}) or {}
             is_admin = (current_user.get("role") == "admin")
 
-            # 1. El usuario debe tener habilitada la integración con Google Drive
-            user_cfg = self.get_user_config(current_username)
-            if not user_cfg.get("enabled", False):
-                return jsonify({
-                    "success": False,
-                    "error": "La integración con Google Drive está desactivada en tu cuenta. Debes activarla en Ajustes (/plugin/google_drive/settings) antes de realizar subidas."
-                }), 400
-
             data = request.get_json(force=True) or {}
             job_id = data.get("job_id")
             if not job_id:
                 return jsonify({"success": False, "error": "Falta el identificador del trabajo (job_id)."}), 400
 
-            # 1. Localizar archivo y comprobar propiedad
-            target_filepath = None
-            target_filename = None
-            target_owner = current_username
-            is_offloaded = False
-
-            with JOBS_LOCK:
-                job = JOBS.get(job_id)
-                if job:
-                    target_filepath = job.get("filepath")
-                    target_filename = job.get("filename")
-                    target_owner = job.get("owner", current_username)
-                    is_offloaded = job.get("offloaded", False)
-
-            meta = load_downloads_meta()
-            if job_id in meta:
-                info = meta[job_id]
-                target_filename = target_filename or info.get("filename")
-                target_owner = info.get("username") or target_owner
-                is_offloaded = is_offloaded or info.get("offloaded", False)
-
-            if not is_admin and target_owner != current_username:
-                return jsonify({"success": False, "error": "No tienes permiso para gestionar este archivo."}), 403
-
-            if is_offloaded:
-                return jsonify({"success": False, "error": "Este archivo ya fue transferido a la nube previamente."}), 400
-
-            # Localizar archivo en disco si target_filepath no existe
-            if not target_filepath or not os.path.isfile(target_filepath):
-                if os.path.exists(DOWNLOAD_DIR):
-                    for entry in os.listdir(DOWNLOAD_DIR):
-                        if entry.startswith(job_id) and not entry.lower().endswith(".zip"):
-                            cand = os.path.join(DOWNLOAD_DIR, entry)
-                            if os.path.isfile(cand):
-                                target_filepath = cand
-                                if not target_filename:
-                                    target_filename = entry[len(job_id):].lstrip("_-") or entry
-                                break
-
-            if not target_filepath or not os.path.isfile(target_filepath):
-                return jsonify({"success": False, "error": "El archivo físico ya no está presente en el disco local del VPS."}), 404
-
-            # 2. Cargar configuración de Google Drive del usuario que realiza la acción
-            user_cfg = self.get_user_config(current_username)
-            deps_ok, deps_err = drive_client.check_dependencies()
-            if not deps_ok:
-                return jsonify({"success": False, "error": f"Google API dependencies missing: {deps_err}"}), 500
-
-            udir = self.get_user_dir(current_username)
-            clean_name = target_filename or os.path.basename(target_filepath)
-            self._append_job_log(job_id, f"[*] [GoogleDrive] Subida bajo demanda iniciada por {current_username} ({clean_name})...")
-
-            def _progress(percent: int, message: str):
-                self._append_job_log(job_id, f"[*] [GoogleDrive] {message}")
-
-            fallback_dir = self.plugin_dir if current_username == "admin" else None
-
-            ok, result = drive_client.upload_file_resumable(
-                filepath=target_filepath,
-                filename=clean_name,
-                config=user_cfg,
-                base_dir=udir,
-                fallback_dir=fallback_dir,
-                owner=current_username,
-                progress_callback=_progress
-            )
-
+            ok, res = self.upload_job_for_user(job_id, current_username, is_admin=is_admin)
             if ok:
-                web_link = result.get("web_link", "")
-                dest_entry = f"Google Drive ({web_link})"
-                self._append_job_log(job_id, f"[+] [GoogleDrive] Archivo respaldado con éxito en Drive: {web_link}")
-
-                with JOBS_LOCK:
-                    job = JOBS.get(job_id)
-                    if job:
-                        if "cloud_destinations" not in job:
-                            job["cloud_destinations"] = []
-                        if dest_entry not in job["cloud_destinations"]:
-                            job["cloud_destinations"].append(dest_entry)
-
-                if job_id in meta:
-                    if "cloud_destinations" not in meta[job_id]:
-                        meta[job_id]["cloud_destinations"] = []
-                    if dest_entry not in meta[job_id]["cloud_destinations"]:
-                        meta[job_id]["cloud_destinations"].append(dest_entry)
-                    save_downloads_meta(meta)
-
-                # Aplicar Safe Offload si está activo en la config de este usuario
-                if user_cfg.get("safe_offload", False) and os.path.exists(target_filepath):
-                    try:
-                        os.remove(target_filepath)
-                        self._append_job_log(job_id, "[+] [Offload] Archivo local eliminado tras subida confirmada a Google Drive.")
-                        with JOBS_LOCK:
-                            job = JOBS.get(job_id)
-                            if job:
-                                job["offloaded"] = True
-                                job["filepath"] = None
-                        if job_id in meta:
-                            meta[job_id]["offloaded"] = True
-                            save_downloads_meta(meta)
-                    except Exception as err:
-                        self._append_job_log(job_id, f"[!] [Offload] Error eliminando archivo local: {err}")
-
-                return jsonify({
-                    "success": True,
-                    "message": "Archivo subido exitosamente a Google Drive.",
-                    "web_link": web_link,
-                    "filename": clean_name
-                })
+                return jsonify(res)
             else:
-                err_msg = result.get("error", "Error desconocido de subida.")
-                self._append_job_log(job_id, f"[!] [GoogleDrive] Falló la subida manual: {err_msg}")
-                return jsonify({"success": False, "error": err_msg}), 400
+                status_code = res.get("status_code", 400)
+                return jsonify(res), status_code
 
         if f"plugin_{self.plugin_id}" not in app.blueprints:
             app.register_blueprint(bp)
             logger.info(f"Rutas de Google Drive registradas bajo /plugin/{self.plugin_id}/")
+
+    def upload_job_for_user(self, job_id: str, username: str, progress_callback=None, is_admin: bool = False) -> Tuple[bool, dict]:
+        """
+        Sube el archivo correspondiente a un trabajo al Google Drive personal del usuario indicado.
+        Aplica validaciones estrictas de activación, propiedad y modo offload.
+        """
+        username = (username or "admin").strip().lower()
+        user_cfg = self.get_user_config(username)
+        if not user_cfg.get("enabled", False):
+            return False, {
+                "success": False,
+                "error": "La integración con Google Drive está desactivada en tu cuenta. Debes activarla en Ajustes (/plugin/google_drive/settings) antes de realizar subidas.",
+                "status_code": 400
+            }
+
+        if not job_id:
+            return False, {"success": False, "error": "Falta el identificador del trabajo (job_id).", "status_code": 400}
+
+        target_filepath = None
+        target_filename = None
+        target_owner = username
+        is_offloaded = False
+
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if job:
+                target_filepath = job.get("filepath")
+                target_filename = job.get("filename")
+                target_owner = job.get("owner", username)
+                is_offloaded = job.get("offloaded", False)
+
+        meta = load_downloads_meta()
+        if job_id in meta:
+            info = meta[job_id]
+            target_filename = target_filename or info.get("filename")
+            target_owner = info.get("username") or info.get("owner") or target_owner
+            is_offloaded = is_offloaded or info.get("offloaded", False)
+
+        if not is_admin and target_owner != username:
+            return False, {"success": False, "error": "No tienes permiso para gestionar este archivo.", "status_code": 403}
+
+        if is_offloaded:
+            return False, {"success": False, "error": "Este archivo ya fue transferido a la nube previamente.", "status_code": 400}
+
+        # Localizar archivo en disco si target_filepath no existe
+        if not target_filepath or not os.path.isfile(target_filepath):
+            if os.path.exists(DOWNLOAD_DIR):
+                for entry in os.listdir(DOWNLOAD_DIR):
+                    if entry.startswith(job_id) and not entry.lower().endswith(".zip"):
+                        cand = os.path.join(DOWNLOAD_DIR, entry)
+                        if os.path.isfile(cand):
+                            target_filepath = cand
+                            if not target_filename:
+                                target_filename = entry[len(job_id):].lstrip("_-") or entry
+                            break
+
+        if not target_filepath or not os.path.isfile(target_filepath):
+            return False, {"success": False, "error": "El archivo físico ya no está presente en el disco local del VPS.", "status_code": 404}
+
+        from plugins.google_drive import drive_client
+        deps_ok, deps_err = drive_client.check_dependencies()
+        if not deps_ok:
+            return False, {"success": False, "error": f"Google API dependencies missing: {deps_err}", "status_code": 500}
+
+        udir = self.get_user_dir(username)
+        clean_name = target_filename or os.path.basename(target_filepath)
+        self._append_job_log(job_id, f"[*] [GoogleDrive] Subida bajo demanda iniciada por {username} ({clean_name})...")
+
+        def _default_prog(percent: int, message: str):
+            self._append_job_log(job_id, f"[*] [GoogleDrive] {message}")
+            if progress_callback:
+                try:
+                    progress_callback(percent, message)
+                except Exception:
+                    pass
+
+        fallback_dir = self.plugin_dir if username == "admin" else None
+
+        ok, result = drive_client.upload_file_resumable(
+            filepath=target_filepath,
+            filename=clean_name,
+            config=user_cfg,
+            base_dir=udir,
+            fallback_dir=fallback_dir,
+            owner=username,
+            progress_callback=_default_prog
+        )
+
+        if ok:
+            web_link = result.get("web_link", "")
+            dest_entry = f"Google Drive ({web_link})"
+            self._append_job_log(job_id, f"[+] [GoogleDrive] Archivo respaldado con éxito en Drive: {web_link}")
+
+            with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                if job:
+                    if "cloud_destinations" not in job:
+                        job["cloud_destinations"] = []
+                    if dest_entry not in job["cloud_destinations"]:
+                        job["cloud_destinations"].append(dest_entry)
+
+            if job_id in meta:
+                if "cloud_destinations" not in meta[job_id]:
+                    meta[job_id]["cloud_destinations"] = []
+                if dest_entry not in meta[job_id]["cloud_destinations"]:
+                    meta[job_id]["cloud_destinations"].append(dest_entry)
+                save_downloads_meta(meta)
+
+            # Aplicar Safe Offload si está activo en la config de este usuario
+            if user_cfg.get("safe_offload", False) and os.path.exists(target_filepath):
+                try:
+                    os.remove(target_filepath)
+                    self._append_job_log(job_id, "[+] [Offload] Archivo local eliminado tras subida confirmada a Google Drive.")
+                    with JOBS_LOCK:
+                        job = JOBS.get(job_id)
+                        if job:
+                            job["offloaded"] = True
+                            job["filepath"] = None
+                    if job_id in meta:
+                        meta[job_id]["offloaded"] = True
+                        save_downloads_meta(meta)
+                except Exception as err:
+                    self._append_job_log(job_id, f"[!] [Offload] Error eliminando archivo local: {err}")
+
+            return True, {
+                "success": True,
+                "message": "Archivo subido exitosamente a Google Drive.",
+                "web_link": web_link,
+                "filename": clean_name
+            }
+        else:
+            err_msg = result.get("error", "Error desconocido de subida.")
+            self._append_job_log(job_id, f"[!] [GoogleDrive] Falló la subida manual: {err_msg}")
+            return False, {"success": False, "error": err_msg, "status_code": 400}
 
 
     # =========================================================================
@@ -833,18 +857,20 @@ class Plugin:
     def get_download_cloud_option(self, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         [EXPERIMENTAL] Inyecta la opción de Google Drive en el selector de descargas
-        y en los presets de usuario del Modo Avanzado SOLO SI el usuario tiene la integración habilitada.
+        y en los presets de usuario del Modo Avanzado.
+        Indica claramente si la integración está habilitada o desactivada para el usuario.
         """
         user = username or self._get_request_username()
         user_cfg = self.get_user_config(user)
-        if not user_cfg.get("enabled", False):
-            return None
+        is_enabled = bool(user_cfg.get("enabled", False))
 
         return {
             "id": self.plugin_id,
             "name": "Google Drive",
             "icon": "📁",
             "badge": "EXP",
+            "enabled": is_enabled,
+            "status_label": "ACTIVO" if is_enabled else "DESACTIVADO",
             "description": "Sube el archivo descargado a tu Google Drive mediante streaming resumible.",
             "fields": [
                 {
@@ -882,6 +908,16 @@ class Plugin:
         if not chat_id:
             return True
 
+        from core.utils import get_user_by_telegram_chat_id
+        tg_user, _ = get_user_by_telegram_chat_id(chat_id)
+        if not tg_user:
+            bot.send_message(
+                chat_id,
+                "🔒 <b>Cuenta no vinculada</b>\n\n"
+                "Para consultar tu Google Drive desde Telegram, vinculá primero tu cuenta con <code>/vincular</code>."
+            )
+            return True
+
         from plugins.google_drive import drive_client
         deps_ok, deps_err = drive_client.check_dependencies()
         if not deps_ok:
@@ -891,21 +927,23 @@ class Plugin:
             )
             return True
 
-        # Telegram interactúa con la configuración del servidor / admin
-        cfg = self.get_user_config("admin")
+        cfg = self.get_user_config(tg_user)
         if not cfg.get("enabled"):
             bot.send_message(
                 chat_id,
-                "📁 <b>Google Drive:</b> La sincronización está <i>desactivada</i> en la plataforma.\n"
-                "Podés activarla desde el panel web: <code>/plugin/google_drive/settings</code>"
+                f"📁 <b>Google Drive ({tg_user})</b>\n\n"
+                f"Tu integración personal está actualmente <b>desactivada</b>.\n\n"
+                f"Para conectarte y habilitarla, ingresá a la plataforma web:\n"
+                f"👉 <code>/plugin/google_drive/settings</code>"
             )
             return True
 
-        sent = bot.send_message(chat_id, "🔍 <i>Consultando estado y cuota de Google Drive...</i>")
+        sent = bot.send_message(chat_id, f"🔍 <i>Consultando estado y cuota de Google Drive ({tg_user})...</i>")
         msg_id = sent.get("result", {}).get("message_id") if sent else None
 
-        udir = self.get_user_dir("admin")
-        ok, res = drive_client.test_connection(cfg, base_dir=udir, fallback_dir=self.plugin_dir)
+        udir = self.get_user_dir(tg_user)
+        fallback_dir = self.plugin_dir if tg_user == "admin" else None
+        ok, res = drive_client.test_connection(cfg, base_dir=udir, fallback_dir=fallback_dir)
 
         def _format_b(b):
             if not b:
@@ -924,20 +962,21 @@ class Plugin:
 
             auto_label = "✅ Automático" if cfg.get("auto_upload") else "🎯 Bajo Demanda"
             text = (
-                f"📁 <b>Google Drive Cloud Sync</b>\n\n"
+                f"📁 <b>Google Drive Cloud Sync</b>\n"
+                f"👤 Usuario: <b>{tg_user}</b>\n\n"
                 f"• <b>Cuenta:</b> {res.get('user_name', 'N/A')} (<code>{res.get('email', 'N/A')}</code>)\n"
                 f"• <b>Carpeta activa:</b> <i>{res.get('folder_name', 'Raíz')}</i>\n"
                 f"• <b>Almacenamiento:</b> {used_str} de {tot_str} ({pct}% en uso)\n"
                 f"• <b>Modo de Subida:</b> {auto_label}\n"
                 f"• <b>Modo Offload:</b> {'✅ Activado (borra local)' if cfg.get('safe_offload') else '❌ Desactivado (mantiene local)'}\n\n"
-                f"💡 <i>Cada usuario de dHtools puede configurar su propia cuenta en /plugin/google_drive/settings</i>"
+                f"💡 <i>Podés administrar tu cuenta o token en /plugin/google_drive/settings</i>"
             )
         else:
             err = res.get("error", "Error desconocido")
             text = (
-                f"⚠️ <b>Error de conexión con Google Drive:</b>\n"
+                f"⚠️ <b>Error de conexión con Google Drive ({tg_user}):</b>\n"
                 f"<code>{err}</code>\n\n"
-                f"Revisá la configuración en la web: <code>/plugin/google_drive/settings</code>"
+                f"Revisá tu configuración en la web: <code>/plugin/google_drive/settings</code>"
             )
 
         if msg_id:
