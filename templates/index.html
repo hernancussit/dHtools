@@ -1257,7 +1257,7 @@
 
         <div class="accordion-box">
           <div class="accordion-header" id="advCloudHeader">
-            <span>☁️ Enviar a mi Nube Personal (Presets WebDAV / FTP)</span>
+            <span>☁️ Enviar a mi Nube Personal (S3 / WebDAV / FTP / Offload)</span>
             <span id="advCloudIcon">▼</span>
           </div>
           <div class="accordion-body" id="advCloudBody">
@@ -1270,24 +1270,52 @@
               <button type="button" id="btnDeleteCloudPreset" class="btn btn-danger btn-sm" style="font-size:0.75rem; display:none;">🗑️ Borrar</button>
             </div>
 
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
-              <div>
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <input type="checkbox" id="userWebdavEnabled"> Nextcloud / WebDAV
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+              <!-- S3 / MinIO / Cloudflare R2 -->
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
+                  <input type="checkbox" id="userS3Enabled"> 🪣 S3 / MinIO / R2
                 </label>
-                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="margin-bottom:4px; font-size:0.8rem;">
-                <input type="text" id="userWebdavUser" placeholder="Usuario" style="margin-bottom:4px; font-size:0.8rem;">
-                <input type="password" id="userWebdavPass" placeholder="App Token" style="font-size:0.8rem; margin-bottom:4px;">
-                <button type="button" id="btnTestUserWebdav" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px;">🧪 Probar WebDAV</button>
+                <input type="text" id="userS3Endpoint" placeholder="Endpoint URL (vacío para AWS)" style="margin-bottom:4px; font-size:0.78rem;" title="Opcional para AWS, obligatorio para MinIO o Cloudflare R2">
+                <input type="text" id="userS3Bucket" placeholder="Nombre del Bucket" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userS3Key" placeholder="Access Key ID" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="password" id="userS3Secret" placeholder="Secret Access Key" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userS3Region" placeholder="Región (ej. us-east-1)" value="us-east-1" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userS3Dir" placeholder="Prefijo / Carpeta en bucket" style="margin-bottom:6px; font-size:0.78rem;">
+                <button type="button" id="btnTestUserS3" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar S3</button>
               </div>
-              <div>
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <input type="checkbox" id="userFtpEnabled"> Servidor FTP
+
+              <!-- WebDAV -->
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
+                  <input type="checkbox" id="userWebdavEnabled"> ☁️ Nextcloud / WebDAV
                 </label>
-                <input type="text" id="userFtpHost" placeholder="ftp.servidor.com" style="margin-bottom:4px; font-size:0.8rem;">
-                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="margin-bottom:4px; font-size:0.8rem;">
-                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.8rem; margin-bottom:4px;">
-                <button type="button" id="btnTestUserFtp" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px;">🧪 Probar FTP</button>
+                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userWebdavUser" placeholder="Usuario" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="password" id="userWebdavPass" placeholder="App Token / Clave" style="font-size:0.78rem; margin-bottom:6px;">
+                <button type="button" id="btnTestUserWebdav" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar WebDAV</button>
+              </div>
+
+              <!-- FTP -->
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
+                  <input type="checkbox" id="userFtpEnabled"> 📁 Servidor FTP
+                </label>
+                <input type="text" id="userFtpHost" placeholder="ftp.servidor.com" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.78rem; margin-bottom:6px;">
+                <button type="button" id="btnTestUserFtp" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar FTP</button>
+              </div>
+            </div>
+
+            <!-- MODO OFFLOAD -->
+            <div style="margin-top:14px; padding:10px 12px; background:rgba(3,105,161,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:8px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:0.84rem; color:#38bdf8; margin:0;">
+                <input type="checkbox" id="userCloudOffload">
+                <span>🗑️ Modo Offload ("Subir y Mover"): Eliminar copia local en el VPS tras confirmar subida a la nube</span>
+              </label>
+              <div style="font-size:0.75rem; color:var(--muted); margin-left:24px; margin-top:3px;">
+                El archivo se descarga en el VPS, se envía de inmediato a tu almacenamiento cloud elegido y se borra del servidor local para liberar espacio de disco. Si la subida falla, se conserva localmente.
               </div>
             </div>
           </div>
@@ -1575,6 +1603,7 @@
 </div>
 
 <script>
+window.TELEGRAM_BOT_ENABLED = {{ 'true' if telegram_enabled else 'false' }};
 
 // ==================== GLOBAL INITIALIZATION & PWA ====================
 let deferredPrompt;
@@ -1640,6 +1669,13 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 
 
 // ==================== CLOUD SYNC & PERSISTENT PREFS ====================
+const userS3Enabled = document.getElementById('userS3Enabled');
+const userS3Endpoint = document.getElementById('userS3Endpoint');
+const userS3Bucket = document.getElementById('userS3Bucket');
+const userS3Key = document.getElementById('userS3Key');
+const userS3Secret = document.getElementById('userS3Secret');
+const userS3Region = document.getElementById('userS3Region');
+const userS3Dir = document.getElementById('userS3Dir');
 const userWebdavEnabled = document.getElementById('userWebdavEnabled');
 const userWebdavUrl = document.getElementById('userWebdavUrl');
 const userWebdavUser = document.getElementById('userWebdavUser');
@@ -1648,28 +1684,51 @@ const userFtpEnabled = document.getElementById('userFtpEnabled');
 const userFtpHost = document.getElementById('userFtpHost');
 const userFtpUser = document.getElementById('userFtpUser');
 const userFtpPass = document.getElementById('userFtpPass');
+const userCloudOffload = document.getElementById('userCloudOffload');
 const advDeezerArl = document.getElementById('advDeezerArl');
 
 function loadUserCloudSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('user_cloud_sync') || '{}');
-    if (s.webdav) {
-      userWebdavEnabled.checked = !!s.webdav.enabled;
-      userWebdavUrl.value = s.webdav.url || '';
-      userWebdavUser.value = s.webdav.username || '';
-      userWebdavPass.value = s.webdav.password || '';
+    if (s.s3 && userS3Enabled) {
+      userS3Enabled.checked = !!s.s3.enabled;
+      if (userS3Endpoint) userS3Endpoint.value = s.s3.endpoint_url || '';
+      if (userS3Bucket) userS3Bucket.value = s.s3.bucket_name || '';
+      if (userS3Key) userS3Key.value = s.s3.access_key || '';
+      if (userS3Secret) userS3Secret.value = s.s3.secret_key || '';
+      if (userS3Region) userS3Region.value = s.s3.region || 'us-east-1';
+      if (userS3Dir) userS3Dir.value = s.s3.remote_dir || '';
     }
-    if (s.ftp) {
+    if (s.webdav && userWebdavEnabled) {
+      userWebdavEnabled.checked = !!s.webdav.enabled;
+      if (userWebdavUrl) userWebdavUrl.value = s.webdav.url || '';
+      if (userWebdavUser) userWebdavUser.value = s.webdav.username || '';
+      if (userWebdavPass) userWebdavPass.value = s.webdav.password || '';
+    }
+    if (s.ftp && userFtpEnabled) {
       userFtpEnabled.checked = !!s.ftp.enabled;
-      userFtpHost.value = s.ftp.host || '';
-      userFtpUser.value = s.ftp.username || '';
-      userFtpPass.value = s.ftp.password || '';
+      if (userFtpHost) userFtpHost.value = s.ftp.host || '';
+      if (userFtpUser) userFtpUser.value = s.ftp.username || '';
+      if (userFtpPass) userFtpPass.value = s.ftp.password || '';
+    }
+    if (userCloudOffload) {
+      userCloudOffload.checked = !!s.offload;
     }
     if (advDeezerArl) advDeezerArl.value = localStorage.getItem('deezer_arl') || '';
   } catch (e) {}
 }
 function saveUserCloudSettings() {
   const s = {
+    offload: userCloudOffload ? userCloudOffload.checked : false,
+    s3: {
+      enabled: userS3Enabled ? userS3Enabled.checked : false,
+      endpoint_url: userS3Endpoint ? userS3Endpoint.value.trim() : '',
+      bucket_name: userS3Bucket ? userS3Bucket.value.trim() : '',
+      access_key: userS3Key ? userS3Key.value.trim() : '',
+      secret_key: userS3Secret ? userS3Secret.value : '',
+      region: userS3Region ? (userS3Region.value.trim() || 'us-east-1') : 'us-east-1',
+      remote_dir: userS3Dir ? userS3Dir.value.trim() : ''
+    },
     webdav: {
       enabled: userWebdavEnabled ? userWebdavEnabled.checked : false,
       url: userWebdavUrl ? userWebdavUrl.value.trim() : '',
@@ -1687,8 +1746,10 @@ function saveUserCloudSettings() {
   if (advDeezerArl) localStorage.setItem('deezer_arl', advDeezerArl.value.trim());
   return s;
 }
-[userWebdavEnabled, userWebdavUrl, userWebdavUser, userWebdavPass, userFtpEnabled, userFtpHost, userFtpUser, userFtpPass, advDeezerArl].forEach(el => {
+[userS3Enabled, userS3Endpoint, userS3Bucket, userS3Key, userS3Secret, userS3Region, userS3Dir,
+ userWebdavEnabled, userWebdavUrl, userWebdavUser, userWebdavPass, userFtpEnabled, userFtpHost, userFtpUser, userFtpPass, userCloudOffload, advDeezerArl].forEach(el => {
   if (el) el.addEventListener('input', saveUserCloudSettings);
+  if (el && el.type === 'checkbox') el.addEventListener('change', saveUserCloudSettings);
 });
 loadUserCloudSettings();
 
@@ -1707,7 +1768,8 @@ async function loadUserCloudPresets() {
     loadedCloudPresets.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = `${p.type === 'webdav' ? '☁️' : '📁'} ${p.name}`;
+      const icon = p.type === 's3' ? '🪣' : (p.type === 'webdav' ? '☁️' : '📁');
+      opt.textContent = `${icon} ${p.name}`;
       presetSelector.appendChild(opt);
     });
   } catch (e) {}
@@ -1724,45 +1786,78 @@ presetSelector?.addEventListener('change', () => {
   if (!preset) return;
   if (btnDeletePreset) btnDeletePreset.style.display = 'inline-block';
 
-  if (preset.type === 'webdav') {
-    userWebdavEnabled.checked = true;
-    userWebdavUrl.value = preset.config.url || '';
-    userWebdavUser.value = preset.config.username || '';
-    userWebdavPass.value = preset.config.password || '';
-    userFtpEnabled.checked = false;
+  if (preset.type === 's3') {
+    if (userS3Enabled) userS3Enabled.checked = true;
+    if (userS3Endpoint) userS3Endpoint.value = preset.config.endpoint_url || '';
+    if (userS3Bucket) userS3Bucket.value = preset.config.bucket_name || '';
+    if (userS3Key) userS3Key.value = preset.config.access_key || '';
+    if (userS3Secret) userS3Secret.value = preset.config.secret_key || '';
+    if (userS3Region) userS3Region.value = preset.config.region || 'us-east-1';
+    if (userS3Dir) userS3Dir.value = preset.config.remote_dir || '';
+    if (userWebdavEnabled) userWebdavEnabled.checked = false;
+    if (userFtpEnabled) userFtpEnabled.checked = false;
+  } else if (preset.type === 'webdav') {
+    if (userWebdavEnabled) userWebdavEnabled.checked = true;
+    if (userWebdavUrl) userWebdavUrl.value = preset.config.url || '';
+    if (userWebdavUser) userWebdavUser.value = preset.config.username || '';
+    if (userWebdavPass) userWebdavPass.value = preset.config.password || '';
+    if (userS3Enabled) userS3Enabled.checked = false;
+    if (userFtpEnabled) userFtpEnabled.checked = false;
   } else if (preset.type === 'ftp') {
-    userFtpEnabled.checked = true;
-    userFtpHost.value = preset.config.host || '';
-    userFtpUser.value = preset.config.username || '';
-    userFtpPass.value = preset.config.password || '';
-    userWebdavEnabled.checked = false;
+    if (userFtpEnabled) userFtpEnabled.checked = true;
+    if (userFtpHost) userFtpHost.value = preset.config.host || '';
+    if (userFtpUser) userFtpUser.value = preset.config.username || '';
+    if (userFtpPass) userFtpPass.value = preset.config.password || '';
+    if (userS3Enabled) userS3Enabled.checked = false;
+    if (userWebdavEnabled) userWebdavEnabled.checked = false;
   }
   saveUserCloudSettings();
 });
 
 document.getElementById('btnSaveCloudPreset')?.addEventListener('click', async () => {
-  const name = prompt('Ingresá un nombre para este preset (ej. "Mi Nextcloud Casa" o "FTP de Trabajo"):');
+  const name = prompt('Ingresá un nombre para este preset (ej. "Mi Bucket R2" o "Nextcloud Casa"):');
   if (!name || !name.trim()) return;
 
+  const isS3 = userS3Enabled && userS3Enabled.checked;
   const isWebdav = userWebdavEnabled && userWebdavEnabled.checked;
   const isFtp = userFtpEnabled && userFtpEnabled.checked;
-  if (!isWebdav && !isFtp) {
-    alert('Activá al menos WebDAV o FTP con sus datos antes de guardar.');
+  if (!isS3 && !isWebdav && !isFtp) {
+    alert('Activá al menos S3, WebDAV o FTP con sus datos antes de guardar.');
     return;
+  }
+
+  let pType = 's3';
+  let pConfig = {};
+  if (isS3) {
+    pType = 's3';
+    pConfig = {
+      endpoint_url: userS3Endpoint ? userS3Endpoint.value.trim() : '',
+      bucket_name: userS3Bucket ? userS3Bucket.value.trim() : '',
+      access_key: userS3Key ? userS3Key.value.trim() : '',
+      secret_key: userS3Secret ? userS3Secret.value : '',
+      region: userS3Region ? (userS3Region.value.trim() || 'us-east-1') : 'us-east-1',
+      remote_dir: userS3Dir ? userS3Dir.value.trim() : ''
+    };
+  } else if (isWebdav) {
+    pType = 'webdav';
+    pConfig = {
+      url: userWebdavUrl.value.trim(),
+      username: userWebdavUser.value.trim(),
+      password: userWebdavPass.value
+    };
+  } else {
+    pType = 'ftp';
+    pConfig = {
+      host: userFtpHost.value.trim(),
+      username: userFtpUser.value.trim(),
+      password: userFtpPass.value
+    };
   }
 
   const payload = {
     name: name.trim(),
-    type: isWebdav ? 'webdav' : 'ftp',
-    config: isWebdav ? {
-      url: userWebdavUrl.value.trim(),
-      username: userWebdavUser.value.trim(),
-      password: userWebdavPass.value
-    } : {
-      host: userFtpHost.value.trim(),
-      username: userFtpUser.value.trim(),
-      password: userFtpPass.value
-    }
+    type: pType,
+    config: pConfig
   };
 
   try {
@@ -1816,6 +1911,17 @@ async function testUserCloudPreset(service, config) {
     showToast(e.message, 'error');
   }
 }
+
+document.getElementById('btnTestUserS3')?.addEventListener('click', () => {
+  testUserCloudPreset('s3', {
+    endpoint_url: userS3Endpoint ? userS3Endpoint.value.trim() : '',
+    bucket_name: userS3Bucket ? userS3Bucket.value.trim() : '',
+    access_key: userS3Key ? userS3Key.value.trim() : '',
+    secret_key: userS3Secret ? userS3Secret.value : '',
+    region: userS3Region ? (userS3Region.value.trim() || 'us-east-1') : 'us-east-1',
+    remote_dir: userS3Dir ? userS3Dir.value.trim() : ''
+  });
+});
 
 document.getElementById('btnTestUserWebdav')?.addEventListener('click', () => {
   testUserCloudPreset('webdav', {
@@ -2848,11 +2954,15 @@ function renderRecentDownloads(data) {
               <div class="folder-items-grid">
                 ${f.items.map(sub => `
                   <div class="folder-file-card">
-                    <div style="font-size:0.82rem; font-weight:600; word-break:break-all;" title="${sub.filename}">📄 ${sub.filename}</div>
+                    <div style="font-size:0.82rem; font-weight:600; word-break:break-all;" title="${sub.filename}">
+                      📄 ${sub.filename}
+                      ${sub.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem; padding:1px 5px; border-radius:4px; margin-left:4px;">☁️ En la nube</span>` : ''}
+                    </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.75rem; color:var(--muted);">
                       <span>${sub.size_formatted}</span>
-                      <div style="display:flex; gap:4px;">
-                        <a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>
+                      <div style="display:flex; gap:4px; align-items:center;">
+                        ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>`}
+                        ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
                         <button class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="deleteUserDownload('${sub.job_id}')">🗑️</button>
                       </div>
                     </div>
@@ -2880,14 +2990,18 @@ function renderRecentDownloads(data) {
       grid.innerHTML = items.map(item => `
         <div class="recent-card">
           <div>
-            <div class="recent-card-title" title="${item.filename}">📄 ${item.filename}</div>
+            <div class="recent-card-title" title="${item.filename}">
+              📄 ${item.filename}
+              ${item.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem; padding:1px 5px; border-radius:4px; margin-left:6px;">☁️ En la nube</span>` : ''}
+            </div>
             <div class="recent-card-meta">
               <span>${item.size_formatted}</span>
               <span>👤 ${item.owner || 'mío'}</span>
             </div>
           </div>
-          <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px;">
-            <a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>
+          <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px; align-items:center;">
+            ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:4px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>`}
+            ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
           </div>
         </div>
@@ -2949,6 +3063,30 @@ window.deleteUserDownload = async function(jobId) {
     }
   } catch (e) {
     showToast(e.message, 'error');
+  }
+};
+
+window.sendToTelegram = async function(jobId, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.dataset.origHtml = btnEl.innerHTML;
+    btnEl.innerHTML = '⏳ Enviando...';
+  }
+  try {
+    const res = await fetch(`/api/my-downloads/${jobId}/send-telegram`, { method: 'POST' });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message || '¡Archivo enviado a tu Telegram!', 'success');
+    } else {
+      showToast(data.error || 'No se pudo enviar por Telegram.', 'error');
+    }
+  } catch (e) {
+    showToast(e.message || 'Error de comunicación con el servidor.', 'error');
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = btnEl.dataset.origHtml || '✈️ Telegram';
+    }
   }
 };
 

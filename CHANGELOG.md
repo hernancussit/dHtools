@@ -4,6 +4,64 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [Unreleased] - dev
+
+### ⚡ Optimización y Fortalecimiento del Motor Cobalt v11
+- **Sincronización Automática de Cookies Netscape a JSON de Cobalt (`core/utils.py`, `core/config.py`):**
+  - Conversión inteligente de `cookies.txt` (formato Netscape) agrupando dominios de YouTube, Instagram, Twitter/X y Reddit en la estructura nativa requerida por Cobalt v11 (`{ "youtube": ["NAME=VALUE; ..."] }`).
+  - Montaje de volumen persistente con permisos de escritura (`rw`) en `docker-compose.yml` (`./cobalt_cookies.json:/cookies.json`) y variable `COOKIE_PATH`, permitiendo a Cobalt persistir actualizaciones y cabeceras `Set-Cookie`.
+  - Integración en el flujo de subida y eliminación de cookies del panel de administración (`routes/admin.py`).
+- **Enrutamiento Inteligente por Plataforma (Smart Cascade Routing en `core/downloader.py`):**
+  - Derivación directa como Nivel 1 prioritario para plataformas sociales nativas: TikTok, Instagram, Twitter / X (`x.com` y `twitter.com`), Reddit, SoundCloud, Vimeo, Facebook, Twitch, etc., logrando descargas directas desde CDN en milisegundos sin marcas de agua.
+  - Detección selectiva para YouTube y YouTube Shorts: verificación en milisegundos de cookies autenticadas (`SID`, `HSID`, `LOGIN_INFO`). Si no hay sesión válida para la IP del servidor, se omite el error garantizado de inicio de sesión de Cobalt y se deriva de inmediato a `yt-dlp` (con PO Token Provider y Deno), eliminando latencia innecesaria.
+- **Payload Enriquecido y Soporte de Formatos (`core/downloader.py`):**
+  - Mapeo de contenedor de salida (`youtubeVideoContainer`: `mp4`, `webm`, `mkv`), formatos de audio de alta fidelidad (`mp3`, `ogg`, `wav`, `opus`) y bitrates (`128k` a `320k`).
+  - Activación de `tiktokFullAudio` para pistas completas de TikTok y extracción de nombres reales vía cabecera `Content-Disposition`.
+  - Resolución inteligente de respuestas tipo `picker` para carruseles y galerías multi-ítem seleccionando el stream de video de mayor calidad.
+  - Traducción y mapeo amigable de errores de la API de Cobalt (`COBALT_ERROR_TRANSLATIONS`).
+- **Telemetría y Estado en Panel Admin (`routes/admin.py` & `templates/admin.html`):**
+  - Nuevo indicador de estado de cookies de Cobalt en vivo en la tarjeta de motor (`/api/admin/cobalt-status`), indicando la presencia de cookies activas y de sesión de YouTube.
+- **Cancelación Inmediata y Notificaciones Telegram:**
+  - Chequeo cooperativo de cancelación del trabajo durante el streaming de chunks en `run_download_cobalt`.
+  - Notificaciones de progreso periódicas al bot interactivo de Telegram durante la transferencia desde CDN.
+
+### ☁️ Conectores Cloud Avanzados (S3 / MinIO / R2) & Modo Offload Seguro
+- **Módulo Universal de Sincronización en la Nube (`core/cloud_sync.py`):**
+  - Desacoplamiento completo de las transferencias a la nube desde `core/downloader.py` hacia una arquitectura modular y escalable.
+  - Conector para buckets compatibles con S3 (**Amazon S3, MinIO, Cloudflare R2, Backblaze B2, Wasabi**) con `boto3` y streaming multipart (`TransferConfig` con fragmentos de 10 MB) para archivos gigantes sin saturar memoria RAM.
+  - Métodos de prueba interactivos (`test_s3_connection` vía `head_bucket`) con manejo contextual de errores (403 AccessDenied, 404 NoSuchBucket, etc.).
+- **Modo Offload ("Subir y Mover" / Ahorro Extremo de Disco):**
+  - Mecanismo seguro de transferencia y liberación de espacio en disco del VPS: el archivo local solo se elimina si la subida cloud fue exitosa en al menos un destino (`successful_destinations`).
+  - Preservación de metadatos en `downloads_meta.json` marcando el archivo como `offloaded: true` con la lista de destinos remotos.
+  - Distintivo visual `☁️ En la nube` en el historial de "Mis Descargas" (`templates/index.html` y `routes/ui.py`).
+  - Eliminación unificada: el usuario puede borrar registros offloaded desde la interfaz sin provocar errores de archivo inexistente.
+- **Presets de Usuario & Panel Administrativo (`templates/index.html`, `templates/admin.html`, `routes/admin.py`):**
+  - Soporte de almacenamiento de tipo `s3` en perfiles privados por usuario con prueba de conectividad en vivo.
+  - Configuración administrativa de S3/MinIO/R2 a nivel de servidor en el panel `/admin`.
+
+## [1.4.0] - 2026-09-05
+
+### 🚀 Lanzamiento Estable v1.4.0
+
+### 🛡️ Respaldo Residencial de Último Recurso (Tier 4 / Residential Failsafe)
+- **Cascada Inteligente de 4 Niveles (`core/downloader.py`):**
+  - Incorporación del **Nivel 4 (Respaldo Residencial)**: activado de manera autónoma únicamente cuando los niveles del VPS fallan ante bloqueos antibot de YouTube (`UNPLAYABLE`, `bot verification required`, o degradación forzada a 360p en descargas HD solicitadas a 1080p).
+  - Preservación estricta de los recursos de la red residencial: más del 90% de las descargas y el tráfico pesado continúan cursándose por la infraestructura directa del VPS.
+  - Soporte para proxy SOCKS5/SOCKS5h con resolución DNS en destino para eludir inconsistencias geográficas y de CDN.
+- **Sonda de Diagnóstico y Telemetría RTT en Tiempo Real (`routes/admin.py` & `templates/admin.html`):**
+  - Métrica de Round-Trip Time (RTT) directa vía ping TCP (`socket`) en milisegundos para evaluar con precisión la latencia del túnel al enlace residencial de respaldo.
+  - Prueba de extracción end-to-end con YouTube para validar el funcionamiento del proxy antes de que ocurra una falla real en producción.
+
+### 🤖 Asistente de Telegram: Corrección de Entrega y Envío Selectivo
+- **Solución al Bug de Entrega de Archivos (`core/downloader.py` & `core/telegram_bot.py`):**
+  - Garantía de trazabilidad de `job_id` en las estructuras internas de trabajo encoladas (`enqueue_job`), asegurando que las notificaciones de finalización al 100% encuentren el mensaje activo y despachen el archivo multimedia sin interrupciones.
+  - Fallback automático en `send_media`: ante cualquier rechazo por códec o contenedor en la API de Telegram con `sendVideo` o `sendAudio`, el sistema rebobina el archivo y reintenta de forma transparente como `sendDocument`.
+- **Aislamiento de Descargas Web:**
+  - Supresión definitiva de la difusión automática de descargas del panel web al chat del administrador. Las descargas web permanecen de forma privada y exclusiva en la plataforma web.
+- **Envío a Telegram Bajo Demanda en "Mis Descargas" (`routes/ui.py` & `templates/index.html`):**
+  - Botón interactivo **"✈️ Telegram"** en cada tarjeta de archivo y colección/carpeta para enviar cualquier descarga directamente al chat de Telegram del usuario en 1 clic.
+  - Manejo automático de límites: transferencia directa si el archivo es $\le 50$ MB; mensaje explicativo con enlace web seguro si el archivo supera el límite de bots de Telegram.
+
 ## [1.3.0] - 2026-09-02
 
 ### 🚀 Lanzamiento Estable v1.3.0

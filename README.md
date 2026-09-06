@@ -1,6 +1,6 @@
 # ⚡ dHtools - Suite Multimedia & Extractor Universal
 
-[![Release](https://img.shields.io/badge/Release-v1.3.0--stable-blue.svg)](https://github.com/hernancussit/dHtools)
+[![Release](https://img.shields.io/badge/Release-v1.4.0--stable-blue.svg)](https://github.com/hernancussit/dHtools)
 [![Python](https://img.shields.io/badge/Python-3.11+-yellow.svg)](https://python.org)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -14,7 +14,8 @@ Está construida con una **arquitectura modular de Flask Blueprints**, diseñada
 ## 🚀 Características Principales
 
 ### 🎯 Extracción Multiplataforma Inteligente
-- **Motor en Cascada Automático:** Combina automáticamente **yt-dlp**, **Cobalt v11 Oficial** y el motor de streaming de audio **Deezer/Spotify** con fallback transparente.
+- **Motor en Cascada Automático (4 Niveles):** Combina inteligentemente **Cobalt v11 Oficial**, **Deezer/Spotify**, **yt-dlp nativo** y un **Respaldo Residencial de Último Recurso (Tier 4 / Residential Failsafe)** con fallback transparente.
+- **Respaldo Residencial de Contingencia (Failsafe):** Activación autónoma de proxy SOCKS5 residencial solo si YouTube bloquea la IP del datacenter o degrada streams forzados SABR a 360p, preservando el ancho de banda hogareño para el resto de las tareas.
 - **Calidades de Video Ultra HD:** Descarga en 4K (2160p), 2K (1440p), Full HD (1080p), 720p y 480p con selección de contenedor (`MP4` / `MKV`) y subtítulos incrustados.
 - **Suite de Audio Hi-Fi:** Extracción directa con carátulas en alta resolución y metadatos ID3 automáticos en calidades `128 kbps`, `192 kbps`, `256 kbps` y `320 kbps (CBR MP3)`.
 - **Playlists & Álbumes:** Detección automática y desglose de listas de reproducción con seguimiento ítem por ítem en tiempo real, priorización interactiva (⬆️/⬇️) y descarga agrupada en carpetas virtuales o archivo `.zip`.
@@ -38,6 +39,7 @@ Está construida con una **arquitectura modular de Flask Blueprints**, diseñada
 - **Rollback Seguro:** Restauración inmediata a la versión anterior con un solo clic si algo falla.
 - **Gestión Multiusuario:** Creación de usuarios con roles `Admin` y `Downloader`, cambio de contraseñas, asignación de cuotas, suspensión de cuentas y purga selectiva de descargas.
 - **🤖 Asistente Interactivo de Telegram (Telegram Bot Hub):** Solicitá descargas compartiendo enlaces directamente a tu propio bot de Telegram con selección de calidades táctil (*Inline Keyboards*), seguimiento dinámico de progreso en el chat, consulta de historial (`/descargas`), cola (`/cola`) y cuota (`/cuota`), y entrega de archivos multimedia directos (<= 50 MB) o enlaces web seguros.
+- **✈️ Envío a Telegram Bajo Demanda:** Opción en 1 clic desde la sección "Mis Descargas" para transferir cualquier archivo descargado directamente a tu Telegram.
 - **☁️ Hub de Conectores Cloud con Presets Privados:** Perfiles de almacenamiento personalizados por usuario (Nextcloud/ownCloud vía **WebDAV**, servidores **FTP** y webhooks) con aislamiento total de credenciales y herramienta de validación de conexión en 1 clic.
 - **Monitoreo en Tiempo Real:** Métricas en vivo del uso de CPU, RAM del proyecto vs VPS total y espacio en disco con purga automática configurable.
 

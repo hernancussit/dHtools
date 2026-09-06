@@ -434,6 +434,9 @@
       <button class="nav-btn" data-tab="tab-users">
         <span>👥</span> Gestión de Usuarios
       </button>
+      <button class="nav-btn" data-tab="tab-diagnostics">
+        <span>🧪</span> Diagnóstico Avanzado
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -560,7 +563,8 @@
                 <div id="cobaltLatency" style="font-size:0.72rem; color:var(--muted); margin-top:2px;">- ms</div>
               </div>
             </div>
-            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;" id="cobaltVersionLabel">Versión en ejecución: Consultando...</div>
+            <div style="font-size:0.82rem; color:var(--muted); margin-bottom:4px;" id="cobaltVersionLabel">Versión en ejecución: Consultando...</div>
+            <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;" id="cobaltCookiesLabel">🍪 Cookies de Sesión: Consultando...</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button id="btnCheckCobalt" class="btn btn-secondary" style="flex:1; min-width:110px;">🔍 Comprobar</button>
               <button id="btnUpdateCobalt" class="btn btn-primary" style="flex:1; min-width:110px;">⟳ Test / Ping</button>
@@ -721,6 +725,139 @@
         </div>
       </div>
 
+      <!-- 🛰️ Enlace Residencial de Respaldo (Túnel / Proxy Failsafe) -->
+      <div class="card" style="border-left: 3px solid var(--primary);">
+        <div class="card-title">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>🛰️ Enlace Residencial de Respaldo (Túnel / Proxy Failsafe)</span>
+            <span class="brand-badge" style="font-size:0.75rem; background:rgba(0, 240, 255, 0.15); color:var(--primary); border:1px solid var(--primary);">Tier 4 Failsafe</span>
+          </div>
+          <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
+            <input type="checkbox" id="resProxyEnabled"> Habilitar Respaldo
+          </label>
+        </div>
+        <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
+          Ruta de último recurso para eludir bloqueos antibot, degradación forzada a 360p (SABR) y restricciones de IP de datacenter en YouTube. Se activa <strong>únicamente cuando los métodos directos del VPS fallan</strong>, protegiendo tu ancho de banda residencial en descargas normales.
+        </p>
+
+        <form id="formResProxyConfig">
+          <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:12px;">
+            <div class="form-group">
+              <label style="display:flex; justify-content:space-between; align-items:center;">
+                <span>URL del Proxy SOCKS5 / HTTP Residencial</span>
+                <span style="font-size:0.75rem; color:var(--muted);">Formatos: <code>socks5h://IP_FIJA:PUERTO</code> o <code>socks5h://user:pass@host:port</code></span>
+              </label>
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="resProxyUrl" placeholder="socks5h://190.xxx.xxx.xxx:28443" style="flex:1;">
+                <button type="button" id="btnToggleResProxySecret" class="btn btn-secondary btn-sm" title="Ocultar / Mostrar credenciales">👁️</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#090e1a; padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:14px; display:flex; flex-direction:column; gap:8px;">
+            <label style="margin:0; display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem;">
+              <input type="checkbox" id="resProxyAutoFallback" checked>
+              <span><strong>Activar automáticamente como Failsafe:</strong> Si yt-dlp y Cobalt fallan con errores de bot o bloqueo en el VPS, derivar a este enlace.</span>
+            </label>
+            <label style="margin:0; display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem;">
+              <input type="checkbox" id="resProxyQualityFallback" checked>
+              <span><strong>Protección de Calidad Full HD (SABR):</strong> Si el video solicitado es HD/1080p pero el servidor directo solo puede obtener 360p, escalar automáticamente al enlace residencial.</span>
+            </label>
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Configuración</button>
+            <button type="button" id="btnTestResProxy" class="btn btn-secondary btn-sm">⚡ Probar Conexión & Diagnóstico</button>
+            <button type="button" id="btnToggleTunnelGuides" class="btn btn-sm" style="background:#1e293b; color:var(--text); margin-left:auto;">📖 Opciones de Conexión & Guías de Túnel</button>
+          </div>
+
+          <!-- Diagnostic Feedback Box -->
+          <div id="resProxyNotice" style="display:none; margin-top:14px; padding:12px 16px; border-radius:8px; font-size:0.84rem;"></div>
+
+          <!-- Collapsible Universal Tunnel Guides -->
+          <div id="tunnelGuidesBox" style="display:none; margin-top:14px; background:#070b14; padding:16px; border-radius:8px; border:1px solid rgba(0, 240, 255, 0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+              <strong style="color:var(--primary); font-size:0.92rem;">🛠️ Guías de Despliegue de Túnel Residencial</strong>
+              <button type="button" id="btnCopyTunnelCommands" class="btn btn-secondary btn-sm" style="font-size:0.75rem;">📋 Copiar Comandos</button>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; border-bottom:1px solid #1e293b; padding-bottom:8px;">
+              <button type="button" class="tunnel-tab-btn active" data-tab="ssh" style="background:#1e293b; color:var(--primary); border:1px solid var(--primary); padding:6px 12px; border-radius:6px; font-size:0.78rem; cursor:pointer;">🔀 Túnel SSH Inverso (Sin abrir puertos)</button>
+              <button type="button" class="tunnel-tab-btn" data-tab="mesh" style="background:transparent; color:var(--text); border:1px solid #334155; padding:6px 12px; border-radius:6px; font-size:0.78rem; cursor:pointer;">🕸️ VPN de Malla (Tailscale / WireGuard)</button>
+              <button type="button" class="tunnel-tab-btn" data-tab="docker" style="background:transparent; color:var(--text); border:1px solid #334155; padding:6px 12px; border-radius:6px; font-size:0.78rem; cursor:pointer;">🐳 Contenedor Docker SOCKS5</button>
+              <button type="button" class="tunnel-tab-btn" data-tab="router" style="background:transparent; color:var(--text); border:1px solid #334155; padding:6px 12px; border-radius:6px; font-size:0.78rem; cursor:pointer;">🖧 Routers con Proxy (Ej: RouterOS / OpenWrt)</button>
+            </div>
+
+            <!-- Tab Contents -->
+            <!-- Tab 1: SSH Inverso -->
+            <div id="tabContent-ssh" class="tunnel-tab-content">
+              <p style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
+                <strong>Ideal si tu proveedor de internet (ONT o CGNAT) no te permite abrir puertos.</strong> Conectá cualquier equipo de tu hogar (PC, Raspberry Pi o NAS) hacia tu VPS mediante un túnel reverso dinámico. No requiere modificar el router ni abrir puertos en tu casa.
+              </p>
+              <pre id="tunnelCode-ssh" style="background:#020617; padding:12px; border-radius:6px; font-size:0.78rem; color:#38bdf8; overflow-x:auto; line-height:1.4; border:1px solid #1e293b; margin:0;"># 1. Desde tu PC / Servidor hogareño (Linux, Raspberry Pi, macOS o WSL/PowerShell en Windows):
+# Abre un puerto local 1080 SOCKS5 y lo redirige al puerto 28443 del VPS de forma segura:
+ssh -N -f -R 127.0.0.1:28443:127.0.0.1:1080 -D 1080 tu_usuario_vps@IP_DE_TU_VPS -p 22222
+
+# 2. Configuración a ingresar en el campo superior de este panel:
+# URL: socks5h://127.0.0.1:28443</pre>
+            </div>
+
+            <!-- Tab 2: VPN Malla -->
+            <div id="tabContent-mesh" class="tunnel-tab-content" style="display:none;">
+              <p style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
+                <strong>Conexión segura punto a punto mediante red encriptada.</strong> Une el VPS y tu casa en una misma red privada virtual sin requerir apertura de puertos WAN ni UPnP.
+              </p>
+              <pre id="tunnelCode-mesh" style="background:#020617; padding:12px; border-radius:6px; font-size:0.78rem; color:#38bdf8; overflow-x:auto; line-height:1.4; border:1px solid #1e293b; margin:0;"># 1. Instalar Tailscale en tu equipo hogareño y en el VPS:
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+
+# 2. En tu PC / Home-Server residencial, levantar un proxy SOCKS5 local:
+docker run -d --name socks5-res -p 1080:1080 --restart unless-stopped serjs/go-socks5-proxy
+
+# 3. Configuración en este panel (reemplaza 100.x.y.z por la IP de Tailscale de tu PC de casa):
+# URL: socks5h://100.x.y.z:1080</pre>
+            </div>
+
+            <!-- Tab 3: Docker SOCKS5 -->
+            <div id="tabContent-docker" class="tunnel-tab-content" style="display:none;">
+              <p style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
+                <strong>Proxy SOCKS5 independiente para servidores caseros (TrueNAS, Unraid, Linux o Docker Desktop).</strong> Si disponés de IP fija o DDNS y podés redirigir el puerto en tu ONT/Router hacia tu servidor local.
+              </p>
+              <pre id="tunnelCode-docker" style="background:#020617; padding:12px; border-radius:6px; font-size:0.78rem; color:#38bdf8; overflow-x:auto; line-height:1.4; border:1px solid #1e293b; margin:0;"># 1. Iniciar contenedor SOCKS5 ultraligero con autenticación de usuario y clave:
+docker run -d --name residential-socks5 \
+  --restart unless-stopped \
+  -p 28443:1080 \
+  -e PROXY_USER=dhtools \
+  -e PROXY_PASSWORD=TuPasswordSeguro123 \
+  serjs/go-socks5-proxy
+
+# 2. Configuración a ingresar en este panel:
+# URL: socks5h://dhtools:TuPasswordSeguro123@TU_IP_PUBLICA_RESIDENCIAL:28443</pre>
+            </div>
+
+            <!-- Tab 4: Routers Dedicados -->
+            <div id="tabContent-router" class="tunnel-tab-content" style="display:none;">
+              <p style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
+                <strong>Ejemplo de configuración en routers domésticos avanzados</strong> (con soporte para servicio proxy SOCKS5 integrado como RouterOS u OpenWrt).
+              </p>
+              <pre id="tunnelCode-router" style="background:#020617; padding:12px; border-radius:6px; font-size:0.78rem; color:#38bdf8; overflow-x:auto; line-height:1.4; border:1px solid #1e293b; margin:0;"># 1. Habilitar servicio SOCKS en puerto seguro (ej. 28443):
+/ip socks set enabled=yes port=28443 connection-idle-timeout=2m
+
+# 2. Seguridad Estricta: Permitir UNICAMENTE a la IP de tu VPS y denegar todo lo demás:
+/ip socks access add action=allow src-address=IP_DE_ESTE_VPS/32 comment="Permitir solo VPS dHtools"
+/ip socks access add action=deny comment="Bloquear todo lo demas"
+
+# 3. Regla en Firewall Filter para aceptar el puerto solo desde el VPS:
+/ip firewall filter add chain=input protocol=tcp dst-port=28443 src-address=IP_DE_ESTE_VPS action=accept comment="Acceso SOCKS desde VPS dHtools" place-before=0
+
+# 4. Configuración a ingresar en este panel:
+# URL: socks5h://TU_IP_PUBLICA_RESIDENCIAL:28443</pre>
+            </div>
+          </div>
+        </form>
+      </div>
+
       <!-- Servidor SMTP y Notificaciones -->
       <div class="card">
         <div class="card-title">
@@ -829,6 +966,49 @@
             </div>
           </div>
           <button id="btnTestWebdav" class="btn btn-secondary btn-sm">🧪 Probar WebDAV</button>
+        </div>
+
+        <!-- S3 / MinIO / Cloudflare R2 / Backblaze B2 -->
+        <div style="background:#0d1527; padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong>🪣 Almacenamiento S3 / MinIO / Cloudflare R2 / B2</strong>
+              <span class="badge" style="background:#0369a1; color:#e0f2fe; font-size:0.72rem;">Compatible S3</span>
+            </div>
+            <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="cloudS3Enabled"> Habilitar S3
+            </label>
+          </div>
+          <p style="font-size:0.8rem; color:var(--muted); margin-top:0; margin-bottom:12px;">
+            Sube automáticamente a buckets compatibles con S3. Deja el Endpoint URL vacío para AWS estándar, o especifícalo para MinIO, Cloudflare R2 o Backblaze B2.
+          </p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+            <div class="form-group">
+              <label>Endpoint URL (opcional para AWS)</label>
+              <input type="text" id="cloudS3Endpoint" placeholder="https://...r2.cloudflarestorage.com">
+            </div>
+            <div class="form-group">
+              <label>Nombre del Bucket</label>
+              <input type="text" id="cloudS3Bucket" placeholder="mi-bucket">
+            </div>
+            <div class="form-group">
+              <label>Access Key ID</label>
+              <input type="text" id="cloudS3Key" placeholder="AKIAIOSFODNN7EXAMPLE">
+            </div>
+            <div class="form-group">
+              <label>Secret Access Key</label>
+              <input type="password" id="cloudS3Secret" placeholder="••••••••••••••••">
+            </div>
+            <div class="form-group">
+              <label>Región (opcional)</label>
+              <input type="text" id="cloudS3Region" placeholder="us-east-1 o auto" value="us-east-1">
+            </div>
+            <div class="form-group">
+              <label>Carpeta / Prefijo en Bucket</label>
+              <input type="text" id="cloudS3Dir" placeholder="descargas (o vacío)">
+            </div>
+          </div>
+          <button id="btnTestS3" class="btn btn-secondary btn-sm" style="margin-top:8px;">🧪 Probar Conexión S3</button>
         </div>
 
         <!-- Telegram Bot Hub & Assistant -->
@@ -997,6 +1177,61 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB 6: ADVANCED DIAGNOSTICS -->
+    <div id="tab-diagnostics" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>🔍 Test de Detección IP — Datacenter vs Residencial</span>
+        </div>
+        <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+          Verifica si YouTube detecta y bloquea la IP del datacenter (VPS directo). Compara con la ruta del proxy residencial si está configurado.
+        </p>
+        <button id="btnDiagIpDetection" class="btn btn-primary" style="width:100%;">
+          🔍 Ejecutar Test de Detección IP
+        </button>
+        <div id="diagIpResult" style="display:none; margin-top:14px; padding:14px; border-radius:10px; background:#0d1527; border:1px solid var(--border); font-size:0.84rem; line-height:1.7;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>⚡ Benchmark de Cascade — Velocidad por Tier</span>
+        </div>
+        <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+          Mide la velocidad real de extracción de cada tier del cascade: Cobalt v11 → yt-dlp (Directo) → yt-dlp (Residencial). Ayuda a decidir la configuración óptima.
+        </p>
+        <button id="btnDiagCascade" class="btn btn-primary" style="width:100%;">
+          ⚡ Ejecutar Benchmark de Cascade
+        </button>
+        <div id="diagCascadeResult" style="display:none; margin-top:14px; padding:14px; border-radius:10px; background:#0d1527; border:1px solid var(--border); font-size:0.84rem; line-height:1.7;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>🌐 DNS & Resolución — Fingerprint Test</span>
+        </div>
+        <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+          Verifica que las resoluciones DNS del VPS sean correctas y no estén comprometidas. Comprueba dominios críticos de YouTube y Google.
+        </p>
+        <button id="btnDiagDns" class="btn btn-primary" style="width:100%;">
+          🌐 Ejecutar Test de DNS
+        </button>
+        <div id="diagDnsResult" style="display:none; margin-top:14px; padding:14px; border-radius:10px; background:#0d1527; border:1px solid var(--border); font-size:0.84rem; line-height:1.7;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>🔒 Auditoría de Seguridad — Health Check</span>
+        </div>
+        <p style="font-size:0.84rem; color:var(--muted); margin-top:0;">
+          Verifica la configuración de seguridad de la plataforma: claves, hashes, 2FA, cookies y políticas de bloqueo. Solo muestra pass/fail, sin exponer datos sensibles.
+        </p>
+        <button id="btnDiagSecurity" class="btn btn-primary" style="width:100%;">
+          🔒 Ejecutar Auditoría de Seguridad
+        </button>
+        <div id="diagSecurityResult" style="display:none; margin-top:14px; padding:14px; border-radius:10px; background:#0d1527; border:1px solid var(--border); font-size:0.84rem; line-height:1.7;"></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -1051,7 +1286,8 @@ const sectionTitles = {
   'tab-engines': '🚀 Actualizador de Motores',
   'tab-settings': '⚙️ Configuración & Cookies',
   'tab-cloud': '☁️ Sincronización en la Nube',
-  'tab-users': '👥 Gestión de Usuarios'
+  'tab-users': '👥 Gestión de Usuarios',
+  'tab-diagnostics': '🧪 Diagnóstico Avanzado'
 };
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1246,6 +1482,18 @@ async function loadEnginesInfo() {
       badge.className = 'status-badge status-offline';
       badge.innerHTML = '<span class="badge-dot" style="background:#ef4444;"></span> Offline';
     }
+
+    const cookLbl = document.getElementById('cobaltCookiesLabel');
+    if (cookLbl && data.cookies_status) {
+      const cs = data.cookies_status;
+      if (cs.has_cookies) {
+        const ytCount = (cs.services && cs.services.youtube) || 0;
+        const authBadge = cs.has_youtube_auth ? '🔐 YouTube Autenticado' : '👁️ YouTube Visitante';
+        cookLbl.innerHTML = `🍪 Cookies: <span style="color:var(--success); font-weight:600;">${authBadge}</span> (${ytCount} cookies)`;
+      } else {
+        cookLbl.innerHTML = `🍪 Cookies: <span style="color:var(--muted);">Sin cookies de YouTube (subí cookies.txt)</span>`;
+      }
+    }
   } catch (e) {
     console.error(e);
   }
@@ -1319,7 +1567,9 @@ document.getElementById('btnCheckCobalt').addEventListener('click', async () => 
       notice.style.background = 'rgba(16, 185, 129, 0.15)';
       notice.style.border = '1px solid var(--success)';
       notice.style.color = 'var(--success)';
-      notice.innerHTML = `✅ <strong>Cobalt al día:</strong> Versión en ejecución v${data.current_version} (${data.services.length} plataformas activas).`;
+      const cs = data.cookies_status || {};
+      const csText = cs.has_cookies ? ` • Cookies: ${cs.has_youtube_auth ? 'YouTube autenticado' : 'YouTube activo'}` : ' • Sin cookies';
+      notice.innerHTML = `✅ <strong>Cobalt al día:</strong> Versión en ejecución v${data.current_version} (${data.services.length} plataformas activas)${csText}.`;
     } else {
       notice.style.background = 'rgba(239, 68, 68, 0.15)';
       notice.style.border = '1px solid var(--danger)';
@@ -1728,6 +1978,15 @@ async function loadCloudSyncConfig() {
       document.getElementById('cloudWebdavUser').value = cfg.webdav.username || '';
       document.getElementById('cloudWebdavPass').value = cfg.webdav.password || '';
     }
+    if (cfg.s3) {
+      document.getElementById('cloudS3Enabled').checked = !!cfg.s3.enabled;
+      document.getElementById('cloudS3Endpoint').value = cfg.s3.endpoint_url || '';
+      document.getElementById('cloudS3Bucket').value = cfg.s3.bucket_name || '';
+      document.getElementById('cloudS3Key').value = cfg.s3.access_key || '';
+      document.getElementById('cloudS3Secret').value = cfg.s3.secret_key || '';
+      document.getElementById('cloudS3Region').value = cfg.s3.region || 'us-east-1';
+      document.getElementById('cloudS3Dir').value = cfg.s3.remote_dir || '';
+    }
     if (cfg.telegram) {
       document.getElementById('cloudTelegramEnabled').checked = !!cfg.telegram.enabled;
       document.getElementById('cloudTelegramToken').value = cfg.telegram.bot_token || '';
@@ -1750,6 +2009,15 @@ function getCloudConfigPayload() {
     webhook: {
       enabled: document.getElementById('cloudWebhookEnabled').checked,
       url: document.getElementById('cloudWebhookUrl').value.trim()
+    },
+    s3: {
+      enabled: document.getElementById('cloudS3Enabled').checked,
+      endpoint_url: document.getElementById('cloudS3Endpoint').value.trim(),
+      bucket_name: document.getElementById('cloudS3Bucket').value.trim(),
+      access_key: document.getElementById('cloudS3Key').value.trim(),
+      secret_key: document.getElementById('cloudS3Secret').value,
+      region: document.getElementById('cloudS3Region').value.trim() || 'us-east-1',
+      remote_dir: document.getElementById('cloudS3Dir').value.trim()
     },
     webdav: {
       enabled: document.getElementById('cloudWebdavEnabled').checked,
@@ -1901,6 +2169,17 @@ document.getElementById('btnTestFtp').addEventListener('click', () => {
     port: parseInt(document.getElementById('cloudFtpPort').value) || 21,
     username: document.getElementById('cloudFtpUser').value.trim(),
     password: document.getElementById('cloudFtpPass').value
+  });
+});
+
+document.getElementById('btnTestS3')?.addEventListener('click', () => {
+  testCloudService('s3', {
+    endpoint_url: document.getElementById('cloudS3Endpoint').value.trim(),
+    bucket_name: document.getElementById('cloudS3Bucket').value.trim(),
+    access_key: document.getElementById('cloudS3Key').value.trim(),
+    secret_key: document.getElementById('cloudS3Secret').value,
+    region: document.getElementById('cloudS3Region').value.trim() || 'us-east-1',
+    remote_dir: document.getElementById('cloudS3Dir').value.trim()
   });
 });
 
@@ -2249,6 +2528,157 @@ document.getElementById('btnTestSmtp')?.addEventListener('click', async () => {
   }
 });
 
+// 7. Residential Proxy Management (Residential Fallback / Failsafe)
+async function loadResidentialProxyConfig() {
+  try {
+    const res = await fetch('/api/admin/residential-proxy');
+    if (!res.ok) return;
+    const data = await res.json();
+    const cfg = data.residential_proxy || {};
+    const enabledEl = document.getElementById('resProxyEnabled');
+    const urlEl = document.getElementById('resProxyUrl');
+    const autoEl = document.getElementById('resProxyAutoFallback');
+    const qualEl = document.getElementById('resProxyQualityFallback');
+    
+    if (enabledEl) enabledEl.checked = Boolean(cfg.enabled);
+    if (urlEl) {
+      urlEl.value = cfg.url_masked || cfg.url || '';
+    }
+    if (autoEl) autoEl.checked = (cfg.auto_fallback !== undefined) ? Boolean(cfg.auto_fallback) : true;
+    if (qualEl) qualEl.checked = (cfg.fallback_on_quality_loss !== undefined) ? Boolean(cfg.fallback_on_quality_loss) : true;
+  } catch (e) {
+    console.error('Error loading residential proxy config:', e);
+  }
+}
+
+document.getElementById('btnToggleResProxySecret')?.addEventListener('click', () => {
+  const urlEl = document.getElementById('resProxyUrl');
+  if (!urlEl) return;
+  if (urlEl.type === 'password') {
+    urlEl.type = 'text';
+  } else {
+    urlEl.type = 'password';
+  }
+});
+
+document.getElementById('formResProxyConfig')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const notice = document.getElementById('resProxyNotice');
+  const urlVal = document.getElementById('resProxyUrl').value.trim();
+  const payload = {
+    enabled: document.getElementById('resProxyEnabled').checked,
+    url: urlVal,
+    auto_fallback: document.getElementById('resProxyAutoFallback').checked,
+    fallback_on_quality_loss: document.getElementById('resProxyQualityFallback').checked
+  };
+
+  try {
+    const res = await fetch('/api/admin/residential-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al guardar');
+    showToast(data.message || 'Configuración del Enlace Residencial guardada.', 'success');
+    if (notice) {
+      notice.style.display = 'none';
+    }
+    loadResidentialProxyConfig();
+  } catch (e) {
+    showToast('Error al guardar Enlace Residencial: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnTestResProxy')?.addEventListener('click', async () => {
+  const notice = document.getElementById('resProxyNotice');
+  const urlVal = document.getElementById('resProxyUrl').value.trim();
+  if (notice) {
+    notice.style.display = 'block';
+    notice.style.background = 'var(--bg-input)';
+    notice.style.border = '1px solid var(--border)';
+    notice.style.color = 'var(--text)';
+    notice.innerHTML = '⏳ <strong>Diagnosticando Enlace Residencial:</strong> Comprobando SOCKS5, latencia, IP pública y extracción de YouTube...';
+  }
+
+  try {
+    const res = await fetch('/api/admin/residential-proxy/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: urlVal })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || data.message || 'Fallo de conexión al proxy.');
+    }
+    if (notice) {
+      const ytStatusHtml = data.yt_ok 
+        ? `<span style="color:var(--success);">✅ ${data.yt_msg}</span>`
+        : `<span style="color:var(--warning);">⚠️ ${data.yt_msg}</span>`;
+
+      notice.style.background = 'rgba(16, 185, 129, 0.12)';
+      notice.style.border = '1px solid var(--success)';
+      notice.style.color = 'var(--text)';
+      notice.innerHTML = `
+        <div style="font-weight:600; color:var(--success); margin-bottom:4px;">✅ Conexión con el Enlace Residencial Exitosa</div>
+        <div style="font-size:0.8rem; line-height:1.5;">
+          • <strong>IP Pública Residencial:</strong> <code>${data.ip}</code> (${data.isp || 'Residencial'})<br>
+          • <strong>Ping de Red (RTT VPS ➔ Enlace Residencial):</strong> <code style="color:var(--success);">${data.latency_ms} ms</code><br>
+          • <strong>Tiempo de Transacción Web (HTTP/TLS):</strong> <code>${data.http_time_ms || '-'} ms</code><br>
+          • <strong>Prueba YouTube Canary:</strong> ${ytStatusHtml}
+        </div>
+      `;
+    }
+    showToast('Prueba de enlace residencial exitosa', 'success');
+  } catch (e) {
+    if (notice) {
+      notice.style.background = 'rgba(239, 68, 68, 0.15)';
+      notice.style.border = '1px solid var(--danger)';
+      notice.style.color = 'var(--danger)';
+      notice.innerHTML = `❌ <strong>Error en el Enlace Residencial:</strong> ${e.message}<br><small style="color:var(--muted);">Verificá que el túnel o proxy esté activo, que el puerto responda y que el firewall permita la conexión desde la IP del VPS.</small>`;
+    }
+    showToast(e.message, 'error');
+  }
+});
+
+// Toggle and tabs for Universal Tunnel Guides
+document.getElementById('btnToggleTunnelGuides')?.addEventListener('click', () => {
+  const box = document.getElementById('tunnelGuidesBox');
+  if (!box) return;
+  box.style.display = (box.style.display === 'none' || !box.style.display) ? 'block' : 'none';
+});
+
+let currentActiveTunnelTab = 'ssh';
+document.querySelectorAll('.tunnel-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.getAttribute('data-tab');
+    currentActiveTunnelTab = tab;
+    document.querySelectorAll('.tunnel-tab-btn').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text)';
+      b.style.border = '1px solid #334155';
+    });
+    btn.style.background = '#1e293b';
+    btn.style.color = 'var(--primary)';
+    btn.style.border = '1px solid var(--primary)';
+    
+    document.querySelectorAll('.tunnel-tab-content').forEach(c => c.style.display = 'none');
+    const activeContent = document.getElementById(`tabContent-${tab}`);
+    if (activeContent) activeContent.style.display = 'block';
+  });
+});
+
+document.getElementById('btnCopyTunnelCommands')?.addEventListener('click', async () => {
+  const codeEl = document.getElementById(`tunnelCode-${currentActiveTunnelTab}`);
+  const code = codeEl ? codeEl.innerText : '';
+  try {
+    await navigator.clipboard.writeText(code.trim());
+    showToast('Comandos del túnel copiados al portapapeles', 'success');
+  } catch (err) {
+    showToast('No se pudo copiar el texto automáticamente', 'error');
+  }
+});
+
 document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadServicesStatus();
   loadEnginesInfo();
@@ -2257,6 +2687,7 @@ document.getElementById('refreshAllBtn').addEventListener('click', () => {
   loadCloudSyncConfig();
   loadAdminTelegramBotStatus();
   loadSmtpConfig();
+  loadResidentialProxyConfig();
   loadUsers();
   loadSessions();
   showToast('Datos actualizados en vivo.', 'success', 2000);
@@ -2270,11 +2701,286 @@ loadConfigAndCookies();
 loadCloudSyncConfig();
 loadAdminTelegramBotStatus();
 loadSmtpConfig();
+loadResidentialProxyConfig();
 loadUsers();
 loadSessions();
 setInterval(loadServicesStatus, 20000);
 setInterval(loadSessions, 30000);
 setInterval(loadAdminTelegramBotStatus, 20000);
+
+// 8. Advanced Diagnostics — Secure Admin Tools
+function diagCooldownBtn(btn, seconds) {
+  btn.disabled = true;
+  const origText = btn.textContent;
+  let remaining = seconds;
+  btn.textContent = `⏳ Cooldown ${remaining}s...`;
+  btn.style.opacity = '0.6';
+  const interval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(interval);
+      btn.disabled = false;
+      btn.textContent = origText;
+      btn.style.opacity = '1';
+    } else {
+      btn.textContent = `⏳ Cooldown ${remaining}s...`;
+    }
+  }, 1000);
+}
+
+function diagStatusIcon(success) {
+  if (success === true) return '✅';
+  if (success === false) return '❌';
+  return '⚪';
+}
+
+function diagSeverityColor(severity) {
+  const map = { ok: 'var(--success)', warning: 'var(--warning)', critical: 'var(--danger)', info: 'var(--accent-blue)' };
+  return map[severity] || 'var(--muted)';
+}
+
+// 8.1 IP Detection Test
+document.getElementById('btnDiagIpDetection')?.addEventListener('click', async function() {
+  const btn = this;
+  const box = document.getElementById('diagIpResult');
+  box.style.display = 'block';
+  box.style.border = '1px solid var(--border)';
+  box.style.color = 'var(--text)';
+  box.innerHTML = '<div style="text-align:center; padding:16px;"><div style="font-size:1.3rem; margin-bottom:8px;">⏳</div>Ejecutando test de detección IP...<br><small style="color:var(--muted)">Esto puede tardar hasta 30 segundos</small></div>';
+
+  try {
+    const res = await fetch('/api/admin/diag/ip-detection', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error en el test');
+
+    const r = data.results;
+    const d = r.direct;
+    const p = r.residential;
+    const recColors = { optimal: 'var(--success)', residential_required: 'var(--warning)', critical: 'var(--danger)', configure_residential: 'var(--warning)', unknown: 'var(--muted)' };
+    const recIcons = { optimal: '✅', residential_required: '⚠️', critical: '🚨', configure_residential: '🔧', unknown: '❓' };
+
+    let html = '<div style="font-weight:700; margin-bottom:10px; font-size:0.95rem;">Resultados del Test de Detección IP</div>';
+    html += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:14px;">';
+
+    // Direct VPS card
+    html += `<div style="background:var(--bg-dark); padding:12px; border-radius:8px; border:1px solid ${d.success ? 'var(--success)' : 'var(--danger)'}30;">`;
+    html += `<div style="font-weight:600; margin-bottom:6px;">${diagStatusIcon(d.success)} IP Directa (VPS/Datacenter)</div>`;
+    const directMsg = document.createElement('span');
+    directMsg.textContent = d.message;
+    html += `<div style="color:var(--muted); font-size:0.8rem;">${directMsg.textContent}</div>`;
+    if (d.latency_ms) html += `<div style="color:var(--muted); font-size:0.78rem; margin-top:4px;">Latencia: <code>${d.latency_ms}ms</code></div>`;
+    if (d.blocked) html += '<div style="color:var(--danger); font-size:0.8rem; margin-top:4px; font-weight:600;">⛔ IP del datacenter detectada como bot</div>';
+    html += '</div>';
+
+    // Residential card
+    html += `<div style="background:var(--bg-dark); padding:12px; border-radius:8px; border:1px solid ${p.success === true ? 'var(--success)' : (p.success === null ? 'var(--border)' : 'var(--danger)')}30;">`;
+    html += `<div style="font-weight:600; margin-bottom:6px;">${diagStatusIcon(p.success)} Proxy Residencial</div>`;
+    const resMsg = document.createElement('span');
+    resMsg.textContent = p.message;
+    html += `<div style="color:var(--muted); font-size:0.8rem;">${resMsg.textContent}</div>`;
+    if (p.latency_ms) html += `<div style="color:var(--muted); font-size:0.78rem; margin-top:4px;">Latencia: <code>${p.latency_ms}ms</code></div>`;
+    html += '</div>';
+    html += '</div>';
+
+    // Recommendation
+    html += `<div style="background:${recColors[r.recommendation] || 'var(--muted)'}15; border:1px solid ${recColors[r.recommendation] || 'var(--border)'}; padding:12px; border-radius:8px;">`;
+    html += `<div style="font-weight:700; margin-bottom:4px; color:${recColors[r.recommendation]};">${recIcons[r.recommendation] || '📋'} Recomendación</div>`;
+    const recText = document.createElement('span');
+    recText.textContent = r.recommendation_text;
+    html += `<div style="font-size:0.82rem;">${recText.textContent}</div>`;
+    html += '</div>';
+
+    box.innerHTML = html;
+    diagCooldownBtn(btn, 30);
+    showToast('Test de detección IP completado', 'success');
+  } catch (e) {
+    box.style.border = '1px solid var(--danger)';
+    box.style.color = 'var(--danger)';
+    const errText = document.createElement('span');
+    errText.textContent = e.message;
+    box.innerHTML = `❌ <strong>Error:</strong> ${errText.textContent}`;
+    if (e.message.includes('Cooldown')) diagCooldownBtn(btn, 30);
+    showToast(e.message, 'error');
+  }
+});
+
+// 8.2 Cascade Benchmark
+document.getElementById('btnDiagCascade')?.addEventListener('click', async function() {
+  const btn = this;
+  const box = document.getElementById('diagCascadeResult');
+  box.style.display = 'block';
+  box.style.border = '1px solid var(--border)';
+  box.style.color = 'var(--text)';
+  box.innerHTML = '<div style="text-align:center; padding:16px;"><div style="font-size:1.3rem; margin-bottom:8px;">⏳</div>Ejecutando benchmark de cascade...<br><small style="color:var(--muted)">Probando cada tier secuencialmente (hasta 45s)</small></div>';
+
+  try {
+    const res = await fetch('/api/admin/diag/cascade-benchmark', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error en el benchmark');
+
+    let html = '<div style="font-weight:700; margin-bottom:10px; font-size:0.95rem;">Resultados del Benchmark de Cascade</div>';
+    html += '<div style="display:grid; gap:10px; margin-bottom:14px;">';
+
+    data.tiers.forEach((t, i) => {
+      const barColor = t.success === true ? 'var(--success)' : (t.success === null ? 'var(--muted)' : 'var(--danger)');
+      const isFastest = t.name === data.fastest;
+      const border = isFastest ? 'var(--success)' : 'var(--border)';
+      html += `<div style="background:var(--bg-dark); padding:12px; border-radius:8px; border:1px solid ${border}; ${isFastest ? 'box-shadow:0 0 12px rgba(16,185,129,0.2);' : ''}">`;
+      html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">`;
+      html += `<span style="font-weight:600;">${diagStatusIcon(t.success)} Tier ${t.tier}: ${t.name}</span>`;
+      if (isFastest) html += '<span style="background:var(--success); color:white; padding:2px 8px; border-radius:4px; font-size:0.72rem; font-weight:700;">🏆 MÁS RÁPIDO</span>';
+      html += '</div>';
+      const tierMsg = document.createElement('span');
+      tierMsg.textContent = t.message;
+      html += `<div style="color:var(--muted); font-size:0.8rem;">${tierMsg.textContent}</div>`;
+      if (t.latency_ms > 0) {
+        const maxBar = 10000;
+        const pct = Math.min(100, (t.latency_ms / maxBar) * 100);
+        html += `<div style="margin-top:6px; background:var(--bg-input); height:6px; border-radius:3px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${barColor}; border-radius:3px; transition:width 0.5s;"></div></div>`;
+        html += `<div style="font-size:0.75rem; color:var(--muted); margin-top:2px; text-align:right;"><code>${t.latency_ms}ms</code></div>`;
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    const fastText = document.createElement('span');
+    fastText.textContent = data.fastest;
+    html += `<div style="background:rgba(16,185,129,0.1); border:1px solid var(--success); padding:10px; border-radius:8px; text-align:center;"><strong>🏆 Motor más rápido:</strong> ${fastText.textContent}</div>`;
+
+    box.innerHTML = html;
+    diagCooldownBtn(btn, 30);
+    showToast('Benchmark de cascade completado', 'success');
+  } catch (e) {
+    box.style.border = '1px solid var(--danger)';
+    box.style.color = 'var(--danger)';
+    const errText = document.createElement('span');
+    errText.textContent = e.message;
+    box.innerHTML = `❌ <strong>Error:</strong> ${errText.textContent}`;
+    if (e.message.includes('Cooldown')) diagCooldownBtn(btn, 30);
+    showToast(e.message, 'error');
+  }
+});
+
+// 8.3 DNS Check
+document.getElementById('btnDiagDns')?.addEventListener('click', async function() {
+  const btn = this;
+  const box = document.getElementById('diagDnsResult');
+  box.style.display = 'block';
+  box.style.border = '1px solid var(--border)';
+  box.style.color = 'var(--text)';
+  box.innerHTML = '<div style="text-align:center; padding:16px;"><div style="font-size:1.3rem; margin-bottom:8px;">⏳</div>Verificando resoluciones DNS...</div>';
+
+  try {
+    const res = await fetch('/api/admin/diag/dns-check', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error en el test DNS');
+
+    const s = data.summary;
+    const healthColors = { healthy: 'var(--success)', degraded: 'var(--warning)', critical: 'var(--danger)' };
+    const healthLabels = { healthy: '✅ Saludable', degraded: '⚠️ Degradado', critical: '🚨 Crítico' };
+
+    let html = '<div style="font-weight:700; margin-bottom:10px; font-size:0.95rem;">Resultados del Test DNS</div>';
+
+    // Summary bar
+    html += `<div style="display:flex; gap:16px; margin-bottom:14px; flex-wrap:wrap; align-items:center;">`;
+    html += `<span style="color:${healthColors[s.health]}; font-weight:700;">${healthLabels[s.health] || s.health}</span>`;
+    html += `<span style="color:var(--muted); font-size:0.8rem;">${s.resolved}/${s.total} resueltos · Promedio: <code>${s.avg_resolution_ms}ms</code></span>`;
+    html += '</div>';
+
+    html += '<div style="display:grid; gap:8px;">';
+    data.results.forEach(r => {
+      const statusColor = r.success ? 'var(--success)' : 'var(--danger)';
+      html += `<div style="background:var(--bg-dark); padding:10px 12px; border-radius:8px; border:1px solid ${statusColor}20; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">`;
+      html += `<div><span style="font-weight:600;">${diagStatusIcon(r.success)} ${r.label}</span><br><code style="font-size:0.75rem; color:var(--muted);">${r.domain}</code></div>`;
+      html += '<div style="text-align:right; font-size:0.8rem;">';
+      if (r.success) {
+        html += `<div><code>${r.resolution_ms}ms</code></div>`;
+        html += `<div style="color:var(--muted);">${r.ip_count} IPs · fp:<code>${r.ip_fingerprint}</code></div>`;
+      } else {
+        const dnsMsg = document.createElement('span');
+        dnsMsg.textContent = r.message;
+        html += `<div style="color:var(--danger);">${dnsMsg.textContent}</div>`;
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    box.innerHTML = html;
+    diagCooldownBtn(btn, 30);
+    showToast('Test DNS completado', 'success');
+  } catch (e) {
+    box.style.border = '1px solid var(--danger)';
+    box.style.color = 'var(--danger)';
+    const errText = document.createElement('span');
+    errText.textContent = e.message;
+    box.innerHTML = `❌ <strong>Error:</strong> ${errText.textContent}`;
+    if (e.message.includes('Cooldown')) diagCooldownBtn(btn, 30);
+    showToast(e.message, 'error');
+  }
+});
+
+// 8.4 Security Audit
+document.getElementById('btnDiagSecurity')?.addEventListener('click', async function() {
+  const btn = this;
+  const box = document.getElementById('diagSecurityResult');
+  box.style.display = 'block';
+  box.style.border = '1px solid var(--border)';
+  box.style.color = 'var(--text)';
+  box.innerHTML = '<div style="text-align:center; padding:16px;"><div style="font-size:1.3rem; margin-bottom:8px;">🔒</div>Ejecutando auditoría de seguridad...</div>';
+
+  try {
+    const res = await fetch('/api/admin/diag/security-audit', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error en la auditoría');
+
+    const s = data.summary;
+    const gradeColors = { A: 'var(--success)', B: 'var(--accent-blue)', C: 'var(--warning)', D: 'var(--danger)' };
+
+    let html = '<div style="font-weight:700; margin-bottom:14px; font-size:0.95rem;">Resultados de la Auditoría de Seguridad</div>';
+
+    // Grade circle
+    html += '<div style="display:flex; align-items:center; gap:20px; margin-bottom:16px; flex-wrap:wrap;">';
+    html += `<div style="width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:900; color:white; background:${gradeColors[s.grade] || 'var(--muted)'}; box-shadow:0 4px 16px ${gradeColors[s.grade] || 'var(--muted)'}40;">${s.grade}</div>`;
+    html += '<div>';
+    html += `<div style="font-size:1.1rem; font-weight:700;">${s.passed}/${s.total} verificaciones aprobadas</div>`;
+    html += `<div style="font-size:0.82rem; color:var(--muted);">Puntuación: ${s.percentage}%</div>`;
+    html += '</div></div>';
+
+    // Checks list
+    html += '<div style="display:grid; gap:8px;">';
+    data.checks.forEach(c => {
+      const icon = c.pass ? '✅' : (c.severity === 'critical' ? '🚨' : (c.severity === 'warning' ? '⚠️' : 'ℹ️'));
+      const borderColor = c.pass ? 'var(--success)' : diagSeverityColor(c.severity);
+      html += `<div style="background:var(--bg-dark); padding:10px 12px; border-radius:8px; border-left:3px solid ${borderColor};">`;
+      html += `<div style="font-weight:600; margin-bottom:2px;">${icon} ${c.name}</div>`;
+      html += `<div style="font-size:0.78rem; color:var(--muted);">${c.description}</div>`;
+      if (c.detail) {
+        const detailEl = document.createElement('span');
+        detailEl.textContent = c.detail;
+        html += `<div style="font-size:0.8rem; margin-top:4px; color:${c.pass ? 'var(--success)' : diagSeverityColor(c.severity)};">${detailEl.textContent}</div>`;
+      }
+      if (c.recommendation) {
+        const recEl = document.createElement('span');
+        recEl.textContent = c.recommendation;
+        html += `<div style="font-size:0.76rem; margin-top:4px; color:var(--warning); font-style:italic;">💡 ${recEl.textContent}</div>`;
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    box.innerHTML = html;
+    diagCooldownBtn(btn, 30);
+    showToast(`Auditoría completada: Grado ${s.grade} (${s.percentage}%)`, 'success');
+  } catch (e) {
+    box.style.border = '1px solid var(--danger)';
+    box.style.color = 'var(--danger)';
+    const errText = document.createElement('span');
+    errText.textContent = e.message;
+    box.innerHTML = `❌ <strong>Error:</strong> ${errText.textContent}`;
+    if (e.message.includes('Cooldown')) diagCooldownBtn(btn, 30);
+    showToast(e.message, 'error');
+  }
+});
 
 </script>
 </body>

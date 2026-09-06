@@ -1,6 +1,6 @@
 # 📚 Wiki Técnica & Arquitectura del Sistema: dHtools
 
-Documentación técnica detallada sobre el funcionamiento interno, componentes, microservicios, módulos y flujos de trabajo de la plataforma multimedia **dHtools** (Versión `v1.3.0`).
+Documentación técnica detallada sobre el funcionamiento interno, componentes, microservicios, módulos y flujos de trabajo de la plataforma multimedia **dHtools** (Versión `v1.4.0`).
 
 ---
 
@@ -230,6 +230,35 @@ Para acceder a videos restringidos por edad (+18) o contenido exclusivo para mie
 
 ---
 
+### 4.7. Respaldo Residencial de Último Recurso (Tier 4 / Residential Failsafe Tunnel)
+En caso de que YouTube aplique bloqueos antibot a nivel de ASN (bloqueo por Datacenter / `UNPLAYABLE`), o intente degradar streams forzados SABR a 360p en descargas Full HD:
+1. **Activación Condicional Autónoma:** La Cascada Inteligente ejecuta primero los motores del VPS (Cobalt, Deezer/Spotify, yt-dlp nativo con Deno y PO Tokens). Únicamente si el Nivel 3 falla o entrega un stream degradado, se activa de forma automática el **Nivel 4 (Respaldo Residencial)**.
+2. **Preservación del Ancho de Banda Hogareño:** Más del 90% del tráfico y las descargas habituales se procesan exclusivamente en el datacenter del VPS. El enlace residencial solo interviene ante contingencias reales en YouTube.
+3. **Arquitectura de Túnel Universal:** dHtools es compatible de forma nativa con múltiples alternativas de transporte proxy:
+   - **Túnel Inverso SSH:** Permite conectar cualquier equipo hogareño (PC, Raspberry Pi o NAS) hacia el VPS mediante redirección reversa dinámica (`ssh -N -f -R 127.0.0.1:28443:127.0.0.1:1080`) sin necesidad de abrir puertos en el router ni lidiar con CGNAT u ONTs bloqueadas.
+   - **VPN de Malla (Tailscale / WireGuard):** Permite interconectar el VPS con la red privada de tu hogar de forma encriptada punto a punto (ej. `socks5h://100.x.y.z:1080`) sin exponer puertos a la WAN pública.
+   - **Contenedores Docker SOCKS5:** Despliegue de un proxy ultraligero (`serjs/go-socks5-proxy` o `dante`) en servidores caseros, mini-PCs o NAS (TrueNAS / Unraid) con autenticación mediante usuario y contraseña.
+   - **Routers con Proxy Integrado (Ejemplos: MikroTik RouterOS / OpenWrt):** Enrutadores de red con servicio SOCKS5 interno, securizados mediante reglas de firewall que restringen el tráfico exclusivamente a la IP pública de tu VPS.
+4. **Protocolo SOCKS5h:** Se enruta a través del enlace residencial configurado (`socks5h://`) resolviendo nombres DNS de forma remota en la conexión hogareña para garantizar consistencia geográfica ante las redes CDN de YouTube.
+5. **Telemetría RTT en Tiempo Real:** El panel administrativo incluye un monitor de latencia TCP directa (RTT) medido en milisegundos y una herramienta de prueba de extracción en vivo para validar el túnel antes de que ocurra una falla real.
+
+---
+
+### 4.8. Optimización del Motor Cobalt v11 & Enrutamiento Inteligente por Plataforma
+El motor **Cobalt v11** se ejecuta como un microservicio independiente en `:9000` y ofrece una velocidad de procesamiento inigualable en redes sociales gracias a su conexión directa con las CDNs de origen:
+1. **Enrutamiento Inteligente por Plataforma:**
+   - **Redes Sociales (Tier 1 Prioritario):** En enlaces de **TikTok, Instagram Reels, Twitter/X, Reddit, Pinterest, SoundCloud, Vimeo, Facebook, Bilibili, etc.**, la Cascada Inteligente ejecuta directamente Cobalt v11 sin pasar por yt-dlp, obteniendo streams limpios sin marcas de agua en cuestión de milisegundos.
+   - **YouTube Especializado:** En YouTube sobre IPs de centros de datos comerciales (VPS), Cobalt requiere autenticación para evitar el bloqueo `error.api.youtube.login`. La cascada detecta automáticamente si existen cookies sincronizadas:
+     - Si hay cookies de YouTube activas, Cobalt intenta la extracción rápida.
+     - Si no hay cookies, el sistema deriva directamente a `yt-dlp` (con suite Deno, PO Tokens y Failsafe Residencial), eliminando demoras innecesarias por intentos fallidos.
+2. **Sincronización Automática Netscape ➔ JSON (`COOKIE_PATH`):**
+   - Cuando el administrador sube un archivo `cookies.txt` estándar en el panel web, dHtools lo convierte automáticamente al formato JSON nativo de Cobalt v11 (`cobalt_cookies.json`), agrupando las cookies por servicio (`youtube`, `instagram`, `twitter`, `reddit`).
+   - El archivo se monta en el contenedor `cobalt-api` en `/cookies.json`, permitiendo a Cobalt reutilizar la sesión autenticada de forma transparente.
+3. **Payload Enriquecido y Formatos Avanzados:**
+   - Soporte para selección de contenedores de video (`MP4`, `WebM`, `MKV`), formatos de audio (`MP3`, `Opus`, `WAV`, `OGG`), extracción de pistas de audio completas en TikTok (`tiktokFullAudio`) y resolución de posts con selección múltiple (`picker`).
+
+---
+
 ## 5. Motor de Cola por Lotes (Batch Queue)
 
 Permite procesar múltiples URLs de forma concurrente con monitoreo individual:
@@ -240,20 +269,45 @@ Permite procesar múltiples URLs de forma concurrente con monitoreo individual:
 
 ---
 
-## 6. Módulo de Sincronización en la Nube & Presets Privados
+## 6. Módulo de Sincronización en la Nube, Conectores S3 & Modo Offload
 
-Permite reenviar automáticamente los archivos terminados a plataformas de almacenamiento externas sin saturar el disco del servidor ni consumir ancho de banda local:
+Permite reenviar automáticamente los archivos terminados a plataformas de almacenamiento de objetos o servidores externos sin saturar el disco del servidor ni consumir ancho de banda local:
 
 ### 6.1. Hub de Presets de Nube Privados por Usuario
-- **Almacenamiento Aislado:** Cada usuario puede registrar sus propios perfiles de almacenamiento (ej. *"Mi Nextcloud Personal"*, *"FTP de Trabajo"*) guardados bajo su cuenta en `users.json`. Ningún otro usuario del sistema puede ver, modificar ni reutilizar dichas credenciales.
+- **Almacenamiento Aislado:** Cada usuario puede registrar sus propios perfiles de almacenamiento (ej. *"Mi Bucket R2"*, *"MinIO Hogareño"*, *"Nextcloud Personal"*, *"FTP de Trabajo"*) guardados bajo su cuenta en `users.json`. Ningún otro usuario del sistema puede ver, modificar ni reutilizar dichas credenciales.
 - **Selector en 1 Clic:** En el Modo Avanzado de descargas, el usuario puede seleccionar su preset deseado desde un menú desplegable para que el archivo terminado se transmita inmediatamente al finalizar la descarga.
-- **Protocolos Soportados:**
+- **Protocolos y Proveedores Soportados:**
+  - **Amazon S3 / MinIO / Cloudflare R2 / Backblaze B2 / Wasabi:** Conector universal para almacenamiento de objetos compatible con el protocolo S3. Admite Endpoint URL personalizado, Bucket, Access Key, Secret Key, Región y prefijo de carpeta remota.
   - **Nextcloud / ownCloud / WebDAV:** Envía el archivo por HTTP `PUT` directamente a la carpeta remota configurada con soporte para autenticación básica y App Passwords.
-  - **Servidor FTP:** Se conecta mediante `ftplib` al host y puerto configurados y transfiere el archivo por comando `STOR`.
+  - **Servidor FTP:** Se conecta mediante `ftplib` al host y puerto configurados y transfiere el archivo por comando `STOR` con creación automática y recursiva de directorios remotos.
   - **Webhook HTTP:** Emite una solicitud `POST` JSON con los metadatos del archivo para integración con plataformas de automatización (n8n, Zapier, Make).
 
-### 6.2. Herramienta de Validación en 1 Clic
-Tanto en la interfaz de descargas como en el panel administrativo, los usuarios y administradores disponen de botones `🧪 Probar WebDAV` y `🧪 Probar FTP` que efectúan un handshake de red en vivo contra el servidor remoto antes de guardar el perfil.
+### 6.2. Arquitectura de Streaming Multipart S3 (`core/cloud_sync.py`)
+Para evitar sobrecargas en la memoria RAM del contenedor de dHtools al subir archivos masivos (películas en 4K, cursos completos o listas de reproducción de múltiples gigabytes):
+- Utiliza **`boto3`** y **`botocore`** con configuración **`TransferConfig`**:
+  - Umbral de partición (*multipart threshold*): 10 MB.
+  - Tamaño de fragmento (*chunk size*): 10 MB.
+  - Concurrencia de hilos (*max concurrency*): 4 subprocesos en streaming directo desde disco.
+- La subida se realiza leyendo fragmentos directamente del almacenamiento persistente hacia la API de S3, manteniendo el consumo de memoria RAM por debajo de 50 MB sin importar si el archivo pesa 500 MB o 20 GB.
+
+### 6.3. Modo de Sincronización "Subir y Mover" (Modo Offload Seguro)
+Diseñado para servidores VPS con almacenamiento SSD reducido (ej. 20 GB o 40 GB):
+- **Activación:** Se activa tildando la opción *"Subir y Mover (Eliminar del VPS tras subir a la nube)"* en el acordeón de Nube Personal.
+- **Mecanismo de Seguridad Anti-Pérdida:**
+  1. El sistema ejecuta primero la subida a todos los destinos cloud activos (S3, WebDAV, FTP).
+  2. Cada destino registra su éxito o fallo en `successful_destinations`.
+  3. **Regla Estricta:** El archivo local en el disco del VPS **únicamente se elimina (`os.remove`) si la lista de destinos exitosos tiene al menos un proveedor completado satisfactoriamente**.
+  4. Si ocurre un fallo de red o error de credenciales en la nube, el archivo local **se conserva intacto** en el VPS y se emite una advertencia de seguridad en los logs de la tarea.
+- **Trazabilidad en "Mis Descargas":**
+  - Al completarse el offload, los metadatos del archivo se preservan en `downloads_meta.json` con la bandera `offloaded: true` y la lista de ubicaciones remotas.
+  - En la interfaz web, el archivo continúa visible en el historial con un distintivo visual **`☁️ En la nube`** y el estado de los destinos donde quedó guardado.
+  - El usuario puede eliminar el registro del historial en cualquier momento con el botón papelera sin provocar errores de archivo inexistente.
+
+### 6.4. Herramienta de Validación en 1 Clic
+Tanto en la interfaz de descargas como en el panel administrativo, los usuarios y administradores disponen de botones interactivos para verificar la conectividad antes de guardar:
+- **`🧪 Probar S3`**: Ejecuta `head_bucket` vía `boto3` para validar que el bucket existe, que las claves de acceso son correctas y que la cuenta posee permisos de lectura/escritura (`403 AccessDenied` vs `404 NoSuchBucket`).
+- **`🧪 Probar WebDAV`**: Ejecuta una verificación HTTP hacia el endpoint remoto.
+- **`🧪 Probar FTP`**: Realiza un handshake TCP y autenticación contra el servidor FTP.
 
 ---
 
@@ -311,8 +365,12 @@ Para respetar las cuotas de almacenamiento y el aislamiento multiusuario:
 | `/ayuda` | Despliega el resumen de comandos y capacidades del bot. |
 
 **Reglas de Entrega:**
-- **Archivos de hasta 50 MB:** El bot sube el archivo directamente al chat de Telegram utilizando el método correspondiente (`sendAudio`, `sendVideo` o `sendDocument`).
+- **Archivos de hasta 50 MB:** El bot sube el archivo directamente al chat de Telegram utilizando el método correspondiente (`sendAudio`, `sendVideo` o `sendDocument`). Si la API rechaza el video o audio por algún códec, el bot automáticamente rebobina el archivo y reintenta como `sendDocument`.
 - **Archivos mayores a 50 MB:** Telegram impone un límite de 50 MB para subida de bots por la API estándar. En estos casos, el bot notifica que la descarga concluyó exitosamente y adjunta un botón seguro con enlace web directo para descargarlo desde el navegador.
+
+### 7.7. Envío a Telegram Bajo Demanda desde la Web
+- **Aislamiento Total de Descargas Web:** Las descargas realizadas desde el panel web permanecen estrictamente en la web y ya no se difunden automáticamente al chat del administrador.
+- **Botón "✈️ Telegram" en "Mis Descargas":** Cada archivo descargado en la web (individual o dentro de una colección) ofrece un botón **"✈️ Telegram"** que permite transferir el archivo directamente al chat vinculado del usuario en un clic, validando el límite de 50 MB y emitiendo notificaciones toast en tiempo real.
 
 ---
 

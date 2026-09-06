@@ -191,8 +191,21 @@ class TelegramBot:
                 res = requests.post(f"https://api.telegram.org/bot{token}/{method}", data=data, files=files, timeout=180)
                 if res.status_code == 200 and res.json().get("ok"):
                     return True
-                else:
-                    logger.warning(f"[TelegramBot] sendMedia error: {res.status_code} - {res.text[:200]}")
+                logger.warning(f"[TelegramBot] sendMedia error on {method}: {res.status_code} - {res.text[:200]}")
+                if method != "sendDocument":
+                    logger.info("[TelegramBot] Attempting sendDocument fallback...")
+                    f.seek(0)
+                    doc_data = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
+                    doc_res = requests.post(
+                        f"https://api.telegram.org/bot{token}/sendDocument",
+                        data=doc_data,
+                        files={"document": (base_name, f)},
+                        timeout=180
+                    )
+                    if doc_res.status_code == 200 and doc_res.json().get("ok"):
+                        logger.info("[TelegramBot] sendDocument fallback succeeded!")
+                        return True
+                    logger.error(f"[TelegramBot] sendDocument fallback also failed: {doc_res.status_code} - {doc_res.text[:200]}")
         except Exception as e:
             logger.error(f"[TelegramBot] Failed to upload media: {e}")
         return False
@@ -678,6 +691,8 @@ class TelegramBot:
 
             job_id = uuid.uuid4().hex
             job_spec = {
+                "id": job_id,
+                "job_id": job_id,
                 "status": "queued",
                 "percent": 0,
                 "completed_count": 0,
@@ -763,18 +778,32 @@ class TelegramBot:
         }
         self.edit_message(chat_id, msg_id, text, reply_markup=cancel_kb)
 
-    def notify_finished(self, job_id: str, file_path: str, filename: str):
-        with TELEGRAM_ACTIVE_MESSAGES_LOCK:
-            info = TELEGRAM_ACTIVE_MESSAGES.pop(job_id, None)
-            if not info:
-                return
+    def notify_finished(self, job_id: str, file_path: str, filename: str, chat_id: int | str = None, message_id: int = None):
+        info = None
+        if job_id:
+            with TELEGRAM_ACTIVE_MESSAGES_LOCK:
+                info = TELEGRAM_ACTIVE_MESSAGES.pop(job_id, None)
 
-        chat_id = info["chat_id"]
-        msg_id = info["message_id"]
-        title = info.get("title", filename)
+        if not info:
+            if not chat_id:
+                logger.warning(f"[TelegramBot] notify_finished: No active message found for job {job_id} and no chat_id provided.")
+                return
+            info = {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "title": filename,
+                "quality": "Auto"
+            }
+
+        chat_id = info.get("chat_id") or chat_id
+        msg_id = info.get("message_id") or message_id
+        title = info.get("title") or filename
 
         if not file_path or not os.path.exists(file_path):
-            self.edit_message(chat_id, msg_id, f"✅ <b>¡Descarga completada!</b>\n📌 {title}")
+            if msg_id:
+                self.edit_message(chat_id, msg_id, f"✅ <b>¡Descarga completada!</b>\n📌 {title}")
+            else:
+                self.send_message(chat_id, f"✅ <b>¡Descarga completada!</b>\n📌 {title}")
             return
 
         size = os.path.getsize(file_path)
@@ -782,42 +811,57 @@ class TelegramBot:
 
         # Telegram bot direct upload limit: 50MB
         if size <= 50 * 1024 * 1024:
-            self.edit_message(chat_id, msg_id, f"⬆️ <b>Subiendo archivo al chat...</b>\n📌 {title} ({size_fmt})")
+            if msg_id:
+                self.edit_message(chat_id, msg_id, f"⬆️ <b>Subiendo archivo al chat...</b>\n📌 {title} ({size_fmt})")
             caption = f"✅ <b>{title}</b>\n📦 {size_fmt}"
             uploaded = self.send_media(chat_id, file_path, caption=caption, title=title)
             if uploaded:
-                self.edit_message(chat_id, msg_id, f"✅ <b>¡Archivo entregado con éxito!</b>\n📌 {title} ({size_fmt})")
+                if msg_id:
+                    self.edit_message(chat_id, msg_id, f"✅ <b>¡Archivo entregado con éxito!</b>\n📌 {title} ({size_fmt})")
+                else:
+                    self.send_message(chat_id, f"✅ <b>¡Archivo entregado con éxito!</b>\n📌 {title} ({size_fmt})")
             else:
-                self.edit_message(chat_id, msg_id, f"✅ <b>Descarga completada:</b>\n📌 {title} ({size_fmt})\n<i>(No se pudo transferir directamente al chat)</i>")
+                if msg_id:
+                    self.edit_message(chat_id, msg_id, f"✅ <b>Descarga completada:</b>\n📌 {title} ({size_fmt})\n<i>(No se pudo transferir directamente al chat)</i>")
+                else:
+                    self.send_message(chat_id, f"✅ <b>Descarga completada:</b>\n📌 {title} ({size_fmt})\n<i>(No se pudo transferir directamente al chat)</i>")
         else:
-            # Over 50MB -> Send web download button
-            cfg = load_cloud_config()
-            self.edit_message(
-                chat_id,
-                msg_id,
+            # Over 50MB -> Send web download button/notice
+            msg_text = (
                 f"✅ <b>¡Descarga completada con éxito!</b>\n\n"
                 f"📌 <b>{title}</b>\n"
                 f"📦 Peso: <b>{size_fmt}</b>\n\n"
                 f"ℹ️ <i>El archivo supera los 50 MB de límite que impone Telegram para bots. Podés descargarlo directamente desde tu panel web de dHtools en la sección 'Mis Descargas'.</i>"
             )
+            if msg_id:
+                self.edit_message(chat_id, msg_id, msg_text)
+            else:
+                self.send_message(chat_id, msg_text)
 
-    def notify_error(self, job_id: str, error_msg: str):
-        with TELEGRAM_ACTIVE_MESSAGES_LOCK:
-            info = TELEGRAM_ACTIVE_MESSAGES.pop(job_id, None)
-            if not info:
+    def notify_error(self, job_id: str, error_msg: str, chat_id: int | str = None, message_id: int = None):
+        info = None
+        if job_id:
+            with TELEGRAM_ACTIVE_MESSAGES_LOCK:
+                info = TELEGRAM_ACTIVE_MESSAGES.pop(job_id, None)
+
+        if not info:
+            if not chat_id:
                 return
+            info = {"chat_id": chat_id, "message_id": message_id, "title": "Descarga"}
 
-        chat_id = info["chat_id"]
-        msg_id = info["message_id"]
-        title = info.get("title", "Descarga")
+        chat_id = info.get("chat_id") or chat_id
+        msg_id = info.get("message_id") or message_id
+        title = info.get("title") or "Descarga"
 
-        self.edit_message(
-            chat_id,
-            msg_id,
+        err_text = (
             f"❌ <b>Error en la descarga:</b>\n"
             f"📌 <b>{title}</b>\n\n"
             f"<code>{str(error_msg)[:200]}</code>"
         )
+        if msg_id:
+            self.edit_message(chat_id, msg_id, err_text)
+        else:
+            self.send_message(chat_id, err_text)
 
 
 # Global singleton instance

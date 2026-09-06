@@ -180,6 +180,45 @@ def recent_downloads():
             except OSError:
                 continue
 
+    # Also display offloaded items transferred to the cloud
+    matched_jids_on_disk = {it["job_id"] for it in standalone_items}
+    for f_info in folders.values():
+        matched_jids_on_disk.update(it["job_id"] for it in f_info["items"])
+
+    for jid, info in meta.items():
+        if info.get("offloaded") and jid not in matched_jids_on_disk:
+            item_owner = info.get("username", "admin")
+            if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
+                continue
+            sz = info.get("size_bytes", 0)
+            offload_obj = {
+                "job_id": jid,
+                "filename": info.get("filename", "archivo"),
+                "size_bytes": sz,
+                "size_formatted": format_bytes(sz),
+                "mtime": info.get("created_at", time.time()),
+                "owner": item_owner,
+                "download_url": None,
+                "offloaded": True,
+                "cloud_destinations": info.get("cloud_destinations", []),
+            }
+            folder_name = info.get("folder_name")
+            group_id = info.get("group_id")
+            if folder_name and group_id:
+                if group_id not in folders:
+                    folders[group_id] = {
+                        "group_id": group_id,
+                        "folder_name": folder_name,
+                        "owner": item_owner,
+                        "items": [],
+                        "total_bytes": 0,
+                        "mtime": offload_obj["mtime"],
+                    }
+                folders[group_id]["items"].append(offload_obj)
+                folders[group_id]["total_bytes"] += sz
+            else:
+                standalone_items.append(offload_obj)
+
     standalone_items.sort(key=lambda x: x["mtime"], reverse=True)
     folder_list = list(folders.values())
     for f in folder_list:
@@ -380,3 +419,84 @@ def cleanup_my_downloads():
         "cleaned_count": cleaned_count,
         "reclaimed_formatted": format_bytes(reclaimed_bytes),
     })
+
+
+@ui_bp.route("/api/my-downloads/<job_id>/send-telegram", methods=["POST"])
+def send_download_to_telegram(job_id):
+    from flask import session
+    current_user = getattr(request, "current_username", None) or session.get("username")
+    if not current_user:
+        user_obj = getattr(request, "current_user", {}) or {}
+        current_user = user_obj.get("username")
+    if not current_user:
+        return jsonify({"error": "No has iniciado sesión."}), 401
+
+    user_obj = getattr(request, "current_user", {}) or {}
+    is_admin = (user_obj.get("role") == "admin")
+
+    from core.telegram_bot import telegram_bot
+    if not telegram_bot.is_enabled() or not telegram_bot.get_token():
+        return jsonify({"error": "El bot de Telegram no está activo o configurado en el servidor."}), 400
+
+    from routes.auth import load_users
+    users = load_users()
+    user_data = users.get(current_user, {})
+    tg_chat_id = user_data.get("telegram_chat_id")
+    if not tg_chat_id:
+        return jsonify({
+            "error": "Tu cuenta no está vinculada a Telegram. Hacé clic en el botón '✈️ Telegram' en la barra de navegación para vincularla."
+        }), 400
+
+    meta = load_downloads_meta()
+    item_info = meta.get(job_id, {})
+    item_owner = item_info.get("username")
+    if not item_owner:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if job:
+                item_owner = job.get("owner")
+
+    if not is_admin and item_owner and item_owner != current_user:
+        return jsonify({"error": "No tenés permiso para acceder a este archivo."}), 403
+
+    target_file = None
+    clean_name = item_info.get("filename")
+    if os.path.exists(DOWNLOAD_DIR):
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry.startswith(f"{job_id}_") or entry == job_id or entry == f"{job_id}.zip":
+                target_file = os.path.join(DOWNLOAD_DIR, entry)
+                if not clean_name:
+                    clean_name = entry[len(job_id) + 1:] if entry.startswith(f"{job_id}_") else entry
+                break
+
+    if not target_file or not os.path.exists(target_file):
+        return jsonify({"error": "El archivo ya no se encuentra en el servidor (fue purgado o eliminado)."}), 404
+
+    size = os.path.getsize(target_file)
+    size_fmt = format_bytes(size)
+
+    # 50 MB Telegram Bot Upload Limit
+    if size <= 50 * 1024 * 1024:
+        caption = f"🎬 <b>{clean_name}</b>\n📦 {size_fmt}"
+        ok = telegram_bot.send_media(tg_chat_id, target_file, caption=caption, title=clean_name)
+        if ok:
+            return jsonify({
+                "success": True,
+                "message": f"¡Archivo '{clean_name}' enviado con éxito a tu Telegram!"
+            })
+        else:
+            return jsonify({
+                "error": "Ocurrió un error al transferir el archivo a Telegram. Por favor intentá nuevamente."
+            }), 500
+    else:
+        telegram_bot.send_message(
+            tg_chat_id,
+            f"📦 <b>{clean_name}</b> ({size_fmt})\n\n"
+            f"⚠️ <i>Este archivo supera el límite de 50 MB permitido por Telegram para transferencias vía bot. Podés descargarlo directamente desde tu panel web en 'Mis Descargas'.</i>"
+        )
+        return jsonify({
+            "success": True,
+            "oversize": True,
+            "message": f"El archivo supera los 50 MB (límite de Telegram). Te enviamos un aviso a tu Telegram."
+        })
+

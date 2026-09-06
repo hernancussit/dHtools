@@ -23,7 +23,7 @@ def get_or_create_flask_secret() -> str:
     except Exception as e:
         return secrets.token_hex(32)
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
 
@@ -41,6 +41,7 @@ def _resolve_path(env_var: str, default_filename: str) -> str:
     return os.path.join(BASE_DIR, default_filename)
 
 COOKIES_FILE = _resolve_path("COOKIES_FILE", "cookies.txt")
+COBALT_COOKIES_FILE = _resolve_path("COBALT_COOKIES_FILE", "cobalt_cookies.json")
 USERS_FILE = _resolve_path("USERS_FILE", "users.json")
 CONFIG_FILE = _resolve_path("CONFIG_FILE", "config.json")
 CLOUD_CONFIG_FILE = _resolve_path("CLOUD_CONFIG_FILE", "cloud_sync.json")
@@ -63,4 +64,11 @@ DISK_EMERGENCY_MIN_FREE_GB = float(os.environ.get("DISK_EMERGENCY_MIN_FREE_GB", 
 
 TELEGRAM_BOT_TOKEN_ENV = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_BOT_ENABLED_ENV = os.environ.get("TELEGRAM_BOT_ENABLED", "true").lower() == "true"
+
+RESIDENTIAL_PROXY_CONFIG = {
+    "enabled": False,
+    "url": "",
+    "auto_fallback": True,
+    "fallback_on_quality_loss": True
+}
 

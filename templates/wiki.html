@@ -411,13 +411,15 @@
         <p>Al completarse el lote, el botón <strong>"📦 Descargar Todo (.ZIP)"</strong> permite descargar todos los archivos comprimidos en un solo paquete.</p>
 
         <!-- 7. CLOUD SYNC & PRESETS -->
-        <h2 id="section-cloud">☁️ 7. Sincronización en la Nube & Presets Privados</h2>
-        <p>dHtools permite reenviar automáticamente los archivos terminados a almacenamiento remoto sin consumir espacio ni ancho de banda local:</p>
+        <h2 id="section-cloud">☁️ 7. Sincronización en la Nube, Conectores S3 & Modo Offload</h2>
+        <p>dHtools permite reenviar automáticamente los archivos terminados a almacenamiento de objetos o servidores remotos sin consumir espacio ni ancho de banda local:</p>
         <ul>
-          <li><strong>Presets de Almacenamiento Privados por Usuario:</strong> Cada usuario puede almacenar múltiples perfiles (ej. <em>"Mi Nextcloud Personal"</em> o <em>"FTP de Trabajo"</em>) aislados en su cuenta en <code>users.json</code> con selector en 1 clic en el Modo Avanzado.</li>
-          <li><strong>Herramienta de Validación en 1 Clic:</strong> Botones para probar la conectividad de WebDAV y FTP antes de guardar las credenciales.</li>
+          <li><strong>Presets de Almacenamiento Privados por Usuario:</strong> Cada usuario puede almacenar múltiples perfiles (ej. <em>"Mi Bucket R2"</em>, <em>"MinIO Hogareño"</em>, <em>"Mi Nextcloud Personal"</em> o <em>"FTP de Trabajo"</em>) aislados en su cuenta en <code>users.json</code> con selector en 1 clic en el Modo Avanzado.</li>
+          <li><strong>Almacenamiento Compatible con S3 (AWS S3, MinIO, Cloudflare R2, Backblaze B2, Wasabi):</strong> Conector universal con streaming multipart (fragmentos de 10 MB) para archivos gigantes sin sobrecargar la memoria RAM del servidor.</li>
+          <li><strong>Modo Offload ("Subir y Mover"):</strong> Opción para transferir el archivo a la nube y eliminarlo inmediatamente del disco local del VPS. Cuenta con protección estricta: solo se borra si la subida cloud fue exitosa, manteniendo el registro en "Mis Descargas" con el distintivo <code>☁️ En la nube</code>.</li>
           <li><strong>Nextcloud / ownCloud / WebDAV:</strong> Subida directa mediante protocolo WebDAV con soporte para App Passwords.</li>
-          <li><strong>Servidor FTP:</strong> Subida automatizada a servidores remotos.</li>
+          <li><strong>Servidor FTP:</strong> Subida automatizada a servidores remotos con creación recursiva de directorios.</li>
+          <li><strong>Herramienta de Validación en 1 Clic:</strong> Botones interactivos para verificar la conectividad de S3 (<code>head_bucket</code>), WebDAV y FTP antes de guardar las credenciales.</li>
           <li><strong>Webhook HTTP:</strong> Disparo de notificaciones JSON para integraciones con n8n, Make o Zapier.</li>
         </ul>
 

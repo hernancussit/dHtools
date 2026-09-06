@@ -29,7 +29,8 @@ from core.utils import (
     record_download_meta, delete_download_meta, save_queue_state,
     load_queue_state, get_disk_status, format_bytes, safe_filename,
     format_for_quality, is_audio_quality, parse_time_to_seconds,
-    safe_download_path, enqueue_job, format_seconds
+    safe_download_path, enqueue_job, format_seconds, get_residential_proxy_config,
+    has_cobalt_youtube_cookies
 )
 
 QUALITY_FORMAT_MAP = {
@@ -67,6 +68,22 @@ COBALT_AUDIO_BITRATES = {
     "audio_320": "320",
 }
 
+COBALT_NATIVE_PLATFORMS = {
+    "TikTok", "Instagram", "Twitter / X", "Twitter", "Reddit", "Pinterest", "SoundCloud",
+    "Vimeo", "Facebook", "Dailymotion", "Twitch", "Bilibili", "Snapchat", "Tumblr"
+}
+
+COBALT_ERROR_TRANSLATIONS = {
+    "error.api.youtube.login": "Requiere inicio de sesión (YouTube exige cookies válidas para esta dirección IP).",
+    "error.api.youtube.no_session_tokens": "No se pudieron obtener tokens de sesión de YouTube en Cobalt.",
+    "error.api.youtube.age_restricted": "El video tiene restricción de edad (+18) y requiere cookies de usuario.",
+    "error.api.content.private": "El contenido es privado o no está disponible públicamente.",
+    "error.api.content.not_found": "El contenido no existe o la publicación fue eliminada de la plataforma.",
+    "error.api.rate_limit": "Se alcanzó el límite de peticiones de la API de Cobalt. Reintentá en unos momentos.",
+    "error.api.media.too_large": "El medio supera el tamaño máximo procesable por Cobalt.",
+    "error.api.link.invalid": "El enlace no es soportado o tiene un formato no reconocido por Cobalt.",
+}
+
 
 def get_ytdlp_version():
     try:
@@ -101,93 +118,11 @@ def auto_update_loop():
 
 
 def sync_to_cloud(filepath: str, filename: str, job_info: dict = None, user_cloud_cfg: dict = None):
-    if not filepath or not os.path.exists(filepath):
-        return
-    cfg = load_cloud_config()
-    
-    # If user provided their own cloud settings (e.g. Nextcloud/WebDAV, FTP, Webhook), merge/prioritize them
-    if user_cloud_cfg and isinstance(user_cloud_cfg, dict):
-        if "webdav" in user_cloud_cfg and user_cloud_cfg["webdav"].get("enabled"):
-            cfg["webdav"] = user_cloud_cfg["webdav"]
-        if "ftp" in user_cloud_cfg and user_cloud_cfg["ftp"].get("enabled"):
-            cfg["ftp"] = user_cloud_cfg["ftp"]
-        if "webhook" in user_cloud_cfg and user_cloud_cfg["webhook"].get("enabled"):
-            cfg["webhook"] = user_cloud_cfg["webhook"]
-
-    # 1. Webhook
-    if cfg.get("webhook", {}).get("enabled") and cfg["webhook"].get("url"):
-        try:
-            requests.post(
-                cfg["webhook"]["url"],
-                json={
-                    "event": "download_completed",
-                    "filename": filename,
-                    "size_bytes": os.path.getsize(filepath),
-                    "job_info": job_info or {},
-                    "timestamp": time.time(),
-                },
-                timeout=10,
-            )
-        except Exception as e:
-            print(f"[CloudSync Webhook Error] {e}")
-
-    # 2. WebDAV / Nextcloud
-    wd = cfg.get("webdav", {})
-    if wd.get("enabled") and wd.get("url"):
-        try:
-            base_url = wd["url"].rstrip("/")
-            remote_path = wd.get("remote_path", "").strip("/ ")
-            target_url = f"{base_url}/{remote_path}/{filename}" if remote_path else f"{base_url}/{filename}"
-            auth = (wd.get("username", ""), wd.get("password", "")) if wd.get("username") else None
-            with open(filepath, "rb") as f:
-                requests.put(target_url, data=f, auth=auth, timeout=60)
-        except Exception as e:
-            print(f"[CloudSync WebDAV Error] {e}")
-
-    # 3. FTP
-    ftp_cfg = cfg.get("ftp", {})
-    if ftp_cfg.get("enabled") and ftp_cfg.get("host"):
-        try:
-            ftp = ftplib.FTP()
-            ftp.connect(ftp_cfg["host"], int(ftp_cfg.get("port", 21)), timeout=30)
-            ftp.login(ftp_cfg.get("username", "anonymous"), ftp_cfg.get("password", ""))
-            remote_dir = ftp_cfg.get("remote_dir", "/").strip()
-            if remote_dir and remote_dir != "/":
-                try:
-                    ftp.cwd(remote_dir)
-                except Exception:
-                    pass
-            with open(filepath, "rb") as f:
-                ftp.storbinary(f"STOR {filename}", f)
-            ftp.quit()
-        except Exception as e:
-            print(f"[CloudSync FTP Error] {e}")
-
-    # 4. Telegram Bot (Personal upload if job originated from Telegram, or Admin fallback)
-    tg_chat_id = (job_info or {}).get("telegram_chat_id")
-    job_id_val = (job_info or {}).get("job_id") or (job_info or {}).get("id")
-    if tg_chat_id:
-        try:
-            from core.telegram_bot import telegram_bot
-            telegram_bot.notify_finished(job_id_val, filepath, filename)
-        except Exception as e:
-            print(f"[TelegramBot notify_finished Error] {e}")
-    else:
-        tg = cfg.get("telegram", {})
-        if tg.get("enabled") and tg.get("bot_token") and tg.get("chat_id"):
-            try:
-                token = tg["bot_token"]
-                chat_id = tg["chat_id"]
-                if os.path.getsize(filepath) <= 50 * 1024 * 1024:
-                    with open(filepath, "rb") as f:
-                        requests.post(
-                            f"https://api.telegram.org/bot{token}/sendDocument",
-                            data={"chat_id": chat_id, "caption": f"🎬 {filename}"},
-                            files={"document": (filename, f)},
-                            timeout=120,
-                        )
-            except Exception as e:
-                print(f"[CloudSync Telegram Error] {e}")
+    try:
+        from core.cloud_sync import execute_cloud_sync
+        execute_cloud_sync(filepath, filename, job_info=job_info, user_cloud_cfg=user_cloud_cfg)
+    except Exception as e:
+        print(f"[CloudSync Execution Error] {e}")
 
 
 def purge_downloads(force_all=False):
@@ -325,7 +260,7 @@ def format_friendly_error(err_str: str) -> str:
     return err
 
 
-def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
+def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, proxy_url: str = None):
     """Prueba combinaciones de clientes y credenciales en orden optimizado:
     Para YouTube:
     1) default con PO Token + Deno sin cookies (para evitar la degradación a 360p del experimento SABR)
@@ -362,6 +297,8 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None):
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return None
         opts = dict(ydl_opts_base)
+        if proxy_url:
+            opts["proxy"] = proxy_url
         if use_ck and has_cookies:
             opts["cookiefile"] = COOKIES_FILE
         else:
@@ -415,7 +352,7 @@ def normalize_url(url: str) -> str:
 
 
 def detect_platform(url: str) -> str:
-    url_lower = url.lower()
+    url_lower = (url or "").lower()
     if "deezer.com" in url_lower or "deezer.page.link" in url_lower:
         return "Deezer"
     if "spotify.com" in url_lower:
@@ -436,6 +373,18 @@ def detect_platform(url: str) -> str:
         return "TikTok"
     if "twitter.com" in url_lower or "x.com" in url_lower:
         return "Twitter / X"
+    if "reddit.com" in url_lower or "redd.it" in url_lower:
+        return "Reddit"
+    if "soundcloud.com" in url_lower:
+        return "SoundCloud"
+    if "vimeo.com" in url_lower:
+        return "Vimeo"
+    if "pinterest.com" in url_lower or "pin.it" in url_lower:
+        return "Pinterest"
+    if "bilibili.com" in url_lower:
+        return "Bilibili"
+    if "dailymotion.com" in url_lower:
+        return "Dailymotion"
     return "Web"
 
 
@@ -702,6 +651,8 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
                 "owner": owner,
             })
             job_snap = dict(JOBS[job_id])
+            job_snap["job_id"] = job_id
+            job_snap["id"] = job_id
 
         if os.path.exists(final_path):
             record_download_meta(job_id, final_filename, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
@@ -741,22 +692,34 @@ def append_job_log(job_id: str, message: str):
                 job["logs"] = job["logs"][-150:]
 
 
-def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin", user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None):
+def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = "", owner: str = "admin",
+                        user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None,
+                        video_format: str = "mp4"):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
-    append_job_log(job_id, f"[*] [Cobalt v11] Solicitando stream para: {url}")
+    platform = detect_platform(url)
+    append_job_log(job_id, f"[*] [Cobalt v11] Solicitando stream optimizado para {platform}: {url}")
 
     try:
-        payload = {"url": url, "downloadMode": "auto"}
+        payload = {
+            "url": url,
+            "downloadMode": "auto",
+            "filenameStyle": "pretty",
+            "convertGif": True,
+        }
         if is_audio_quality(quality):
             payload["downloadMode"] = "audio"
-            payload["audioFormat"] = "mp3"
+            af = video_format.lower() if video_format and video_format.lower() in ("mp3", "ogg", "wav", "opus") else "mp3"
+            payload["audioFormat"] = af
             bitrate = COBALT_AUDIO_BITRATES.get(quality, "320")
             if bitrate:
                 payload["audioBitrate"] = bitrate
+            if platform == "TikTok":
+                payload["tiktokFullAudio"] = True
         else:
             payload["videoQuality"] = COBALT_QUALITY_MAP.get(quality, "max")
-
+            vf = video_format.lower() if video_format and video_format.lower() in ("mp4", "webm", "mkv") else "mp4"
+            payload["youtubeVideoContainer"] = vf
 
         resp = requests.post(
             COBALT_URL, json=payload,
@@ -767,13 +730,15 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
         status = data.get("status")
 
         if status == "error":
-            msg = (data.get("error") or {}).get("code", "Error desconocido de Cobalt")
-            raise RuntimeError(f"Cobalt: {msg}")
+            raw_code = (data.get("error") or {}).get("code", "error.unknown")
+            msg = COBALT_ERROR_TRANSLATIONS.get(raw_code, f"Error de Cobalt: {raw_code}")
+            raise RuntimeError(msg)
         if status == "picker":
             items = data.get("picker") or []
             if not items:
                 raise RuntimeError("Cobalt devolvió varias opciones pero ninguna usable")
-            stream_url = items[0].get("url")
+            chosen = next((it for it in items if it.get("type") == "video"), items[0])
+            stream_url = chosen.get("url")
         elif status in ("tunnel", "redirect"):
             stream_url = data.get("url")
         else:
@@ -785,12 +750,23 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
         with JOBS_LOCK:
             JOBS[job_id]["status"] = "downloading"
 
-        append_job_log(job_id, "[*] [Cobalt v11] Descargando stream directo a disco...")
+        append_job_log(job_id, f"[*] [Cobalt v11] Descargando stream directo desde CDN ({platform})...")
         with requests.get(stream_url, stream=True, timeout=300) as r:
             r.raise_for_status()
             total = int(r.headers.get("Content-Length") or 0)
-            ext = CONTENT_TYPE_EXT.get((r.headers.get("Content-Type") or "").split(";")[0].strip(), ".mp4")
+
+            cd = r.headers.get("Content-Disposition", "")
             base_name = safe_filename(video_title) or "descarga"
+            ext = CONTENT_TYPE_EXT.get((r.headers.get("Content-Type") or "").split(";")[0].strip(), f".{video_format.lower() if video_format else 'mp4'}")
+            if 'filename="' in cd:
+                orig_fn = cd.split('filename="')[1].split('"')[0]
+                if orig_fn:
+                    fname, fext = os.path.splitext(orig_fn)
+                    if fname:
+                        base_name = safe_filename(fname)
+                    if fext:
+                        ext = fext.lower()
+
             out_path = os.path.join(job_dir, base_name + ext)
 
             downloaded = 0
@@ -798,6 +774,9 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
             last_downloaded = 0
             with open(out_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024 * 256):
+                    with JOBS_LOCK:
+                        if JOBS.get(job_id, {}).get("status") == "cancelled":
+                            return
                     if not chunk:
                         continue
                     f.write(chunk)
@@ -805,6 +784,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                     now = time.time()
                     if now - last_update >= 0.5:
                         speed = (downloaded - last_downloaded) / (now - last_update)
+                        tg_chat = None
                         with JOBS_LOCK:
                             job = JOBS.get(job_id)
                             if job:
@@ -812,8 +792,19 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                                 job["percent"] = job["file_percent"]
                                 job["speed"] = format_speed(speed)
                                 job["completed_count"] = 0
+                                tg_chat = job.get("telegram_chat_id")
+                        if tg_chat:
+                            try:
+                                from core.telegram_bot import telegram_bot
+                                telegram_bot.notify_progress(job_id, job["percent"], job.get("speed"), None)
+                            except Exception:
+                                pass
                         last_update = now
                         last_downloaded = downloaded
+
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
 
         final_name = base_name + ext
         final_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{final_name}")
@@ -830,12 +821,16 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                 "owner": owner,
             })
             job_snap = dict(JOBS[job_id])
+            job_snap["job_id"] = job_id
+            job_snap["id"] = job_id
         if os.path.exists(final_path):
             record_download_meta(job_id, final_name, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
-        append_job_log(job_id, f"[+] Archivo completado: {final_name}")
+        append_job_log(job_id, f"[+] Archivo completado vía Cobalt v11: {final_name}")
         threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
             JOBS[job_id].update({"status": "error", "error": str(e), "finished_at": time.time()})
         append_job_log(job_id, f"[!] Error en Cobalt: {e}")
         raise
@@ -847,7 +842,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                   start_time=None, end_time=None, video_format="mp4", subtitles="none",
                   owner: str = "admin", user_cloud_sync: dict = None,
                   selected_indexes: list = None, playlist_delivery: str = "zip",
-                  folder_name: str = None, group_id: str = None):
+                  folder_name: str = None, group_id: str = None, proxy_url: str = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
     append_job_log(job_id, f"[*] [yt-dlp] Iniciando proceso de descarga ({quality})...")
@@ -987,13 +982,15 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             )
             ydl_opts["force_keyframes_at_cuts"] = True
 
+        if proxy_url:
+            ydl_opts["proxy"] = proxy_url
+
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
             JOBS[job_id]["status"] = "downloading"
 
-        extract_with_fallback(url, ydl_opts, download=True, job_id=job_id)
-
+        extract_with_fallback(url, ydl_opts, download=True, job_id=job_id, proxy_url=proxy_url)
 
         with JOBS_LOCK:
             job = JOBS.get(job_id)
@@ -1007,6 +1004,28 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return
             raise RuntimeError("No se generó ningún archivo")
+
+        # Check if single video download from YouTube was forced to 360p (SABR) on datacenter IP
+        is_yt = detect_platform(url) == "YouTube"
+        res_cfg = get_residential_proxy_config()
+        if is_yt and not proxy_url and not playlist_mode and len(files) == 1 and res_cfg.get("enabled") and res_cfg.get("url") and res_cfg.get("fallback_on_quality_loss", True):
+            if quality in ("1080p", "720p", "1440p", "2160p"):
+                try:
+                    fpath_temp = os.path.join(job_dir, files[0])
+                    probe_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", fpath_temp]
+                    p_res = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                    h_val = int(p_res.stdout.strip()) if p_res.stdout.strip().isdigit() else 0
+                    if 0 < h_val <= 360:
+                        append_job_log(job_id, f"[!] Restricción SABR detectada en servidor: video limitado a {h_val}p. Escalando a Enlace Residencial...")
+                        for f in files:
+                            try:
+                                os.remove(os.path.join(job_dir, f))
+                            except Exception:
+                                pass
+                        raise yt_dlp.utils.DownloadError(f"Calidad degradada a {h_val}p por política SABR del servidor.")
+                except Exception as probe_e:
+                    if "SABR" in str(probe_e):
+                        raise
 
         if playlist_mode or len(files) > 1:
             individual_files = []
@@ -1075,6 +1094,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             append_job_log(job_id, f"[+] Archivo descargado: {final_name}")
 
         job_snap = dict(JOBS[job_id])
+        job_snap["job_id"] = job_id
+        job_snap["id"] = job_id
         if final_path and os.path.exists(final_path):
             threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
@@ -1108,36 +1129,12 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
     platform = detect_platform(url)
     append_job_log(job_id, f"[*] [Cascada Inteligente] Analizando contenido ({platform})...")
 
-    # 1. First attempt: Cobalt v11 (for single video/audio, non-playlist)
-    if not playlist_mode and start_time is None and end_time is None and subtitles == "none":
-        with JOBS_LOCK:
-            if JOBS.get(job_id, {}).get("status") == "cancelled":
-                return
-        append_job_log(job_id, "[*] [1/3] Probando extracción con Motor Cobalt Oficial...")
-        try:
-            run_download_cobalt(job_id, url, quality, video_title, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id)
-            with JOBS_LOCK:
-                if JOBS.get(job_id, {}).get("status") == "finished":
-                    append_job_log(job_id, "[+] Proceso finalizado exitosamente con Cobalt.")
-                    return
-                if JOBS.get(job_id, {}).get("status") == "cancelled":
-                    return
-        except Exception as e:
-            with JOBS_LOCK:
-                if JOBS.get(job_id, {}).get("status") == "cancelled":
-                    return
-            err = str(e)
-            if "error.api.youtube.login" in err:
-                err = "Requiere inicio de sesión (Cobalt no procesa videos con login o restricción de edad)."
-            attempts.append({"engine": "Cobalt v11 (API)", "status": "failed", "error": err})
-            append_job_log(job_id, f"[!] Cobalt no pudo extraer el stream ({err}). Pasando a siguiente método...")
-
-    # 2. Second attempt: Specialized Music Engine if Spotify/Deezer
+    # 1. Specialized Music Engine if Spotify/Deezer
     if platform in ("Deezer", "Spotify") and not playlist_mode:
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
-        append_job_log(job_id, f"[*] [2/3] Probando Motor Musical Especializado ({platform})...")
+        append_job_log(job_id, f"[*] [1/3] Probando Motor Musical Especializado ({platform})...")
         try:
             run_download_music(job_id, url, quality, deezer_arl, None, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id)
             with JOBS_LOCK:
@@ -1152,13 +1149,51 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                     return
             err = str(e)
             attempts.append({"engine": f"Motor Música ({platform})", "status": "failed", "error": err})
-            append_job_log(job_id, f"[!] Motor musical no pudo procesar ({err}). Pasando a yt-dlp...")
+            append_job_log(job_id, f"[!] Motor musical no pudo procesar ({err}). Pasando a siguiente método...")
 
-    # 3. Third attempt: yt-dlp with PoToken Provider and fallback clients
+    # 2. Smart Routing for Cobalt v11:
+    # Prioritize Cobalt for native social networks (TikTok, Instagram, Twitter/X, Reddit, etc.)
+    # For YouTube, only attempt Cobalt if authenticated cookies are synchronized
+    cobalt_eligible = (not playlist_mode and start_time is None and end_time is None and subtitles == "none")
+    should_try_cobalt = False
+    if cobalt_eligible:
+        if platform in COBALT_NATIVE_PLATFORMS:
+            should_try_cobalt = True
+        elif platform in ("YouTube", "YouTube Shorts"):
+            if has_cobalt_youtube_cookies():
+                should_try_cobalt = True
+            else:
+                append_job_log(job_id, f"[*] [{platform}] Derivando directamente a yt-dlp (con PO Token & Deno)...")
+        else:
+            should_try_cobalt = True
+
+    if should_try_cobalt:
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
+        append_job_log(job_id, f"[*] Probando extracción acelerada con Motor Cobalt Oficial ({platform})...")
+        try:
+            run_download_cobalt(job_id, url, quality, video_title, owner, user_cloud_sync, folder_name=folder_name, group_id=group_id, video_format=video_format)
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "finished":
+                    append_job_log(job_id, "[+] Proceso finalizado exitosamente con Cobalt v11.")
+                    return
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+        except Exception as e:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+            err = str(e)
+            attempts.append({"engine": "Cobalt v11 (API)", "status": "failed", "error": err})
+            append_job_log(job_id, f"[!] Cobalt no pudo extraer el stream ({err}). Pasando a siguiente método...")
+
+    # 3. Third attempt: yt-dlp with PoToken Provider and fallback clients (Direct VPS)
     with JOBS_LOCK:
         if JOBS.get(job_id, {}).get("status") == "cancelled":
             return
-    append_job_log(job_id, "[*] [3/3] Probando extracción completa con yt-dlp (PoToken & Multi-Cliente)...")
+    append_job_log(job_id, "[*] Probando extracción directa con yt-dlp (PoToken & Multi-Cliente)...")
+    ytdlp_success = False
     try:
         run_download(
             job_id, url, quality, playlist_mode, total_count, start_time, end_time,
@@ -1168,6 +1203,7 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "finished":
                 append_job_log(job_id, "[+] Proceso finalizado exitosamente con yt-dlp.")
+                ytdlp_success = True
                 return
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
@@ -1176,8 +1212,36 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
         err = format_friendly_error(str(e))
-        attempts.append({"engine": "yt-dlp (Extractor Principal)", "status": "failed", "error": err})
-        append_job_log(job_id, f"[!] yt-dlp falló: {err}")
+        attempts.append({"engine": "yt-dlp (Extractor Directo)", "status": "failed", "error": err})
+        append_job_log(job_id, f"[!] yt-dlp directo falló: {err}")
+
+    # 4. Fourth attempt: Residential Fallback (Túnel / Proxy Failsafe de Último Recurso)
+    res_cfg = get_residential_proxy_config()
+    if not ytdlp_success and res_cfg.get("enabled") and res_cfg.get("url") and res_cfg.get("auto_fallback", True):
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
+            JOBS[job_id]["status"] = "downloading"
+        append_job_log(job_id, "[*] Activando método de último recurso: Enlace Residencial de Respaldo...")
+        try:
+            run_download(
+                job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery,
+                folder_name=folder_name, group_id=group_id, proxy_url=res_cfg["url"]
+            )
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "finished":
+                    append_job_log(job_id, "[+] Proceso finalizado exitosamente vía Enlace Residencial de Respaldo.")
+                    return
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+        except Exception as e:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+            err = format_friendly_error(str(e))
+            attempts.append({"engine": "Enlace Residencial de Respaldo (Failsafe)", "status": "failed", "error": err})
+            append_job_log(job_id, f"[!] Enlace Residencial falló: {err}")
 
     # If all engines failed, record detailed error report
     with JOBS_LOCK:
@@ -1271,7 +1335,7 @@ def background_queue_worker():
             elif engine == "cobalt":
                 run_download_cobalt(
                     job_id, url, quality, video_title, owner, user_cloud_sync,
-                    folder_name=folder_name, group_id=group_id
+                    folder_name=folder_name, group_id=group_id, video_format=video_format
                 )
             else:
                 run_download(

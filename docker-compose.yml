@@ -24,6 +24,9 @@ services:
     container_name: cobalt-api
     environment:
       API_URL: "http://cobalt:9000/"
+      COOKIE_PATH: "/cookies.json"
+    volumes:
+      - ./cobalt_cookies.json:/cookies.json
     ports:
       - "127.0.0.1:9000:9000"
     restart: unless-stopped

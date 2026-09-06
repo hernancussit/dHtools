@@ -92,6 +92,12 @@ def load_config() -> dict:
             "from_email": "",
             "use_tls": True,
             "use_ssl": False,
+        },
+        "residential_proxy": {
+            "enabled": False,
+            "url": "",
+            "auto_fallback": True,
+            "fallback_on_quality_loss": True
         }
     }
     if os.path.exists(CONFIG_FILE):
@@ -101,6 +107,8 @@ def load_config() -> dict:
                 for k, v in cfg.items():
                     if k == "smtp" and isinstance(v, dict):
                         default_cfg["smtp"].update(v)
+                    elif k == "residential_proxy" and isinstance(v, dict):
+                        default_cfg["residential_proxy"].update(v)
                     else:
                         default_cfg[k] = v
         except Exception:
@@ -111,6 +119,112 @@ def load_config() -> dict:
 def save_config(cfg: dict):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def get_residential_proxy_config() -> dict:
+    cfg = load_config()
+    default_res = {
+        "enabled": False,
+        "url": "",
+        "auto_fallback": True,
+        "fallback_on_quality_loss": True
+    }
+    loaded = cfg.get("residential_proxy", {})
+    if isinstance(loaded, dict):
+        default_res.update(loaded)
+    return default_res
+
+
+def save_residential_proxy_config(proxy_cfg: dict):
+    cfg = load_config()
+    current = cfg.get("residential_proxy", {})
+    if not isinstance(current, dict):
+        current = {}
+    current.update(proxy_cfg)
+    cfg["residential_proxy"] = current
+    save_config(cfg)
+
+
+def test_residential_proxy_connection(proxy_url: str) -> dict:
+    import requests
+    import yt_dlp
+
+    proxy_url = (proxy_url or "").strip()
+    if not proxy_url:
+        return {"success": False, "message": "No se especificó ninguna URL de proxy residencial."}
+
+    if not re.match(r"^[a-zA-Z0-9+.-]+://", proxy_url):
+        proxy_url = f"socks5h://{proxy_url}"
+
+    # 1. Measure direct network ping (TCP RTT) to the proxy endpoint
+    import urllib.parse
+    import socket
+
+    ping_ms = None
+    try:
+        parsed = urllib.parse.urlparse(proxy_url)
+        p_host = parsed.hostname
+        p_port = parsed.port or (1080 if "socks" in parsed.scheme else 8080)
+        if p_host:
+            t_ping0 = time.time()
+            sock = socket.create_connection((p_host, p_port), timeout=5)
+            ping_ms = round((time.time() - t_ping0) * 1000)
+            sock.close()
+    except Exception:
+        ping_ms = None
+
+    t0 = time.time()
+    try:
+        proxies = {"http": proxy_url, "https": proxy_url}
+        resp = requests.get("https://api.ipify.org?format=json", proxies=proxies, timeout=12)
+        resp.raise_for_status()
+        out_ip = resp.json().get("ip", "Desconocida")
+        http_time = round((time.time() - t0) * 1000)
+        latency = ping_ms if ping_ms is not None else http_time
+
+        isp_name = "Proveedor Residencial"
+        try:
+            geo = requests.get(f"https://ipinfo.io/{out_ip}/json", proxies=proxies, timeout=6)
+            if geo.status_code == 200:
+                geo_data = geo.json()
+                isp_name = geo_data.get("org") or geo_data.get("company", {}).get("name") or geo_data.get("city", "") or isp_name
+        except Exception:
+            pass
+
+        yt_opts = {
+            "proxy": proxy_url,
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "socket_timeout": 15,
+        }
+        yt_ok = False
+        yt_msg = "YouTube respondió correctamente."
+        try:
+            with yt_dlp.YoutubeDL(yt_opts) as ydl:
+                canary = ydl.extract_info("https://www.youtube.com/watch?v=aqz-KE-bpKQ", download=False)
+                if canary and canary.get("title"):
+                    yt_ok = True
+                    yt_msg = f"Canary OK: '{canary.get('title')[:30]}' accesible sin bloqueos."
+        except Exception as yt_err:
+            yt_msg = f"Aviso YouTube: {str(yt_err)[:120]}"
+
+        return {
+            "success": True,
+            "ip": out_ip,
+            "isp": isp_name,
+            "latency_ms": latency,
+            "ping_ms": ping_ms,
+            "http_time_ms": http_time,
+            "yt_ok": yt_ok,
+            "yt_msg": yt_msg,
+            "message": f"Conexión exitosa. IP detectada: {out_ip} ({isp_name}). Ping: {latency} ms (HTTP: {http_time} ms). {yt_msg}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error de conexión con el proxy: {str(e)}"
+        }
 
 
 def send_system_email(to_email: str, subject: str, html_content: str, text_content: str = None) -> tuple:
@@ -161,8 +275,8 @@ def send_system_email(to_email: str, subject: str, html_content: str, text_conte
 
 def load_cloud_config() -> dict:
     default_cfg = {
+        "s3": {"enabled": False, "endpoint_url": "", "bucket_name": "", "access_key": "", "secret_key": "", "region": "us-east-1", "remote_dir": ""},
         "webdav": {"enabled": False, "url": "", "username": "", "password": "", "remote_path": "/dhtools"},
-
         "ftp": {"enabled": False, "host": "", "port": 21, "username": "", "password": "", "remote_dir": "/"},
         "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
         "webhook": {"enabled": False, "url": ""},
@@ -355,6 +469,10 @@ def test_cloud_connection(service: str, config: dict) -> tuple[bool, str]:
         except Exception as e:
             return False, f"Error WebDAV: {e}"
 
+    if service in ("s3", "minio", "r2", "b2", "wasabi"):
+        from core.cloud_sync import test_s3_connection
+        return test_s3_connection(config)
+
     return False, "Servicio desconocido"
 
 
@@ -432,6 +550,9 @@ def load_queue_state():
 
 
 def enqueue_job(job_id: str, job_spec: dict):
+    if job_spec is not None:
+        job_spec["job_id"] = job_id
+        job_spec["id"] = job_id
     with JOBS_LOCK:
         JOBS[job_id] = job_spec
     with QUEUE_LOCK:
@@ -762,4 +883,104 @@ def unlink_user_telegram(username: str) -> bool:
         save_users(users)
         return True
     return False
+
+
+def sync_netscape_to_cobalt_json(netscape_path_or_content: str, output_path: str = None) -> dict:
+    """Converts Netscape-format cookies (cookies.txt) to the JSON structure required by Cobalt v11."""
+    from core.config import COBALT_COOKIES_FILE
+    if output_path is None:
+        output_path = COBALT_COOKIES_FILE
+
+    content = ""
+    if isinstance(netscape_path_or_content, str) and os.path.exists(netscape_path_or_content) and os.path.isfile(netscape_path_or_content):
+        try:
+            with open(netscape_path_or_content, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except Exception:
+            content = ""
+    else:
+        content = str(netscape_path_or_content or "")
+
+    services = {
+        "youtube": {},
+        "instagram": {},
+        "twitter": {},
+        "reddit": {}
+    }
+
+    if content.strip():
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or (line.startswith("#") and not line.startswith("#HttpOnly_")):
+                continue
+
+            parts = line.split("\t")
+            if len(parts) < 7:
+                parts = line.split()
+                if len(parts) < 7:
+                    continue
+
+            domain = parts[0].replace("#HttpOnly_", "").lower()
+            name = parts[5].strip()
+            val = parts[6].strip()
+
+            target = None
+            if any(dom in domain for dom in ("youtube.com", "google.com", "googlevideo.com")):
+                target = "youtube"
+            elif "instagram.com" in domain:
+                target = "instagram"
+            elif "twitter.com" in domain or "x.com" in domain:
+                target = "twitter"
+            elif "reddit.com" in domain:
+                target = "reddit"
+
+            if target and name and val:
+                services[target][name] = val
+
+    cobalt_data = {}
+    for s_name, s_cookies in services.items():
+        if s_cookies:
+            cookie_str = "; ".join(f"{k}={v}" for k, v in s_cookies.items())
+            cobalt_data[s_name] = [cookie_str]
+
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(cobalt_data, f, indent=2)
+    except Exception as e:
+        print(f"[!] Error saving cobalt_cookies.json: {e}")
+
+    return cobalt_data
+
+
+def get_cobalt_cookies_status() -> dict:
+    """Returns information about synchronized cookies available for Cobalt."""
+    from core.config import COBALT_COOKIES_FILE
+    if not os.path.isfile(COBALT_COOKIES_FILE) or os.path.getsize(COBALT_COOKIES_FILE) == 0:
+        return {"has_cookies": False, "services": {}, "total_services": 0, "has_youtube_auth": False}
+
+    try:
+        with open(COBALT_COOKIES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        services = {}
+        for s, arr in data.items():
+            if arr and isinstance(arr, list) and len(arr) > 0 and isinstance(arr[0], str):
+                count = len(arr[0].split("; "))
+                services[s] = count
+        has_yt_auth = "youtube" in services and any(k in data["youtube"][0] for k in ("SID=", "LOGIN_INFO=", "HSID=", "__Secure-3PSID="))
+        return {
+            "has_cookies": len(services) > 0,
+            "services": services,
+            "total_services": len(services),
+            "has_youtube_auth": has_yt_auth
+        }
+    except Exception:
+        return {"has_cookies": False, "services": {}, "total_services": 0, "has_youtube_auth": False}
+
+
+def has_cobalt_youtube_cookies() -> bool:
+    """Checks if Cobalt has at least one authenticated YouTube cookie string synchronized."""
+    st = get_cobalt_cookies_status()
+    return bool(st.get("has_youtube_auth", False))
+
 

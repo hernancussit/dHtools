@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import json
 import shutil
@@ -7,8 +8,10 @@ import requests
 import re
 import ftplib
 import logging
+import socket
+import hashlib
 import yt_dlp
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, session
 
 from core.config import (
     APP_VERSION, POT_PROVIDER_URL, COBALT_URL, ROLLBACK_STATE_FILE,
@@ -18,7 +21,10 @@ from core.state import JOBS_LOCK, JOBS, START_TIME, ACTIVE_SESSIONS, ACTIVE_SESS
 from core.utils import (
     load_config, save_config, get_disk_status, get_ram_status,
     load_cloud_config, save_cloud_config, safe_download_path, format_bytes,
-    send_system_email, load_downloads_meta, delete_download_meta
+    send_system_email, load_downloads_meta, delete_download_meta,
+    get_residential_proxy_config, save_residential_proxy_config,
+    test_residential_proxy_connection, sync_netscape_to_cobalt_json,
+    get_cobalt_cookies_status
 )
 from core.downloader import restart_process_soon, sync_to_cloud, get_ytdlp_version
 from routes.auth import (
@@ -115,7 +121,7 @@ def admin_services_status():
     return jsonify({
         "app": {"version": APP_VERSION, "uptime_seconds": uptime_s},
         "ytdlp": {"online": ytdlp_ok, "version": ytdlp_ver, "latency_ms": ytdlp_lat},
-        "cobalt": {"online": cobalt_ok, "version": cobalt_ver, "latency_ms": cobalt_lat},
+        "cobalt": {"online": cobalt_ok, "version": cobalt_ver, "latency_ms": cobalt_lat, "cookies": get_cobalt_cookies_status()},
         "deno": {"online": deno_installed, "installed": deno_installed, "available": deno_installed, "version": deno_ver, "latency_ms": deno_lat},
         "potprovider": {"online": pot_ok, "latency_ms": pot_lat},
         "disk": get_disk_status(),
@@ -499,7 +505,8 @@ def admin_cookies():
                 os.remove(COOKIES_FILE)
             except Exception as e:
                 return jsonify({"error": f"Error al eliminar cookies: {e}"}), 500
-        return jsonify({"success": True, "message": "Archivo cookies.txt eliminado correctamente."})
+        sync_netscape_to_cobalt_json("")
+        return jsonify({"success": True, "message": "Archivo cookies.txt eliminado y cookies de Cobalt limpiadas."})
 
     has_cookies = os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0
     lines = 0
@@ -518,6 +525,7 @@ def admin_cookies():
         "lines": lines,
         "size_formatted": size_formatted,
         "updated_at": mtime_str,
+        "cobalt_cookies": get_cobalt_cookies_status(),
     })
 
 
@@ -544,11 +552,16 @@ def admin_cookies_upload():
         with open(COOKIES_FILE, "w", encoding="utf-8") as f:
             f.write(content)
         size_formatted = format_bytes(os.path.getsize(COOKIES_FILE))
+        cobalt_data = sync_netscape_to_cobalt_json(COOKIES_FILE)
+        cob_msg = ""
+        if "youtube" in cobalt_data:
+            cob_msg = f" (Sincronizado con Cobalt v11: {len(cobalt_data)} servicio/s)"
         return jsonify({
             "success": True,
-            "message": msg,
+            "message": f"{msg}{cob_msg}",
             "lines": valid_lines,
             "size_formatted": size_formatted,
+            "cobalt_synced": bool(cobalt_data),
         })
     except Exception as e:
         return jsonify({"error": f"Error al guardar archivo cookies.txt: {e}"}), 500
@@ -740,6 +753,61 @@ def admin_smtp_test():
     return jsonify({"message": f"¡Correo de prueba enviado con éxito a {to_email}!"})
 
 
+@admin_bp.route("/api/admin/residential-proxy", methods=["GET", "POST"])
+@require_admin
+def admin_residential_proxy():
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        proxy_cfg = get_residential_proxy_config()
+        proxy_cfg["enabled"] = bool(data.get("enabled", False))
+        
+        new_url = str(data.get("url", "")).strip()
+        if new_url and "••••" not in new_url:
+            proxy_cfg["url"] = new_url
+        elif not new_url:
+            proxy_cfg["url"] = ""
+
+        proxy_cfg["auto_fallback"] = bool(data.get("auto_fallback", True))
+        proxy_cfg["fallback_on_quality_loss"] = bool(data.get("fallback_on_quality_loss", True))
+        save_residential_proxy_config(proxy_cfg)
+        return jsonify({"message": "Configuración del Enlace Residencial guardada exitosamente."})
+
+    res_info = dict(get_residential_proxy_config())
+    raw_url = res_info.get("url", "")
+    if "@" in raw_url and "://" in raw_url:
+        scheme, rest = raw_url.split("://", 1)
+        creds, host = rest.split("@", 1)
+        if ":" in creds:
+            user, _ = creds.split(":", 1)
+            res_info["url_masked"] = f"{scheme}://{user}:••••••••@{host}"
+        else:
+            res_info["url_masked"] = raw_url
+    else:
+        res_info["url_masked"] = raw_url
+
+    return jsonify({"residential_proxy": res_info})
+
+
+@admin_bp.route("/api/admin/residential-proxy/test", methods=["POST"])
+@require_admin
+def admin_residential_proxy_test():
+    data = request.get_json(force=True) or {}
+    url_to_test = str(data.get("url", "")).strip()
+    
+    if not url_to_test or "••••" in url_to_test:
+        saved = get_residential_proxy_config()
+        url_to_test = saved.get("url", "")
+
+    if not url_to_test:
+        return jsonify({"error": "Por favor ingresá la URL del proxy para realizar la prueba."}), 400
+
+    result = test_residential_proxy_connection(url_to_test)
+    if not result.get("success"):
+        return jsonify({"error": result.get("message", "Fallo al conectar con el proxy residencial.")}), 400
+
+    return jsonify(result)
+
+
 @admin_bp.route("/api/admin/users/<username>/toggle-status", methods=["POST"])
 @require_admin
 def admin_user_toggle_status(username):
@@ -827,6 +895,7 @@ def admin_cobalt_status():
         "latest_version": latest_ver,
         "update_available": update_available,
         "services": services,
+        "cookies_status": get_cobalt_cookies_status(),
     })
 
 
@@ -937,6 +1006,13 @@ def admin_cloud_sync_test():
         except Exception as e:
             return jsonify({"error": f"Error WebDAV: {e}"}), 400
 
+    if service in ("s3", "minio", "r2", "b2", "wasabi"):
+        from core.cloud_sync import test_s3_connection
+        ok, msg = test_s3_connection(config)
+        if ok:
+            return jsonify({"success": True, "message": msg})
+        return jsonify({"error": msg}), 400
+
     return jsonify({"error": "Servicio desconocido"}), 400
 
 
@@ -976,4 +1052,514 @@ def admin_telegram_bot_restart():
         "success": True,
         "running": telegram_bot.is_running(),
         "message": "Servicio del bot de Telegram reiniciado correctamente."
+    })
+
+
+# ==================== DIAGNOSTIC TOOLS (ADMIN ONLY) ====================
+# Rate limiter: server-side cooldown per test per session
+_DIAG_COOLDOWNS = {}  # key: (session_id, test_name) -> timestamp
+DIAG_COOLDOWN_SECONDS = 30
+
+def _check_diag_cooldown(test_name: str) -> tuple:
+    """Check if a diagnostic test is on cooldown. Returns (allowed, remaining_seconds)."""
+    sess_id = session.get("session_id", "unknown")
+    key = f"{sess_id}:{test_name}"
+    now = time.time()
+    last_run = _DIAG_COOLDOWNS.get(key, 0)
+    elapsed = now - last_run
+    if elapsed < DIAG_COOLDOWN_SECONDS:
+        remaining = int(DIAG_COOLDOWN_SECONDS - elapsed)
+        return False, remaining
+    _DIAG_COOLDOWNS[key] = now
+    return True, 0
+
+
+@admin_bp.route("/api/admin/diag/ip-detection", methods=["POST"])
+@require_admin
+def admin_diag_ip_detection():
+    """Test if YouTube detects/blocks the datacenter IP vs residential proxy."""
+    allowed, remaining = _check_diag_cooldown("ip-detection")
+    if not allowed:
+        return jsonify({"error": f"Cooldown activo. Reintentá en {remaining}s.", "cooldown": remaining}), 429
+
+    logger = logging.getLogger("admin.diag")
+    logger.info(f"[DIAG] IP Detection test initiated by {session.get('username', 'admin')}")
+
+    results = {"direct": {}, "residential": {}, "recommendation": ""}
+    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # "Me at the zoo" — first YT video, always public
+
+    # Test 1: Direct VPS extraction
+    try:
+        t0 = time.time()
+        ydl_opts = {
+            "quiet": True, "skip_download": True, "extract_flat": True,
+            "socket_timeout": 12, "no_warnings": True,
+        }
+        cookies_path = COOKIES_FILE
+        if os.path.isfile(cookies_path) and os.path.getsize(cookies_path) > 0:
+            ydl_opts["cookiefile"] = cookies_path
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(test_url, download=False)
+
+        elapsed = round((time.time() - t0) * 1000)
+        results["direct"] = {
+            "success": True,
+            "latency_ms": elapsed,
+            "title": (info or {}).get("title", "Desconocido")[:60],
+            "blocked": False,
+            "message": f"Extracción directa exitosa en {elapsed}ms"
+        }
+    except Exception as e:
+        elapsed = round((time.time() - t0) * 1000)
+        err_str = str(e)
+        is_blocked = any(kw in err_str.lower() for kw in [
+            "sign in", "login", "bot", "captcha", "blocked", "forbidden",
+            "429", "rate", "consent", "unavailable"
+        ])
+        results["direct"] = {
+            "success": False,
+            "latency_ms": elapsed,
+            "blocked": is_blocked,
+            "error_type": "antibot" if is_blocked else "network",
+            "message": "IP del datacenter detectada/bloqueada por YouTube" if is_blocked else f"Error de red: {err_str[:120]}"
+        }
+
+    # Test 2: Residential proxy extraction (if configured)
+    proxy_cfg = get_residential_proxy_config()
+    if proxy_cfg.get("enabled") and proxy_cfg.get("url"):
+        try:
+            t0 = time.time()
+            ydl_opts_res = {
+                "quiet": True, "skip_download": True, "extract_flat": True,
+                "socket_timeout": 15, "no_warnings": True,
+                "proxy": proxy_cfg["url"],
+            }
+            if os.path.isfile(cookies_path) and os.path.getsize(cookies_path) > 0:
+                ydl_opts_res["cookiefile"] = cookies_path
+
+            with yt_dlp.YoutubeDL(ydl_opts_res) as ydl:
+                info_res = ydl.extract_info(test_url, download=False)
+
+            elapsed_res = round((time.time() - t0) * 1000)
+            results["residential"] = {
+                "success": True,
+                "latency_ms": elapsed_res,
+                "title": (info_res or {}).get("title", "Desconocido")[:60],
+                "blocked": False,
+                "message": f"Extracción vía proxy residencial exitosa en {elapsed_res}ms"
+            }
+        except Exception as e:
+            elapsed_res = round((time.time() - t0) * 1000)
+            results["residential"] = {
+                "success": False,
+                "latency_ms": elapsed_res,
+                "blocked": True,
+                "message": f"Fallo vía proxy residencial: {str(e)[:120]}"
+            }
+    else:
+        results["residential"] = {
+            "success": None,
+            "message": "Proxy residencial no configurado o deshabilitado.",
+            "blocked": None,
+        }
+
+    # Generate recommendation
+    d = results["direct"]
+    r = results["residential"]
+    if d["success"] and not d.get("blocked"):
+        results["recommendation"] = "optimal"
+        results["recommendation_text"] = "La IP directa del VPS funciona correctamente con YouTube. No es necesario el proxy residencial para extracción básica."
+    elif d.get("blocked") and r.get("success"):
+        results["recommendation"] = "residential_required"
+        results["recommendation_text"] = "YouTube bloquea la IP del datacenter. El proxy residencial es necesario para funcionamiento fiable. Mantené el failsafe activado."
+    elif d.get("blocked") and not r.get("success") and r.get("success") is not None:
+        results["recommendation"] = "critical"
+        results["recommendation_text"] = "Ambas rutas fallan. Verificá cookies, proxy residencial y conectividad general."
+    elif d.get("blocked") and r.get("success") is None:
+        results["recommendation"] = "configure_residential"
+        results["recommendation_text"] = "YouTube bloquea la IP directa y no hay proxy residencial configurado. Configurá el Enlace Residencial en la sección de Parámetros."
+    else:
+        results["recommendation"] = "unknown"
+        results["recommendation_text"] = "No se pudo determinar una recomendación clara. Revisá los resultados individuales."
+
+    logger.info(f"[DIAG] IP Detection result: direct={'OK' if d['success'] else 'FAIL'}, residential={'OK' if r.get('success') else 'N/A'}, recommendation={results['recommendation']}")
+    return jsonify({"success": True, "results": results})
+
+
+@admin_bp.route("/api/admin/diag/cascade-benchmark", methods=["POST"])
+@require_admin
+def admin_diag_cascade_benchmark():
+    """Benchmark extraction speed across all available tiers."""
+    allowed, remaining = _check_diag_cooldown("cascade-benchmark")
+    if not allowed:
+        return jsonify({"error": f"Cooldown activo. Reintentá en {remaining}s.", "cooldown": remaining}), 429
+
+    logger = logging.getLogger("admin.diag")
+    logger.info(f"[DIAG] Cascade benchmark initiated by {session.get('username', 'admin')}")
+
+    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    tiers = []
+
+    # Tier 1: Cobalt API
+    try:
+        t0 = time.time()
+        cobalt_payload = {"url": test_url, "videoQuality": "360", "filenameStyle": "basic"}
+        cr = requests.post(
+            COBALT_URL,
+            json=cobalt_payload,
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            timeout=15
+        )
+        elapsed = round((time.time() - t0) * 1000)
+        if cr.status_code == 200:
+            cobalt_data = cr.json()
+            status = cobalt_data.get("status", "")
+            tiers.append({
+                "name": "Cobalt v11",
+                "tier": 1,
+                "success": status in ("redirect", "tunnel", "stream", "picker"),
+                "latency_ms": elapsed,
+                "status": status,
+                "message": f"Cobalt respondió '{status}' en {elapsed}ms"
+            })
+        else:
+            tiers.append({
+                "name": "Cobalt v11",
+                "tier": 1,
+                "success": False,
+                "latency_ms": elapsed,
+                "status": f"HTTP {cr.status_code}",
+                "message": f"Cobalt error HTTP {cr.status_code} en {elapsed}ms"
+            })
+    except Exception as e:
+        tiers.append({
+            "name": "Cobalt v11",
+            "tier": 1,
+            "success": False,
+            "latency_ms": 0,
+            "status": "offline",
+            "message": f"Cobalt no disponible: {str(e)[:80]}"
+        })
+
+    # Tier 2: yt-dlp Direct
+    try:
+        t0 = time.time()
+        ydl_opts = {
+            "quiet": True, "skip_download": True, "extract_flat": False,
+            "socket_timeout": 15, "no_warnings": True,
+            "format": "worst",
+        }
+        if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
+            ydl_opts["cookiefile"] = COOKIES_FILE
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(test_url, download=False)
+
+        elapsed = round((time.time() - t0) * 1000)
+        formats_count = len(info.get("formats", [])) if info else 0
+        tiers.append({
+            "name": "yt-dlp (Directo)",
+            "tier": 2,
+            "success": True,
+            "latency_ms": elapsed,
+            "formats": formats_count,
+            "message": f"yt-dlp extrajo {formats_count} formatos en {elapsed}ms"
+        })
+    except Exception as e:
+        elapsed = round((time.time() - t0) * 1000)
+        tiers.append({
+            "name": "yt-dlp (Directo)",
+            "tier": 2,
+            "success": False,
+            "latency_ms": elapsed,
+            "message": f"yt-dlp directo falló en {elapsed}ms: {str(e)[:80]}"
+        })
+
+    # Tier 3: yt-dlp via Residential Proxy
+    proxy_cfg = get_residential_proxy_config()
+    if proxy_cfg.get("enabled") and proxy_cfg.get("url"):
+        try:
+            t0 = time.time()
+            ydl_opts_res = {
+                "quiet": True, "skip_download": True, "extract_flat": False,
+                "socket_timeout": 15, "no_warnings": True,
+                "format": "worst",
+                "proxy": proxy_cfg["url"],
+            }
+            if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
+                ydl_opts_res["cookiefile"] = COOKIES_FILE
+
+            with yt_dlp.YoutubeDL(ydl_opts_res) as ydl:
+                info_res = ydl.extract_info(test_url, download=False)
+
+            elapsed_res = round((time.time() - t0) * 1000)
+            formats_count_res = len(info_res.get("formats", [])) if info_res else 0
+            tiers.append({
+                "name": "yt-dlp (Residencial)",
+                "tier": 3,
+                "success": True,
+                "latency_ms": elapsed_res,
+                "formats": formats_count_res,
+                "message": f"yt-dlp residencial extrajo {formats_count_res} formatos en {elapsed_res}ms"
+            })
+        except Exception as e:
+            elapsed_res = round((time.time() - t0) * 1000)
+            tiers.append({
+                "name": "yt-dlp (Residencial)",
+                "tier": 3,
+                "success": False,
+                "latency_ms": elapsed_res,
+                "message": f"yt-dlp residencial falló en {elapsed_res}ms: {str(e)[:80]}"
+            })
+    else:
+        tiers.append({
+            "name": "yt-dlp (Residencial)",
+            "tier": 3,
+            "success": None,
+            "latency_ms": 0,
+            "message": "Proxy residencial no configurado"
+        })
+
+    # Rank by success, then latency
+    ranked = sorted(
+        [t for t in tiers if t["success"]],
+        key=lambda x: x["latency_ms"]
+    )
+    fastest = ranked[0]["name"] if ranked else "Ninguno disponible"
+
+    logger.info(f"[DIAG] Cascade benchmark complete: {len(ranked)} tiers OK, fastest={fastest}")
+    return jsonify({"success": True, "tiers": tiers, "fastest": fastest})
+
+
+@admin_bp.route("/api/admin/diag/dns-check", methods=["POST"])
+@require_admin
+def admin_diag_dns_check():
+    """DNS resolution fingerprint and anomaly check."""
+    allowed, remaining = _check_diag_cooldown("dns-check")
+    if not allowed:
+        return jsonify({"error": f"Cooldown activo. Reintentá en {remaining}s.", "cooldown": remaining}), 429
+
+    logger = logging.getLogger("admin.diag")
+    logger.info(f"[DIAG] DNS check initiated by {session.get('username', 'admin')}")
+
+    domains = [
+        {"domain": "youtube.com", "label": "YouTube (Principal)"},
+        {"domain": "googlevideo.com", "label": "GoogleVideo (Streaming CDN)"},
+        {"domain": "i.ytimg.com", "label": "YouTube Images (Thumbnails)"},
+        {"domain": "www.google.com", "label": "Google (Referencia)"},
+    ]
+
+    results = []
+    anomalies = 0
+
+    for entry in domains:
+        domain = entry["domain"]
+        label = entry["label"]
+        try:
+            t0 = time.time()
+            addrs = socket.getaddrinfo(domain, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            elapsed = round((time.time() - t0) * 1000)
+            ip_count = len(set(a[4][0] for a in addrs))
+            # Only show hashed prefix for privacy (not full IPs)
+            first_ip = addrs[0][4][0] if addrs else "N/A"
+            ip_hash = hashlib.sha256(first_ip.encode()).hexdigest()[:8]
+
+            is_ok = elapsed < 2000 and ip_count > 0
+            if not is_ok:
+                anomalies += 1
+
+            results.append({
+                "domain": domain,
+                "label": label,
+                "success": True,
+                "resolution_ms": elapsed,
+                "ip_count": ip_count,
+                "ip_fingerprint": ip_hash,
+                "status": "ok" if is_ok else "slow",
+                "message": f"Resuelto en {elapsed}ms ({ip_count} IPs)" if is_ok else f"Resolución lenta: {elapsed}ms"
+            })
+        except socket.gaierror as e:
+            anomalies += 1
+            results.append({
+                "domain": domain,
+                "label": label,
+                "success": False,
+                "resolution_ms": 0,
+                "ip_count": 0,
+                "status": "fail",
+                "message": f"Fallo DNS: {str(e)[:80]}"
+            })
+        except Exception as e:
+            anomalies += 1
+            results.append({
+                "domain": domain,
+                "label": label,
+                "success": False,
+                "resolution_ms": 0,
+                "ip_count": 0,
+                "status": "error",
+                "message": f"Error: {str(e)[:80]}"
+            })
+
+    # Overall assessment
+    avg_ms = round(sum(r["resolution_ms"] for r in results if r["success"]) / max(1, sum(1 for r in results if r["success"])))
+    health = "healthy" if anomalies == 0 else ("degraded" if anomalies <= 1 else "critical")
+
+    logger.info(f"[DIAG] DNS check complete: {len(results) - anomalies}/{len(results)} OK, avg={avg_ms}ms, health={health}")
+    return jsonify({
+        "success": True,
+        "results": results,
+        "summary": {
+            "total": len(results),
+            "resolved": len(results) - anomalies,
+            "anomalies": anomalies,
+            "avg_resolution_ms": avg_ms,
+            "health": health
+        }
+    })
+
+
+@admin_bp.route("/api/admin/diag/security-audit", methods=["POST"])
+@require_admin
+def admin_diag_security_audit():
+    """Security configuration health check — pass/fail only, no secrets exposed."""
+    allowed, remaining = _check_diag_cooldown("security-audit")
+    if not allowed:
+        return jsonify({"error": f"Cooldown activo. Reintentá en {remaining}s.", "cooldown": remaining}), 429
+
+    logger = logging.getLogger("admin.diag")
+    logger.info(f"[DIAG] Security audit initiated by {session.get('username', 'admin')}")
+
+    checks = []
+    score = 0
+    total = 0
+
+    # Check 1: Flask secret is not default
+    total += 1
+    from core.config import get_or_create_flask_secret
+    default_secret = "dhtools_secret_session_key_2026_super_secure"
+    env_secret = os.environ.get("FLASK_SECRET_KEY", "")
+    is_default = (env_secret == default_secret)
+    if not is_default:
+        score += 1
+    checks.append({
+        "name": "Flask Secret Key",
+        "description": "La clave secreta de sesión no debe ser el valor por defecto",
+        "pass": not is_default,
+        "severity": "critical" if is_default else "ok",
+        "recommendation": "Definí una FLASK_SECRET_KEY única en variables de entorno" if is_default else None
+    })
+
+    # Check 2: Password hashing strength
+    total += 1
+    users = load_users()
+    weak_hashes = 0
+    for uname, udata in users.items():
+        ph = udata.get("password_hash", "")
+        if not ph.startswith("pbkdf2:sha256:"):
+            weak_hashes += 1
+    strong_hashes = weak_hashes == 0
+    if strong_hashes:
+        score += 1
+    checks.append({
+        "name": "Fortaleza de Hashes",
+        "description": "Todas las contraseñas deben usar PBKDF2-SHA256 con ≥600k iteraciones",
+        "pass": strong_hashes,
+        "severity": "warning" if weak_hashes > 0 else "ok",
+        "detail": f"{weak_hashes} usuario(s) con hash legacy" if weak_hashes > 0 else "Todos los hashes son PBKDF2-SHA256",
+        "recommendation": "Los usuarios con hash legacy deben cambiar su contraseña" if weak_hashes > 0 else None
+    })
+
+    # Check 3: 2FA/TOTP for admin users
+    total += 1
+    admin_users = [(u, d) for u, d in users.items() if d.get("role") == "admin"]
+    admins_with_2fa = sum(1 for _, d in admin_users if d.get("totp_enabled"))
+    all_admins_2fa = (admins_with_2fa == len(admin_users)) if admin_users else False
+    if all_admins_2fa:
+        score += 1
+    checks.append({
+        "name": "2FA para Administradores",
+        "description": "Todos los usuarios con rol admin deben tener doble factor de autenticación",
+        "pass": all_admins_2fa,
+        "severity": "warning" if not all_admins_2fa else "ok",
+        "detail": f"{admins_with_2fa}/{len(admin_users)} admins con 2FA activo",
+        "recommendation": "Activá 2FA en Perfil → Seguridad para todos los administradores" if not all_admins_2fa else None
+    })
+
+    # Check 4: Cookies file freshness
+    total += 1
+    cookies_ok = False
+    cookies_detail = "No hay archivo de cookies"
+    if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
+        mtime = os.path.getmtime(COOKIES_FILE)
+        age_days = (time.time() - mtime) / 86400
+        if age_days < 30:
+            cookies_ok = True
+            cookies_detail = f"Cookies actualizadas hace {int(age_days)} días"
+        else:
+            cookies_detail = f"Cookies con {int(age_days)} días de antigüedad (posiblemente expiradas)"
+    if cookies_ok:
+        score += 1
+    checks.append({
+        "name": "Frescura de Cookies",
+        "description": "El archivo cookies.txt debe ser reciente (< 30 días) para evitar bloqueos",
+        "pass": cookies_ok,
+        "severity": "warning" if not cookies_ok else "ok",
+        "detail": cookies_detail,
+        "recommendation": "Renovar cookies.txt desde el navegador con extensión Get cookies.txt LOCALLY" if not cookies_ok else None
+    })
+
+    # Check 5: Active sessions count
+    total += 1
+    with ACTIVE_SESSIONS_LOCK:
+        active_count = sum(1 for s in ACTIVE_SESSIONS.values() if not s.get("revoked"))
+    sessions_ok = active_count <= 10
+    if sessions_ok:
+        score += 1
+    checks.append({
+        "name": "Sesiones Activas",
+        "description": "El número de sesiones simultáneas no debería ser excesivo",
+        "pass": sessions_ok,
+        "severity": "info" if not sessions_ok else "ok",
+        "detail": f"{active_count} sesiones activas actualmente",
+        "recommendation": "Revisá y revocá sesiones sospechosas en la pestaña Usuarios" if not sessions_ok else None
+    })
+
+    # Check 6: Lockout policy active
+    total += 1
+    from core.config import MAX_FAILED_LOGINS, LOCKOUT_DURATION_SECONDS
+    lockout_ok = MAX_FAILED_LOGINS <= 10 and LOCKOUT_DURATION_SECONDS >= 300
+    if lockout_ok:
+        score += 1
+    checks.append({
+        "name": "Política de Bloqueo por Intentos",
+        "description": "Debe existir un bloqueo tras intentos fallidos de login",
+        "pass": lockout_ok,
+        "severity": "ok" if lockout_ok else "warning",
+        "detail": f"Max {MAX_FAILED_LOGINS} intentos, bloqueo {LOCKOUT_DURATION_SECONDS}s",
+        "recommendation": None if lockout_ok else "Ajustá MAX_FAILED_LOGINS y LOCKOUT_DURATION_SECONDS en variables de entorno"
+    })
+
+    # Overall grade
+    pct = round((score / total) * 100) if total > 0 else 0
+    if pct >= 90:
+        grade = "A"
+    elif pct >= 70:
+        grade = "B"
+    elif pct >= 50:
+        grade = "C"
+    else:
+        grade = "D"
+
+    logger.info(f"[DIAG] Security audit complete: {score}/{total} passed, grade={grade}")
+    return jsonify({
+        "success": True,
+        "checks": checks,
+        "summary": {
+            "passed": score,
+            "total": total,
+            "percentage": pct,
+            "grade": grade
+        }
     })
