@@ -43,10 +43,12 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 - [ ] **Normalizador de Potencia Acústica (EBU R128):**
   - Nivelación automática de volumen para que todas las canciones de un álbum o lista suenen con la misma intensidad sonora sin saturación.
 
-### ☁️ Integración Directa con Proveedores Cloud Principales (OAuth2)
-- [ ] **Google Drive:** Autenticación OAuth2 / Service Account con soporte para carpetas específicas y Unidades Compartidas (*Shared Drives*).
+### ☁️ Integración Directa con Proveedores Cloud Principales
+- [x] **Google Drive [EXPERIMENTAL]:** Implementado como **Plugin Oficial Bundled** (`plugins/google_drive/`) con soporte para Service Account, OAuth2, streaming resumable por bloques de 10 MB (RAM-Safe), selector de carpetas y modo Safe Offload.
+- [ ] **Modularización de Conectores Cloud (v1.6.0+):** Extracción planificada de los conectores S3, WebDAV y FTP hacia plugins oficiales independientes (`plugins/s3_storage`, `plugins/webdav_storage`, etc.) una vez estabilizado el ecosistema del Plugin Manager.
 - [ ] **Microsoft OneDrive / SharePoint:** Conexión con cuentas personales de Microsoft y cuentas educativas / corporativas de Microsoft 365.
 - [ ] **Dropbox:** Conexión vía API oficial para subida automática de archivos y creación de carpetas de colección.
+
 
 ---
 

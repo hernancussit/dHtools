@@ -518,6 +518,9 @@
       <button class="nav-btn" data-tab="tab-diagnostics">
         <span>🧪</span> Diagnóstico Avanzado
       </button>
+      <button class="nav-btn" data-tab="tab-plugins">
+        <span>🧩</span> Plugins <span style="font-size:0.65rem; background:rgba(234,179,8,0.18); color:#fbbf24; padding:2px 6px; border-radius:4px; margin-left:auto; font-weight:700;">EXP</span>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -1316,6 +1319,28 @@ docker run -d --name residential-socks5 \
         <div id="diagSecurityResult" style="display:none; margin-top:14px; padding:14px; border-radius:10px; background:#0d1527; border:1px solid var(--border); font-size:0.84rem; line-height:1.7;"></div>
       </div>
     </div>
+
+    <!-- TAB: PLUGINS [EXPERIMENTAL] -->
+    <div id="tab-plugins" class="tab-pane">
+      <div class="card">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>🧩 Extensiones & Plugins <span style="font-size:0.75rem; background:rgba(234,179,8,0.18); color:#fbbf24; padding:3px 8px; border-radius:6px; font-weight:700;">EXPERIMENTAL</span></span>
+          <button id="btnReloadPlugins" class="btn btn-secondary btn-sm">⟳ Re-escanear</button>
+        </div>
+        <div style="background:rgba(234,179,8,0.08); border-left:4px solid #eab308; padding:12px 16px; border-radius:8px; margin-bottom:16px; font-size:0.85rem; color:#fde047; line-height:1.5;">
+          <strong>⚠️ Módulo Experimental:</strong> Los plugins permiten extender dHtools (segundos bots de Telegram, alertas en Discord/WhatsApp, integraciones privadas) de forma 100% desacoplada. Todos los plugins residen en <code>plugins/</code> y están completamente ignorados por Git para proteger tu privacidad.
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+          <span style="font-size:0.85rem; color:var(--muted);" id="pluginsDirLabel">Directorio: <code>/app/plugins</code></span>
+          <span style="font-size:0.85rem; color:var(--accent-blue);">📘 Consulta <code>docs/PLUGIN_DEV_GUIDE.md</code> para programar tu plugin.</span>
+        </div>
+
+        <div id="pluginsListContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
+          <div style="text-align:center; padding:30px; color:var(--muted); grid-column:1/-1;">Cargando plugins...</div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -1371,7 +1396,8 @@ const sectionTitles = {
   'tab-settings': '⚙️ Configuración & Cookies',
   'tab-cloud': '☁️ Sincronización en la Nube',
   'tab-users': '👥 Gestión de Usuarios',
-  'tab-diagnostics': '🧪 Diagnóstico Avanzado'
+  'tab-diagnostics': '🧪 Diagnóstico Avanzado',
+  'tab-plugins': '🧩 Extensiones & Plugins [EXPERIMENTAL]'
 };
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1384,7 +1410,85 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (targetPane) targetPane.classList.add('active');
     const titleEl = document.getElementById('currentSectionTitle');
     if (titleEl && sectionTitles[tabId]) titleEl.textContent = sectionTitles[tabId];
+    if (tabId === 'tab-plugins') loadPluginsList();
   });
+});
+
+async function loadPluginsList() {
+  const container = document.getElementById('pluginsListContainer');
+  if (!container) return;
+  try {
+    const res = await fetch('/api/admin/plugins');
+    const data = await res.json();
+    if (!data.success) {
+      container.innerHTML = `<div style="grid-column:1/-1; padding:20px; color:#ef4444;">Error al cargar plugins: ${data.error || 'Desconocido'}</div>`;
+      return;
+    }
+    const dirEl = document.getElementById('pluginsDirLabel');
+    if (dirEl && data.plugins_dir) {
+      dirEl.innerHTML = `Directorio: <code>${data.plugins_dir}</code>`;
+    }
+    if (!data.plugins || data.plugins.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:40px 20px; background:#0d1527; border:1px dashed var(--border); border-radius:12px;">
+          <div style="font-size:2rem; margin-bottom:8px;">🧩</div>
+          <div style="font-weight:600; color:var(--text); margin-bottom:4px;">No hay plugins instalados aún</div>
+          <p style="font-size:0.84rem; color:var(--muted); max-width:480px; margin:0 auto 14px;">
+            Creá una carpeta dentro de <code>plugins/</code> con un <code>plugin.json</code> y <code>plugin.py</code> para extender dHtools de forma aislada.
+          </p>
+          <span style="font-size:0.8rem; color:var(--accent-blue);">📘 Consulta <code>docs/PLUGIN_DEV_GUIDE.md</code> para programar tu extensión.</span>
+        </div>
+      `;
+      return;
+    }
+    container.innerHTML = data.plugins.map(p => `
+      <div style="background:#0d1527; border:1px solid ${p.is_loaded ? 'rgba(16,185,129,0.35)' : 'var(--border)'}; border-radius:10px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <div style="font-weight:700; font-size:0.95rem; color:var(--text); display:flex; align-items:center; gap:6px;">
+              <span>${p.icon || '🧩'}</span> ${p.name || p.id}
+            </div>
+            <span class="status-badge ${p.is_loaded ? 'status-online' : 'status-offline'}" style="font-size:0.7rem;">
+              <span class="badge-dot" style="background:${p.is_loaded ? '#10b981' : '#6b7280'};"></span>
+              ${p.is_loaded ? 'Activo' : (p.is_enabled ? 'Error al Cargar' : 'Deshabilitado')}
+            </span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px;">
+            ID: <code>${p.id}</code> | Versión: <code>v${p.version || '1.0'}</code> | Autor: ${p.author || 'Anónimo'}
+          </div>
+          <p style="font-size:0.83rem; color:var(--muted); margin:0; line-height:1.4;">
+            ${p.description || 'Sin descripción'}
+          </p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px; font-size:0.75rem; color:var(--muted);">
+          <span>Carpeta: <code>plugins/${p._folder || p.id}</code></span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            ${p.settings_url ? `<a href="${p.settings_url}" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; text-decoration:none; color:var(--accent-blue);">⚙️ Configurar</a>` : ''}
+            <span style="background:rgba(234,179,8,0.15); color:#fbbf24; padding:2px 6px; border-radius:4px; font-size:0.68rem; font-weight:700;">EXPERIMENTAL</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<div style="grid-column:1/-1; padding:20px; color:#ef4444;">Error al conectar con la API de plugins: ${err.message}</div>`;
+  }
+}
+
+document.getElementById('btnReloadPlugins')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btnReloadPlugins');
+  btn.disabled = true;
+  btn.textContent = '⏳ Escaneando...';
+  try {
+    const res = await fetch('/api/admin/plugins/reload', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message || 'Plugins re-escaneados', data.success ? 'success' : 'error');
+    loadPluginsList();
+  } catch (e) {
+    showToast('Error al recargar plugins: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⟳ Re-escanear';
+  }
 });
 
 function showToast(msg, type = 'success', timeout = 4000) {

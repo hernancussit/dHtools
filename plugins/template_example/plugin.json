@@ -1,0 +1,10 @@
+{
+  "id": "template_example",
+  "name": "Plugin de Ejemplo [EXPERIMENTAL]",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "[EXPERIMENTAL] Plantilla y guía de referencia para creación de extensiones, hooks y bots secundarios en dHtools.",
+  "icon": "🧪",
+  "status": "experimental",
+  "enabled": false
+}

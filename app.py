@@ -10,6 +10,7 @@ from routes.auth import auth_bp, protect_all_routes
 from routes.admin import admin_bp
 from routes.api import api_bp
 from routes.ui import ui_bp
+from core.plugin_manager import plugin_manager
 
 app = Flask(__name__)
 
@@ -24,6 +25,9 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(ui_bp)
 
+# [EXPERIMENTAL] Initialize Plugin Manager and dynamic blueprints
+plugin_manager.init_app(app)
+
 # Global Security
 app.before_request(protect_all_routes)
 
@@ -33,12 +37,13 @@ def inject_globals():
     from core.utils import load_config
     return {
         "version": APP_VERSION,
-        "config": load_config()
+        "config": load_config(),
+        "plugins": plugin_manager.get_active_plugins_summary()
     }
 
 from core.telegram_bot import telegram_bot
 
-# Start background worker threads (queue processor, cleanup, auto-updater, telegram bot)
+# Start background worker threads (queue processor, cleanup, auto-updater, telegram bot, plugins)
 _threads_started = False
 _threads_lock = threading.Lock()
 
@@ -50,6 +55,7 @@ def start_background_threads():
             threading.Thread(target=cleanup_loop, daemon=True).start()
             threading.Thread(target=auto_update_loop, daemon=True).start()
             telegram_bot.start()
+            plugin_manager.start_background_plugins()
             _threads_started = True
 
 start_background_threads()

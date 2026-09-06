@@ -1,0 +1,11 @@
+{
+  "id": "google_drive",
+  "name": "Google Drive Cloud Sync [EXPERIMENTAL]",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "[EXPERIMENTAL] Sincronización oficial y streaming resumable de descargas con Google Drive (Service Account u OAuth2).",
+  "icon": "📁",
+  "status": "experimental",
+  "enabled": true,
+  "settings_url": "/plugin/google_drive/settings"
+}

@@ -1568,3 +1568,33 @@ def admin_diag_security_audit():
             "grade": grade
         }
     })
+
+
+@admin_bp.route("/api/admin/plugins")
+@require_admin
+def admin_plugins():
+    """[EXPERIMENTAL] Lista todos los plugins instalados y su estado de carga."""
+    from core.plugin_manager import plugin_manager
+    plugins = plugin_manager.get_all_plugins()
+    return jsonify({
+        "success": True,
+        "experimental": True,
+        "plugins": plugins,
+        "plugins_dir": plugin_manager.plugins_dir,
+        "count": len(plugins)
+    })
+
+
+@admin_bp.route("/api/admin/plugins/reload", methods=["POST"])
+@require_admin
+def admin_plugins_reload():
+    """[EXPERIMENTAL] Vuelve a escanear la carpeta de plugins en caliente."""
+    from core.plugin_manager import plugin_manager
+    plugin_manager.discover_and_load_plugins()
+    return jsonify({
+        "success": True,
+        "experimental": True,
+        "message": "Plugins redescubiertos exitosamente [EXPERIMENTAL]",
+        "plugins": plugin_manager.get_all_plugins()
+    })
+

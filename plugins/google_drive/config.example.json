@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "auth_type": "service_account",
+  "folder_id": "",
+  "safe_offload": false,
+  "service_account_file": "service_account.json",
+  "subfolder_by_owner": false,
+  "oauth": {
+    "client_id": "",
+    "client_secret": "",
+    "token_file": "token.json"
+  },
+  "notes": "Renombra este archivo a config.json o configúralo desde la interfaz web en /plugin/google_drive/settings"
+}

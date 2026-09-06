@@ -32,6 +32,7 @@ from core.utils import (
     safe_download_path, enqueue_job, format_seconds, get_residential_proxy_config,
     has_cobalt_youtube_cookies
 )
+from core.plugin_manager import plugin_manager
 
 QUALITY_FORMAT_MAP = {
     "best": "bestvideo+bestaudio/best",
@@ -676,6 +677,7 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
 
         if os.path.exists(final_path):
             record_download_meta(job_id, final_filename, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
+        plugin_manager.trigger_hook("on_download_complete", job_snap)
         threading.Thread(target=sync_to_cloud, args=(final_path, final_filename, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
@@ -846,6 +848,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
         if os.path.exists(final_path):
             record_download_meta(job_id, final_name, owner, os.path.getsize(final_path), folder_name=folder_name, group_id=group_id)
         append_job_log(job_id, f"[+] Archivo completado vía Cobalt v11: {final_name}")
+        plugin_manager.trigger_hook("on_download_complete", job_snap)
         threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:
         with JOBS_LOCK:
@@ -1116,6 +1119,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
         job_snap = dict(JOBS[job_id])
         job_snap["job_id"] = job_id
         job_snap["id"] = job_id
+        plugin_manager.trigger_hook("on_download_complete", job_snap)
         if final_path and os.path.exists(final_path):
             threading.Thread(target=sync_to_cloud, args=(final_path, final_name, job_snap, user_cloud_sync), daemon=True).start()
     except Exception as e:

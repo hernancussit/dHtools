@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Drive Cloud Sync — dHtools [EXPERIMENTAL]</title>
+  <link rel="icon" type="image/png" href="/static/icons/favicon-32x32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-surface: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-input: #1f2937;
+      --border-color: #374151;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --radius-lg: 14px;
+      --radius-md: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.12) 0px, transparent 50%);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .header-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.35);
+    }
+
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-exp {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-ok {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-secondary {
+      background: rgba(31, 41, 55, 0.8);
+      border-color: var(--border-color);
+      color: var(--text-secondary);
+    }
+    .btn-secondary:hover {
+      background: #374151;
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #fff;
+      border: none;
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);
+    }
+    .btn-primary:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .btn-test {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+    }
+    .btn-test:hover {
+      background: rgba(59, 130, 246, 0.25);
+      color: #fff;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #e5e7eb;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      line-height: 1.4;
+    }
+
+    .alert-amber {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fcd34d;
+    }
+
+    .alert-rose {
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-size: 0.88rem;
+      transition: border-color 0.2s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+    }
+
+    textarea.form-control {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      resize: vertical;
+      min-height: 110px;
+    }
+
+    .form-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: rgba(31, 41, 55, 0.5);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.5);
+    }
+
+    .toggle-info h4 {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .toggle-info p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #374151;
+      transition: .3s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 18px; width: 18px;
+      left: 3px; bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent-cyan);
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      background: rgba(31, 41, 55, 0.6);
+      padding: 4px;
+      border-radius: var(--radius-md);
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: var(--accent-cyan);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    .test-result-box {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.82rem;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .test-result-box.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .test-result-box.error {
+      display: block;
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+
+    .progress-bar-container {
+      background: #1f2937;
+      border-radius: 8px;
+      height: 8px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+      height: 100%;
+      border-radius: 8px;
+      transition: width 0.3s ease;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 9999;
+      animation: fadeIn 0.3s ease;
+    }
+    .toast-success { background: #059669; color: white; }
+    .toast-error { background: #e11d48; color: white; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <a href="/" class="header-brand">
+        <div class="header-logo">📁</div>
+        <div class="header-title">
+          <h1>Google Drive Cloud Sync <span class="badge-exp">EXPERIMENTAL</span></h1>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+            Plugin Oficial Bundled para dHtools (Streaming Resumable &amp; Safe Offload)
+          </p>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="/admin" class="btn btn-secondary">⚙️ Admin</a>
+        <a href="/" class="btn btn-secondary">🏠 Inicio</a>
+      </div>
+    </header>
+
+    {% if not dependencies_ok %}
+    <div class="alert alert-rose">
+      <span style="font-size: 1.2rem;">⚠️</span>
+      <div>
+        <strong>Librerías de Google Drive no detectadas en el entorno:</strong><br>
+        {{ dependencies_msg }}<br>
+        <code style="font-family:'JetBrains Mono'; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; display:inline-block; margin-top:6px;">
+          pip install google-api-python-client google-auth google-auth-oauthlib
+        </code>
+      </div>
+    </div>
+    {% endif %}
+
+    <form id="driveSettingsForm">
+      <!-- TARJETA 1: ESTADO Y CONTROL GENERAL -->
+      <div class="card">
+        <div class="card-title">
+          <span>⚡ Estado de Sincronización</span>
+          <span class="badge-ok" id="statusBadge">{{ 'ACTIVO' if config.enabled else 'DESACTIVADO' }}</span>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <h4>Activar Plugin de Google Drive</h4>
+            <p>Habilita la subida automática a Drive tras finalizar cualquier descarga.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="enabledSwitch" {{ 'checked' if config.enabled else '' }}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <h4>Modo Offload ("Subir y Mover")</h4>
+            <p>Elimina el archivo local del VPS una vez confirmada la subida exitosa a Google Drive para ahorrar espacio de disco.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="offloadSwitch" {{ 'checked' if config.safe_offload else '' }}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-top: 14px;">
+          <label for="folderIdInput">ID de Carpeta Destino en Google Drive (Opcional)</label>
+          <input type="text" id="folderIdInput" class="form-control" placeholder="Ej: 1A2b3C4d5E6f7G8h9I0j o dejar vacío para la raíz" value="{{ config.folder_id or '' }}">
+          <div class="form-hint">
+            Abrí la carpeta deseada en drive.google.com y copiá la serie alfanumérica al final de la URL tras <code>/folders/...</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- TARJETA 2: MÉTODO DE AUTENTICACIÓN -->
+      <div class="card">
+        <div class="card-title">
+          <span>🔑 Credenciales y Autenticación</span>
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="tab-btn {{ 'active' if config.auth_type != 'oauth2' else '' }}" id="tabServiceAccountBtn" onclick="switchAuthTab('service_account')">
+            🛡️ Cuenta de Servicio (Recomendada para VPS)
+          </button>
+          <button type="button" class="tab-btn {{ 'active' if config.auth_type == 'oauth2' else '' }}" id="tabOAuthBtn" onclick="switchAuthTab('oauth2')">
+            👤 OAuth 2.0 (Cuentas Personales @gmail)
+          </button>
+        </div>
+
+        <!-- SECCIÓN 1: SERVICE ACCOUNT -->
+        <div id="sectionServiceAccount" style="{{ 'display:block;' if config.auth_type != 'oauth2' else 'display:none;' }}">
+          <div class="alert alert-amber">
+            <span>💡</span>
+            <div>
+              <strong>¿Cómo funciona la Cuenta de Servicio?</strong><br>
+              1. En Google Cloud Console, creá una <em>Cuenta de Servicio</em> y descargá la clave JSON.<br>
+              2. Compartí tu carpeta de Drive con el correo de la cuenta de servicio (ej: <code>app@proyecto.iam.gserviceaccount.com</code>) con rol de <strong>Editor</strong>.<br>
+              3. Pegá el contenido JSON abajo o dejá el archivo <code>service_account.json</code> en la carpeta del plugin.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="saJsonTextarea">Pegar Contenido de <code>service_account.json</code></label>
+            <textarea id="saJsonTextarea" class="form-control" placeholder='{ "type": "service_account", "project_id": "...", "private_key_id": "...", ... }'></textarea>
+            <div class="form-hint">
+              {% if service_account_exists %}
+                <span style="color: var(--accent-green); font-weight:600;">✓ Archivo service_account.json detectado actualmente en el servidor.</span> Si pegás uno nuevo, se sobrescribirá de forma segura.
+              {% else %}
+                No se detectó archivo <code>service_account.json</code> previo. Pegá el JSON aquí arriba para crearlo.
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: OAUTH 2.0 -->
+        <div id="sectionOAuth" style="{{ 'display:block;' if config.auth_type == 'oauth2' else 'display:none;' }}">
+          <div class="alert alert-amber">
+            <span>👤</span>
+            <div>
+              <strong>Modo OAuth 2.0 para Cuentas Personales:</strong><br>
+              Requiere crear un <em>ID de cliente de OAuth</em> de tipo "Web Application" o "Desktop" en Google Cloud Console.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="oauthClientId">Client ID</label>
+            <input type="text" id="oauthClientId" class="form-control" placeholder="123456789-abc.apps.googleusercontent.com" value="{{ config.oauth.client_id if config.oauth else '' }}">
+          </div>
+
+          <div class="form-group">
+            <label for="oauthClientSecret">Client Secret</label>
+            <input type="password" id="oauthClientSecret" class="form-control" placeholder="GOCSPX-..." value="">
+            <div class="form-hint">Por seguridad el Client Secret no se muestra en pantalla. Si ya lo ingresaste anteriormente, dejalo en blanco para conservarlo.</div>
+          </div>
+
+          <div class="form-hint" style="margin-top: 8px;">
+            {% if oauth_token_exists %}
+              <span style="color: var(--accent-green); font-weight: 600;">✓ Token OAuth2 activo y almacenado en disco (token.json).</span>
+            {% else %}
+              <span style="color: var(--accent-amber);">⚠️ No se ha generado token.json todavía.</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid rgba(55, 65, 81, 0.4);">
+          <button type="button" class="btn btn-test" id="btnTestConn" onclick="testConnection()">
+            🔌 Probar Conexión con Google Drive
+          </button>
+
+          <button type="button" class="btn btn-primary" id="btnSaveConfig" onclick="saveConfiguration()">
+            💾 Guardar Configuración
+          </button>
+        </div>
+
+        <!-- CAJA DE RESULTADO DEL TEST -->
+        <div id="testResultBox" class="test-result-box"></div>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let currentAuthType = "{{ config.auth_type or 'service_account' }}";
+
+    function switchAuthTab(type) {
+      currentAuthType = type;
+      document.getElementById('tabServiceAccountBtn').classList.toggle('active', type === 'service_account');
+      document.getElementById('tabOAuthBtn').classList.toggle('active', type === 'oauth2');
+      document.getElementById('sectionServiceAccount').style.display = (type === 'service_account') ? 'block' : 'none';
+      document.getElementById('sectionOAuth').style.display = (type === 'oauth2') ? 'block' : 'none';
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.className = `toast ${isError ? 'toast-error' : 'toast-success'}`;
+      toast.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    async function testConnection() {
+      const btn = document.getElementById('btnTestConn');
+      const box = document.getElementById('testResultBox');
+      btn.disabled = true;
+      btn.textContent = '⏳ Probando conexión...';
+      box.style.display = 'none';
+
+      const payload = {
+        auth_type: currentAuthType,
+        folder_id: document.getElementById('folderIdInput').value.trim(),
+        service_account_json_content: document.getElementById('saJsonTextarea').value.trim(),
+        client_id: document.getElementById('oauthClientId').value.trim(),
+        client_secret: document.getElementById('oauthClientSecret').value.trim()
+      };
+
+      try {
+        const res = await fetch('/plugin/google_drive/api/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success && data.details) {
+          const d = data.details;
+          const used = formatBytes(d.storage_used_bytes);
+          const total = d.storage_total_bytes ? formatBytes(d.storage_total_bytes) : 'Ilimitado';
+          const percent = d.storage_total_bytes ? Math.min(100, Math.round((d.storage_used_bytes / d.storage_total_bytes) * 100)) : 0;
+
+          box.className = 'test-result-box success';
+          box.innerHTML = `
+            <strong>✓ Conexión establecida con éxito con Google Drive</strong><br>
+            <div style="margin-top:6px; font-size:0.78rem;">
+              • <strong>Cuenta:</strong> ${d.user_name} (${d.email})<br>
+              • <strong>Carpeta destino:</strong> ${d.folder_name} ${d.folder_id ? '<code>['+d.folder_id+']</code>' : '(Raíz)'}<br>
+              • <strong>Almacenamiento:</strong> ${used} de ${total} (${percent}%)
+            </div>
+            ${d.storage_total_bytes ? `
+            <div class="progress-bar-container">
+              <div class="progress-bar" style="width: ${percent}%;"></div>
+            </div>` : ''}
+          `;
+          box.style.display = 'block';
+          showToast('Conexión con Google Drive exitosa');
+        } else {
+          box.className = 'test-result-box error';
+          box.innerHTML = `<strong>✗ Falló la conexión:</strong><br>${data.error || 'No se pudo conectar'}`;
+          box.style.display = 'block';
+          showToast('Falló la verificación de Google Drive', true);
+        }
+      } catch (err) {
+        box.className = 'test-result-box error';
+        box.innerHTML = `<strong>✗ Error de red o servidor:</strong><br>${err.message}`;
+        box.style.display = 'block';
+        showToast('Error de comunicación', true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔌 Probar Conexión con Google Drive';
+      }
+    }
+
+    async function saveConfiguration() {
+      const btn = document.getElementById('btnSaveConfig');
+      btn.disabled = true;
+      btn.textContent = '💾 Guardando...';
+
+      const payload = {
+        enabled: document.getElementById('enabledSwitch').checked,
+        safe_offload: document.getElementById('offloadSwitch').checked,
+        folder_id: document.getElementById('folderIdInput').value.trim(),
+        auth_type: currentAuthType,
+        service_account_json_content: document.getElementById('saJsonTextarea').value.trim(),
+        client_id: document.getElementById('oauthClientId').value.trim(),
+        client_secret: document.getElementById('oauthClientSecret').value.trim()
+      };
+
+      try {
+        const res = await fetch('/plugin/google_drive/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(data.message || 'Configuración guardada correctamente.');
+          document.getElementById('statusBadge').textContent = payload.enabled ? 'ACTIVO' : 'DESACTIVADO';
+          document.getElementById('saJsonTextarea').value = '';
+        } else {
+          showToast(data.error || 'Error al guardar.', true);
+        }
+      } catch (err) {
+        showToast(`Error de red: ${err.message}`, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Configuración';
+      }
+    }
+  </script>
+</body>
+</html>

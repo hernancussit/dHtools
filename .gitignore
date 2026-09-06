@@ -24,6 +24,7 @@ __pycache__/
 *$py.class
 *.so
 .pytest_cache/
+scratch/
 
 # Archivos de sistema y editores
 .DS_Store
@@ -32,3 +33,17 @@ Thumbs.db
 .idea/
 *.swp
 .agents/
+
+# Sistema Experimental de Plugins (Aislamiento Privado)
+plugins/*
+!plugins/.gitkeep
+!plugins/README.md
+!plugins/template_example/
+
+# Plugins Oficiales Bundled (Código rastreado, credenciales ignoradas)
+!plugins/google_drive/
+plugins/google_drive/config.json
+plugins/google_drive/service_account.json
+plugins/google_drive/token.json
+plugins/google_drive/*.credentials.json
+
