@@ -130,6 +130,22 @@ class TestTelegramDriveIntegration(unittest.TestCase):
             alert_text = mock_ans.call_args[0][1]
             self.assertIn("desactivado", alert_text.lower())
 
+    def test_telegram_public_url_resolution(self):
+        """Verifica que la URL pública se resuelva dinámicamente y no existan dominios fijos."""
+        # 1. Sin configurar
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("core.telegram_bot.load_cloud_config", return_value={}):
+            self.assertEqual(telegram_bot.get_public_url(), "")
+
+        # 2. Configurado vía variable de entorno PUBLIC_URL
+        with patch.dict(os.environ, {"PUBLIC_URL": "https://midominio.com/"}):
+            self.assertEqual(telegram_bot.get_public_url(), "https://midominio.com")
+
+        # 3. Configurado vía cloud_sync.json
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("core.telegram_bot.load_cloud_config", return_value={"telegram": {"public_url": "https://telegram.org/custom"}}):
+            self.assertEqual(telegram_bot.get_public_url(), "https://telegram.org/custom")
+
 
 if __name__ == "__main__":
     unittest.main()

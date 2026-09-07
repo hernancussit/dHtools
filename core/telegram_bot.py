@@ -6,7 +6,7 @@ import threading
 import requests
 
 from core.config import (
-    DOWNLOAD_DIR, TELEGRAM_BOT_TOKEN_ENV, TELEGRAM_BOT_ENABLED_ENV
+    DOWNLOAD_DIR, TELEGRAM_BOT_TOKEN_ENV, TELEGRAM_BOT_ENABLED_ENV, PUBLIC_URL
 )
 from core.state import (
     JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK,
@@ -53,6 +53,43 @@ class TelegramBot:
         if "enabled" in tg_cfg:
             return bool(tg_cfg.get("enabled"))
         return bool(TELEGRAM_BOT_ENABLED_ENV and self.get_token())
+
+    def get_public_url(self) -> str:
+        """
+        Retorna la URL pública de la aplicación para enlaces en Telegram.
+        Prioridad:
+        1. Variable de entorno PUBLIC_URL / APP_URL / WEB_URL / DHTOOLS_URL
+        2. Configuración en cloud_sync.json -> telegram.public_url o public_url
+        3. Configuración en config.json -> public_url
+        4. Cadena vacía si no está configurada.
+        """
+        for env_k in ("PUBLIC_URL", "APP_URL", "WEB_URL", "DHTOOLS_URL"):
+            val = os.environ.get(env_k, "").strip()
+            if val:
+                return val.rstrip("/")
+
+        if PUBLIC_URL:
+            return PUBLIC_URL.rstrip("/")
+
+        try:
+            cfg = load_cloud_config()
+            tg_url = cfg.get("telegram", {}).get("public_url", "").strip()
+            if tg_url:
+                return tg_url.rstrip("/")
+            if cfg.get("public_url", "").strip():
+                return cfg.get("public_url", "").strip().rstrip("/")
+        except Exception:
+            pass
+
+        try:
+            from core.utils import load_config
+            c = load_config()
+            if c.get("public_url", "").strip():
+                return c.get("public_url", "").strip().rstrip("/")
+        except Exception:
+            pass
+
+        return ""
 
     def start(self):
         with self._lock:
@@ -528,15 +565,16 @@ class TelegramBot:
 
             buttons = []
             file_on_disk = bool(it.get("disk_path") and os.path.exists(it["disk_path"]))
+            public_url = self.get_public_url()
             if file_on_disk:
                 if size_mb <= 50:
                     buttons.append([{"text": "📥 Enviar a este chat", "callback_data": f"send:{jid[:40]}"}])
-                else:
-                    buttons.append([{"text": "🌐 Descargar desde la Web (>50MB)", "url": "https://dhtools.example.com"}])
+                elif public_url:
+                    buttons.append([{"text": "🌐 Descargar desde la Web (>50MB)", "url": public_url}])
                 for cp in active_cloud_providers:
                     buttons.append([{"text": f"{cp['icon']} Subir a {cp['name']}", "callback_data": f"cloud_up:{cp['id']}:{jid[:35]}"}])
-            else:
-                buttons.append([{"text": "🌐 Abrir en dHtools", "url": "https://dhtools.example.com"}])
+            elif public_url:
+                buttons.append([{"text": "🌐 Abrir en dHtools", "url": public_url}])
 
             markup = {"inline_keyboard": buttons} if buttons else None
             self.send_message(chat_id, txt, reply_markup=markup)
@@ -830,24 +868,29 @@ class TelegramBot:
             size_bytes = os.path.getsize(actual_fpath)
             if size_bytes > 50 * 1024 * 1024:
                 self.answer_callback_query(q_id, "⚠️ El archivo supera los 50 MB de Telegram", show_alert=True)
-                self.send_message(
-                    chat_id,
+                public_url = self.get_public_url()
+                msg = (
                     f"⚠️ <b>Archivo demasiado pesado para Telegram:</b>\n\n"
-                    f"El archivo pesa <b>{format_bytes(size_bytes)}</b> y los bots de Telegram solo admiten hasta 50 MB.\n\n"
-                    f"Podés descargarlo directamente en tu navegador desde:\n"
-                    f"👉 https://dhtools.example.com"
+                    f"El archivo pesa <b>{format_bytes(size_bytes)}</b> y los bots de Telegram solo admiten transferencias de hasta 50 MB.\n\n"
                 )
+                if public_url:
+                    msg += f"Podés descargarlo directamente en tu navegador desde:\n👉 {public_url}"
+                else:
+                    msg += "Podés descargarlo directamente accediendo al panel web de tu servidor dHtools."
+                self.send_message(chat_id, msg)
                 return
 
             self.answer_callback_query(q_id, "🚀 Enviando archivo al chat...")
             display_title = (matched_info or {}).get("filename") or (actual_fname[len(matched_jid)+1:] if actual_fname.startswith(f"{matched_jid}_") else actual_fname)
             ok = self.send_media(chat_id, actual_fpath, caption=f"📥 <b>{display_title}</b>")
             if not ok:
-                self.send_message(
-                    chat_id,
-                    "⚠️ Hubo un error al transferir el archivo a Telegram (posible timeout o restricción de formato). "
-                    "Podés descargarlo directamente desde la plataforma web: https://dhtools.example.com"
-                )
+                public_url = self.get_public_url()
+                msg = "⚠️ Hubo un error al transferir el archivo a Telegram (posible timeout o restricción de formato). "
+                if public_url:
+                    msg += f"Podés descargarlo directamente desde la plataforma web: {public_url}"
+                else:
+                    msg += "Podés descargarlo directamente desde la plataforma web de tu servidor dHtools."
+                self.send_message(chat_id, msg)
             return
 
         if data.startswith("cloud_tog:") or data.startswith("toggle_drive:"):

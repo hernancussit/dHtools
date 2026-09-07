@@ -64,6 +64,7 @@ DISK_EMERGENCY_MIN_FREE_GB = float(os.environ.get("DISK_EMERGENCY_MIN_FREE_GB", 
 
 TELEGRAM_BOT_TOKEN_ENV = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_BOT_ENABLED_ENV = os.environ.get("TELEGRAM_BOT_ENABLED", "true").lower() == "true"
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "").strip().rstrip("/")
 
 RESIDENTIAL_PROXY_CONFIG = {
     "enabled": False,

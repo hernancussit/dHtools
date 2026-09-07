@@ -1142,6 +1142,10 @@ docker run -d --name residential-socks5 \
               <label>Chat ID por Defecto (Admin / Notificaciones globales)</label>
               <input type="password" id="cloudTelegramChatId" placeholder="-1001234567890 o @micanal">
             </div>
+            <div class="form-group">
+              <label>URL Pública Web (opcional, para botones y enlaces de descarga)</label>
+              <input type="text" id="cloudTelegramPublicUrl" placeholder="https://dhtools.midominio.com">
+            </div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <button id="btnSaveTelegramQuick" class="btn btn-primary btn-sm">💾 Guardar Configuración Telegram</button>
@@ -2433,6 +2437,7 @@ async function loadCloudSyncConfig() {
       document.getElementById('cloudTelegramEnabled').checked = !!cfg.telegram.enabled;
       document.getElementById('cloudTelegramToken').value = cfg.telegram.bot_token || '';
       document.getElementById('cloudTelegramChatId').value = cfg.telegram.chat_id || '';
+      document.getElementById('cloudTelegramPublicUrl').value = cfg.telegram.public_url || '';
     }
     if (cfg.ftp) {
       document.getElementById('cloudFtpEnabled').checked = !!cfg.ftp.enabled;
@@ -2470,7 +2475,8 @@ function getCloudConfigPayload() {
     telegram: {
       enabled: document.getElementById('cloudTelegramEnabled').checked,
       bot_token: document.getElementById('cloudTelegramToken').value.trim(),
-      chat_id: document.getElementById('cloudTelegramChatId').value.trim()
+      chat_id: document.getElementById('cloudTelegramChatId').value.trim(),
+      public_url: document.getElementById('cloudTelegramPublicUrl').value.trim()
     },
     ftp: {
       enabled: document.getElementById('cloudFtpEnabled').checked,
