@@ -1,35 +1,25 @@
 import os
 import sys
 import time
-import json
 import re
 import shutil
 import threading
 import subprocess
 import requests
-import logging
 import zipfile
-import ftplib
 import yt_dlp
-from yt_dlp.utils import download_range_func
 
 from core.config import (
-    COOKIES_FILE, POT_PROVIDER_URL, PLAYER_CLIENTS_ENV, DOWNLOAD_DIR, COBALT_URL,
-    APP_VERSION, AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
+    COOKIES_FILE, DOWNLOAD_DIR, COBALT_URL,
+    AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
     CLEANUP_AFTER_HOURS
 )
-import core.state
-from core.state import (
-    JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, BATCH_JOBS, BATCH_LOCK,
-    START_TIME
-)
+from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK
 from core.utils import (
-    cookies_opts, player_client_opts, format_speed, load_config,
-    load_cloud_config, load_downloads_meta, save_downloads_meta,
-    record_download_meta, delete_download_meta, save_queue_state,
-    load_queue_state, get_disk_status, format_bytes, safe_filename,
-    format_for_quality, is_audio_quality, parse_time_to_seconds,
-    safe_download_path, enqueue_job, format_seconds, get_residential_proxy_config,
+    cookies_opts, player_client_opts, format_speed,
+    record_download_meta, save_queue_state,
+    get_disk_status, format_bytes, safe_filename,
+    is_audio_quality, format_seconds, get_residential_proxy_config,
     has_cobalt_youtube_cookies
 )
 from core.plugin_manager import plugin_manager

@@ -1,9 +1,7 @@
-import os
 import threading
 from flask import Flask, request, session
 
 from core.config import get_or_create_flask_secret, APP_VERSION
-from core.state import START_TIME
 from core.downloader import background_queue_worker, cleanup_loop, auto_update_loop
 
 from routes.auth import auth_bp, protect_all_routes

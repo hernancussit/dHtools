@@ -3,13 +3,11 @@ import json
 import time
 import re
 import shutil
-import logging
 import urllib.parse
 import smtplib
 import subprocess
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from flask import send_file
 
 from core.config import (
     CONFIG_FILE, CLOUD_CONFIG_FILE, DOWNLOADS_META_FILE, QUEUE_STATE_FILE,
@@ -157,7 +155,6 @@ def test_residential_proxy_connection(proxy_url: str) -> dict:
         proxy_url = f"socks5h://{proxy_url}"
 
     # 1. Measure direct network ping (TCP RTT) to the proxy endpoint
-    import urllib.parse
     import socket
 
     ping_ms = None

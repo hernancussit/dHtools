@@ -1,27 +1,22 @@
 import os
 import time
-import json
 import uuid
 import logging
 import threading
-import urllib.parse
 import requests
 
 from core.config import (
-    DOWNLOAD_DIR, TELEGRAM_BOT_TOKEN_ENV, TELEGRAM_BOT_ENABLED_ENV,
-    POT_PROVIDER_URL, CLOUD_CONFIG_FILE
+    DOWNLOAD_DIR, TELEGRAM_BOT_TOKEN_ENV, TELEGRAM_BOT_ENABLED_ENV
 )
 from core.state import (
     JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK,
-    TELEGRAM_LINK_TOKENS, TELEGRAM_LINK_LOCK,
     TELEGRAM_ACTIVE_MESSAGES, TELEGRAM_ACTIVE_MESSAGES_LOCK,
     TELEGRAM_MEDIA_CACHE, TELEGRAM_MEDIA_CACHE_LOCK
 )
 from core.utils import (
-    validate_media_url, safe_filename, safe_download_path,
-    enqueue_job, format_bytes, format_seconds,
+    validate_media_url, enqueue_job, format_bytes, format_seconds,
     load_downloads_meta, check_user_storage_quota,
-    get_user_storage_used, load_cloud_config, save_cloud_config,
+    get_user_storage_used, load_cloud_config,
     get_user_by_telegram_chat_id, consume_telegram_link_token,
     unlink_user_telegram
 )

@@ -6,8 +6,8 @@ from flask import Blueprint, render_template, request, send_file, jsonify, Respo
 from core.config import APP_VERSION, DOWNLOAD_DIR
 from core.state import JOBS_LOCK, JOBS
 from core.utils import (
-    load_config, get_disk_status, load_downloads_meta, save_downloads_meta,
-    format_bytes, safe_download_path, delete_download_meta, safe_filename
+    load_config, get_disk_status, load_downloads_meta,
+    format_bytes, delete_download_meta, safe_filename
 )
 from core.downloader import purge_downloads, get_ytdlp_version
 from routes.auth import require_admin
@@ -115,10 +115,6 @@ def api_version():
         "ytdlp_version": get_ytdlp_version(),
     })
 
-
-@ui_bp.route("/api/disk-status")
-def api_disk_status():
-    return jsonify(get_disk_status())
 
 
 @ui_bp.route("/api/cleanup", methods=["POST"])

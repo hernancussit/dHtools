@@ -1,34 +1,25 @@
 import os
-import sys
 import re
-import json
 import time
-import logging
-import threading
 import zipfile
-import shutil
 import uuid
-from flask import Blueprint, request, jsonify, send_file, Response, render_template, abort
+from flask import Blueprint, request, jsonify, send_file, abort
 
-from core.config import DOWNLOAD_DIR, COBALT_URL
+from core.config import DOWNLOAD_DIR
 from core.state import (
     JOBS, JOBS_LOCK, BATCH_JOBS, BATCH_LOCK, QUEUE_LIST, QUEUE_LOCK,
     ACTIVE_WORKER_JOB
 )
 from core.utils import (
-    validate_media_url, is_audio_quality, format_for_quality, format_bytes,
-    load_config, safe_filename, enqueue_job, record_download_meta,
-    delete_download_meta, load_downloads_meta, save_queue_state,
-    safe_download_path, parse_time_to_seconds, cookies_opts,
-    check_user_storage_quota, get_user_storage_used, format_seconds
+    validate_media_url, format_bytes, enqueue_job, load_downloads_meta,
+    save_queue_state, cookies_opts, check_user_storage_quota,
+    get_user_storage_used, format_seconds
 )
 from core.downloader import (
-    run_download, run_download_cascade, append_job_log, purge_downloads,
     get_ytdlp_version, run_pip_update, restart_process_soon,
     extract_with_fallback, normalize_url, detect_platform, is_playlist_url,
     get_deezer_info, get_spotify_info
 )
-from routes.auth import require_admin
 
 api_bp = Blueprint("api_bp", __name__)
 
@@ -58,10 +49,6 @@ def user_quota():
         "is_exceeded": (quota_bytes > 0 and used_bytes >= quota_bytes)
     })
 
-
-@api_bp.route("/api/ytdlp-version")
-def ytdlp_version():
-    return jsonify({"version": get_ytdlp_version()})
 
 
 @api_bp.route("/api/update-ytdlp", methods=["POST"])
@@ -512,20 +499,6 @@ def get_queue():
         "total_queued": len(queued_jobs) + (1 if active_job else 0),
     })
 
-
-@api_bp.route("/api/debug-threads")
-def debug_threads():
-    import traceback
-    res = {}
-    for th in threading.enumerate():
-        frame = sys._current_frames().get(th.ident)
-        stack = traceback.format_stack(frame) if frame else []
-        res[th.name] = {
-            "daemon": th.daemon,
-            "alive": th.is_alive(),
-            "stack": stack,
-        }
-    return jsonify(res)
 
 
 @api_bp.route("/api/queue/move", methods=["POST"])
