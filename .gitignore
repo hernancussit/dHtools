@@ -48,4 +48,10 @@ plugins/google_drive/token.json
 plugins/google_drive/*.credentials.json
 plugins/google_drive/users_data/
 
+!plugins/onedrive/
+plugins/onedrive/config.json
+plugins/onedrive/token.json
+plugins/onedrive/users_data/
+
+
 

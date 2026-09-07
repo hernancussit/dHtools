@@ -1,0 +1,11 @@
+{
+  "id": "onedrive",
+  "name": "Microsoft OneDrive Cloud Sync",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "Sincronización oficial y streaming resumable de descargas con Microsoft OneDrive y SharePoint (cuentas personales y M365).",
+  "icon": "☁️",
+  "status": "official",
+  "enabled": true,
+  "settings_url": "/plugin/onedrive/settings"
+}
