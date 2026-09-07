@@ -14,6 +14,7 @@ from core.config import (
     AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
     CLEANUP_AFTER_HOURS
 )
+import core.state
 from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK
 from core.utils import (
     cookies_opts, player_client_opts, format_speed,
