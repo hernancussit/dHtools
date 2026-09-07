@@ -276,8 +276,8 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
         candidates.append((["web_music", "web", "mweb"], False))
         candidates.append((["web", "mweb"], False))
         if has_cookies:
-            candidates.append((["tv_embedded", "tv_downgraded", "tv"], True))
-        candidates.append((["tv_embedded", "tv_downgraded", "tv"], False))
+            candidates.append((["tv_downgraded", "tv"], True))
+        candidates.append((["tv_downgraded", "tv"], False))
         candidates.append((["default"], has_cookies))
     else:
         candidates.append((["default"], has_cookies))
