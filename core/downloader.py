@@ -15,7 +15,7 @@ from core.config import (
     CLEANUP_AFTER_HOURS
 )
 import core.state
-from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK
+from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, ACTIVE_WORKER_JOB
 from core.utils import (
     cookies_opts, player_client_opts, format_speed,
     record_download_meta, save_queue_state,
