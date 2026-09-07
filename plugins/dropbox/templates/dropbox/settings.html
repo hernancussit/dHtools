@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dropbox Cloud Sync — dHtools</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-surface: #111728;
+      --bg-card: rgba(17, 23, 40, 0.85);
+      --bg-input: #1a2238;
+      --border-color: #263352;
+      --text-primary: #f3f4f6;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-dropbox: #0061fe;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --radius-lg: 14px;
+      --radius-md: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(0, 97, 254, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(38, 51, 82, 0.7);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-brand .icon-badge {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #0061fe, #0045b5);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 15px rgba(0, 97, 254, 0.4);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .header-brand h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header-brand p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+    }
+
+    .btn-back:hover {
+      background: #1e293b;
+      color: var(--text-primary);
+      border-color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert {
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+
+    .alert-error {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      color: #fb7185;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-badge.connected {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-badge.disconnected {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .quota-box {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .progress-bar-container {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0061fe, #06b6d4);
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent-dropbox);
+    }
+
+    .switch-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(38, 51, 82, 0.5);
+    }
+
+    .switch-row:last-child {
+      border-bottom: none;
+    }
+
+    .switch-label h4 {
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .switch-label p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      transition: .3s;
+      border-radius: 999px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-secondary);
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-dropbox);
+      border-color: #06b6d4;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+      background-color: #fff;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0061fe, #0045b5);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 97, 254, 0.3);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.92;
+      box-shadow: 0 6px 16px rgba(0, 97, 254, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: #1e293b;
+      border-color: var(--text-muted);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.25);
+    }
+
+    .uri-box {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .uri-box input {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 24px 0 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-brand">
+        <div class="icon-badge">📦</div>
+        <div>
+          <h1>Dropbox Cloud Sync</h1>
+          <p>Sincronización oficial y streaming resumable de descargas con Dropbox (API v2)</p>
+        </div>
+      </div>
+      <a href="/" class="btn-back">⬅ Volver a dHtools</a>
+    </header>
+
+    {% if request.args.get('connected') %}
+    <div class="alert alert-success">
+      <span>✅</span>
+      <div><strong>¡Conexión Exitosa!</strong> Tu cuenta de Dropbox se ha vinculado correctamente a dHtools.</div>
+    </div>
+    {% endif %}
+
+    {% if auth_error or request.args.get('error') %}
+    <div class="alert alert-error">
+      <span>⚠️</span>
+      <div><strong>Aviso de Autenticación:</strong> {{ auth_error or request.args.get('error') }}</div>
+    </div>
+    {% endif %}
+
+    <!-- ESTADO DE LA CUENTA -->
+    <div class="card">
+      <div class="card-title">
+        <span>Estado de la Cuenta</span>
+        {% if connected %}
+        <span class="status-badge connected">● Conectado</span>
+        {% else %}
+        <span class="status-badge disconnected">○ No Vinculado</span>
+        {% endif %}
+      </div>
+
+      {% if connected and account_info %}
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="font-size:1.05rem; font-weight:600;">{{ account_info.display_name }}</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:2px;">{{ account_info.email or 'Cuenta de Dropbox' }}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary" onclick="testConnection()" id="btnTest">⚡ Probar Conexión</button>
+          <button type="button" class="btn btn-danger" onclick="disconnectAccount()">✕ Desconectar</button>
+        </div>
+      </div>
+
+      {% set pct = 0 %}
+      {% if account_info.quota_total > 0 %}
+        {% set pct = ((account_info.quota_used / account_info.quota_total) * 100) | round(1) %}
+      {% endif %}
+
+      <div class="quota-box">
+        <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
+          <span style="color:var(--text-secondary);">Espacio Utilizado en Dropbox</span>
+          <span style="font-weight:600;">{{ (account_info.quota_used / (1024*1024*1024)) | round(2) }} GB de {{ (account_info.quota_total / (1024*1024*1024)) | round(2) }} GB ({{ pct }}%)</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" style="width: {{ pct }}%;"></div>
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted); text-align:right;">
+          Disponible: {{ (account_info.quota_remaining / (1024*1024*1024)) | round(2) }} GB
+        </div>
+      </div>
+
+      {% else %}
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div style="max-width:550px;">
+          <p style="font-size:0.9rem; color:var(--text-secondary); line-height:1.5;">
+            Conectá tu cuenta de Dropbox para respaldar tus descargas automáticamente o bajo demanda desde la web y el bot de Telegram.
+          </p>
+        </div>
+        <a href="/plugin/{{ plugin_id }}/auth/login" class="btn btn-primary" id="btnLogin">
+          <span>📦</span> <span>Vincular con Dropbox</span>
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- AJUSTES DE SINCRONIZACIÓN -->
+    <form id="settingsForm" onsubmit="saveSettings(event)">
+      <div class="card">
+        <div class="card-title">⚙️ Ajustes de Sincronización y Subida</div>
+
+        <div class="switch-row">
+          <div class="switch-label">
+            <h4>Activar Integración de Dropbox</h4>
+            <p>Habilita la subida de archivos y trabajos hacia Dropbox.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" name="enabled" {% if config.enabled %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div class="switch-label">
+            <h4>Subida Automática Inmediata</h4>
+            <p>Sube automáticamente cada descarga a tu Dropbox al finalizar.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" name="auto_upload" {% if config.auto_upload %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div class="switch-label">
+            <h4>Modo Safe Offload (Subir y Liberar Disco)</h4>
+            <p>Elimina de forma segura el archivo local del VPS una vez confirmada la subida a Dropbox.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" name="safe_offload" {% if config.safe_offload %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(38, 51, 82, 0.5);">
+          <div class="form-group">
+            <label for="folder_path">Carpeta de Destino en Dropbox</label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" name="folder_path" id="folder_path" class="form-control" value="{{ config.folder_path or '/dHtools' }}" placeholder="/dHtools o /Descargas/Videos">
+              {% if connected %}
+              <button type="button" class="btn btn-secondary" onclick="browseFolders()" title="Explorar carpetas en la nube">📁 Explorar</button>
+              {% endif %}
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
+              Si la carpeta no existe, Dropbox la creará automáticamente en la raíz de tu cuenta.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREDENCIALES OAUTH DROPBOX CONSOLE -->
+      <div class="card">
+        <div class="card-title">🔐 Registro de Aplicación en Dropbox App Console</div>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px; line-height:1.5;">
+          Creá una aplicación gratuita en la consola de Dropbox (<a href="https://www.dropbox.com/developers/apps" target="_blank" style="color:var(--accent-cyan);">Dropbox Developers App Console</a>) y pegá aquí tus claves.
+        </p>
+
+        <div class="form-group">
+          <label for="app_key">App Key (Clave de Aplicación)</label>
+          <input type="text" name="app_key" id="app_key" class="form-control" value="{{ config.oauth.app_key or '' }}" placeholder="ej. abc123def456ghi" required>
+        </div>
+
+        <div class="form-group">
+          <label for="app_secret">App Secret (Secreto de Aplicación)</label>
+          <input type="password" name="app_secret" id="app_secret" class="form-control" value="{{ config.oauth.app_secret or '' }}" placeholder="Pegá el App Secret generado en Dropbox">
+        </div>
+
+        <div class="form-group">
+          <label>URI de Redirección Autorizada (Redirect URI)</label>
+          <div class="uri-box">
+            <input type="text" class="form-control" id="redirectUriInput" value="{{ redirect_uri }}" readonly>
+            <button type="button" class="btn btn-secondary" onclick="copyRedirectUri()">📋 Copiar</button>
+          </div>
+          <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
+            Configurá esta URL exacta en tu App de Dropbox bajo la pestaña <em>Settings ➔ OAuth 2 ➔ Redirect URIs</em>.
+          </span>
+        </div>
+
+        <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+          <button type="submit" class="btn btn-primary" id="btnSave">💾 Guardar Configuración</button>
+        </div>
+      </div>
+    </form>
+
+    <footer>
+      dHtools Suite &bull; Plugin Oficial Dropbox Cloud Sync v{{ version }}
+    </footer>
+  </div>
+
+  <script>
+    function copyRedirectUri() {
+      const input = document.getElementById('redirectUriInput');
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      alert('¡URI de redirección copiada al portapapeles!');
+    }
+
+    async function saveSettings(e) {
+      e.preventDefault();
+      const form = document.getElementById('settingsForm');
+      const payload = {
+        enabled: form.querySelector('input[name="enabled"]').checked,
+        auto_upload: form.querySelector('input[name="auto_upload"]').checked,
+        safe_offload: form.querySelector('input[name="safe_offload"]').checked,
+        folder_path: form.querySelector('input[name="folder_path"]').value,
+        app_key: form.querySelector('input[name="app_key"]').value,
+        app_secret: form.querySelector('input[name="app_secret"]').value
+      };
+
+      const btn = document.getElementById('btnSave');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const res = await fetch('/plugin/{{ plugin_id }}/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Configuración guardada exitosamente.');
+          window.location.reload();
+        } else {
+          alert('Error al guardar: ' + (data.error || 'Error desconocido'));
+        }
+      } catch (err) {
+        alert('Error de red al guardar configuración.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Configuración';
+      }
+    }
+
+    async function testConnection() {
+      const btn = document.getElementById('btnTest');
+      btn.disabled = true;
+      btn.textContent = 'Comprobando...';
+      try {
+        const res = await fetch('/plugin/{{ plugin_id }}/api/test', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ ' + data.message);
+        } else {
+          alert('❌ Error probando conexión: ' + (data.error || 'Error desconocido'));
+        }
+      } catch (err) {
+        alert('Error de red probando conexión con Dropbox.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Probar Conexión';
+      }
+    }
+
+    async function disconnectAccount() {
+      if (!confirm('¿Seguro que deseas desconectar tu cuenta de Dropbox?')) return;
+      try {
+        const res = await fetch('/plugin/{{ plugin_id }}/api/disconnect', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = '/plugin/{{ plugin_id }}/settings';
+        }
+      } catch (err) {
+        alert('Error al desconectar cuenta.');
+      }
+    }
+
+    async function browseFolders() {
+      try {
+        const res = await fetch('/plugin/{{ plugin_id }}/api/folders');
+        const data = await res.json();
+        if (data.success && data.folders) {
+          if (data.folders.length === 0) {
+            alert('No se encontraron subcarpetas en la raíz de tu Dropbox. Puedes especificar el nombre de la carpeta arriba y será creada automáticamente.');
+            return;
+          }
+          const folderNames = data.folders.map(f => f.path_display || f.name);
+          const chosen = prompt('Carpetas disponibles en la raíz de tu Dropbox:\n\n' + folderNames.join('\n') + '\n\nEscribe la ruta de la carpeta a utilizar:', document.getElementById('folder_path').value);
+          if (chosen) {
+            document.getElementById('folder_path').value = chosen.startsWith('/') ? chosen : '/' + chosen;
+          }
+        } else {
+          alert('No se pudieron listar las carpetas: ' + (data.error || ''));
+        }
+      } catch (err) {
+        alert('Error de red listando carpetas.');
+      }
+    }
+  </script>
+</body>
+</html>

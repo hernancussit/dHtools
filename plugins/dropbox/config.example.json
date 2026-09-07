@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "auto_upload": false,
+  "safe_offload": false,
+  "folder_path": "/dHtools",
+  "oauth": {
+    "app_key": "",
+    "app_secret": "",
+    "redirect_uri": "",
+    "token_file": "token.json"
+  }
+}

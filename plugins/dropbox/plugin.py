@@ -1,8 +1,8 @@
 """
-Plugin Oficial de Microsoft OneDrive y SharePoint para dHtools.
-Permite sincronizar y respaldar descargas multimedia en OneDrive (cuentas personales y M365)
-con streaming resumable por fragmentos (RAM-safe), modo Safe Offload opcional,
-aislamiento multi-usuario estricto y soporte completo para el bot de Telegram.
+Plugin Oficial de Dropbox para dHtools.
+Permite sincronizar y respaldar descargas multimedia en Dropbox con streaming por fragmentos
+(upload_session, RAM-Safe), modo Safe Offload opcional, aislamiento multi-usuario estricto
+y soporte para el Bot de Telegram.
 """
 
 import os
@@ -21,21 +21,21 @@ from core.config import DOWNLOAD_DIR
 
 # Import local client
 try:
-    from . import onedrive_client
+    from . import dropbox_client
 except (ImportError, ValueError):
-    import onedrive_client
+    import dropbox_client
 
-logger = logging.getLogger("dhtools.plugins.onedrive")
+logger = logging.getLogger("dhtools.plugins.dropbox")
 
 
 class Plugin:
-    """Clase principal del Plugin de Microsoft OneDrive y SharePoint."""
+    """Clase principal del Plugin de Dropbox."""
 
     def __init__(self, manager=None, metadata=None):
         self.manager = manager
         self.metadata = metadata or {}
-        self.plugin_id = self.metadata.get("id", "onedrive")
-        self.name = self.metadata.get("name", "Microsoft OneDrive Cloud Sync")
+        self.plugin_id = self.metadata.get("id", "dropbox")
+        self.name = self.metadata.get("name", "Dropbox Cloud Sync")
         self.version = self.metadata.get("version", "1.0.0")
         self._lock = threading.RLock()
 
@@ -72,7 +72,7 @@ class Plugin:
         return udir
 
     def get_server_config(self) -> Dict[str, Any]:
-        """Carga la configuración base a nivel servidor (para herencia de Client ID / Secret)."""
+        """Carga la configuración base a nivel servidor (para herencia de App Key / App Secret)."""
         with self._lock:
             if os.path.exists(self.config_path):
                 try:
@@ -95,10 +95,8 @@ class Plugin:
                 "enabled": False,
                 "auto_upload": False,
                 "safe_offload": False,
-                "tenant": "common",
-                "folder_id": "",
                 "folder_path": "/dHtools",
-                "oauth": {"client_id": "", "client_secret": "", "redirect_uri": ""}
+                "oauth": {"app_key": "", "app_secret": "", "redirect_uri": ""}
             }
 
     def get_user_config(self, username: str) -> Dict[str, Any]:
@@ -116,26 +114,24 @@ class Plugin:
                     with open(u_cfg_path, "r", encoding="utf-8") as f:
                         u_cfg = json.load(f)
                 except Exception as e:
-                    logger.error(f"Error leyendo config de usuario {safe_u}: {e}")
+                    logger.error(f"Error leyendo config de Dropbox para usuario {safe_u}: {e}")
 
         # Fusionar con valores por defecto del servidor
         merged = {
             "enabled": bool(u_cfg.get("enabled", False)),
             "auto_upload": bool(u_cfg.get("auto_upload", False)),
             "safe_offload": bool(u_cfg.get("safe_offload", False)),
-            "tenant": u_cfg.get("tenant") or server_cfg.get("tenant") or "common",
-            "folder_id": u_cfg.get("folder_id") or "",
             "folder_path": u_cfg.get("folder_path") or server_cfg.get("folder_path") or "/dHtools",
             "oauth": {
-                "client_id": u_cfg.get("oauth", {}).get("client_id") or server_cfg.get("oauth", {}).get("client_id") or "",
-                "client_secret": u_cfg.get("oauth", {}).get("client_secret") or server_cfg.get("oauth", {}).get("client_secret") or "",
+                "app_key": u_cfg.get("oauth", {}).get("app_key") or server_cfg.get("oauth", {}).get("app_key") or "",
+                "app_secret": u_cfg.get("oauth", {}).get("app_secret") or server_cfg.get("oauth", {}).get("app_secret") or "",
                 "redirect_uri": u_cfg.get("oauth", {}).get("redirect_uri") or server_cfg.get("oauth", {}).get("redirect_uri") or ""
             }
         }
         return merged
 
     def save_user_config(self, username: str, new_cfg: Dict[str, Any]) -> bool:
-        """Guarda la configuración personalizada del usuario de forma atómica y segura."""
+        """Guarda la configuración personalizada del usuario en disco."""
         safe_u = (username or "admin").strip().lower()
         u_dir = self.get_user_dir(safe_u)
         u_cfg_path = os.path.join(u_dir, "config.json")
@@ -149,8 +145,8 @@ class Plugin:
                 except Exception:
                     pass
 
-                # Si el usuario es admin y se guardan credenciales OAuth, actualizar config raíz como plantilla
-                if safe_u == "admin" and new_cfg.get("oauth", {}).get("client_id"):
+                # Si el usuario es admin y se guardan credenciales de App, guardar plantilla raíz
+                if safe_u == "admin" and new_cfg.get("oauth", {}).get("app_key"):
                     try:
                         with open(self.config_path, "w", encoding="utf-8") as f:
                             json.dump(new_cfg, f, indent=2, ensure_ascii=False)
@@ -162,11 +158,11 @@ class Plugin:
                         pass
                 return True
             except Exception as e:
-                logger.error(f"Error guardando config de usuario {safe_u}: {e}")
+                logger.error(f"Error guardando config de Dropbox para usuario {safe_u}: {e}")
                 return False
 
     def get_user_token(self, username: str) -> Optional[Dict[str, Any]]:
-        """Recupera el token OAuth guardado para el usuario."""
+        """Recupera el token OAuth de Dropbox para el usuario."""
         u_dir = self.get_user_dir(username)
         t_path = os.path.join(u_dir, "token.json")
         with self._lock:
@@ -177,7 +173,7 @@ class Plugin:
                     data = json.load(f)
                     return data if isinstance(data, dict) and data.get("access_token") else None
             except Exception as e:
-                logger.error(f"Error leyendo token de {username}: {e}")
+                logger.error(f"Error leyendo token de Dropbox de {username}: {e}")
                 return None
 
     def save_user_token(self, username: str, token_data: Dict[str, Any]) -> bool:
@@ -194,7 +190,7 @@ class Plugin:
                     pass
                 return True
             except Exception as e:
-                logger.error(f"Error guardando token de {username}: {e}")
+                logger.error(f"Error guardando token de Dropbox de {username}: {e}")
                 return False
 
     def delete_user_token(self, username: str) -> bool:
@@ -207,7 +203,7 @@ class Plugin:
                     os.remove(t_path)
                     return True
                 except Exception as e:
-                    logger.error(f"Error eliminando token de {username}: {e}")
+                    logger.error(f"Error eliminando token de Dropbox de {username}: {e}")
                     return False
         return True
 
@@ -220,24 +216,22 @@ class Plugin:
         token_data = self.get_user_token(username)
 
         if not token_data or not token_data.get("access_token"):
-            return False, None, "Cuenta de Microsoft OneDrive no vinculada o sin sesión activa."
+            return False, None, "Cuenta de Dropbox no vinculada o sin sesión activa."
 
-        client_id = cfg.get("oauth", {}).get("client_id", "").strip()
-        client_secret = cfg.get("oauth", {}).get("client_secret", "").strip()
-        tenant = cfg.get("tenant", "common")
+        app_key = cfg.get("oauth", {}).get("app_key", "").strip()
+        app_secret = cfg.get("oauth", {}).get("app_secret", "").strip()
 
-        if not client_id:
-            return False, None, "Client ID de Microsoft no configurado."
+        if not app_key:
+            return False, None, "App Key de Dropbox no configurada."
 
-        ok, updated_token, refreshed = onedrive_client.refresh_token_if_needed(
-            client_id=client_id,
-            client_secret=client_secret,
-            token_data=token_data,
-            tenant=tenant
+        ok, updated_token, refreshed = dropbox_client.refresh_token_if_needed(
+            app_key=app_key,
+            app_secret=app_secret,
+            token_data=token_data
         )
 
         if not ok:
-            return False, None, updated_token.get("error", "Error al validar o renovar sesión de OneDrive.")
+            return False, None, updated_token.get("error", "Error al validar o renovar sesión de Dropbox.")
 
         if refreshed:
             self.save_user_token(username, updated_token)
@@ -259,17 +253,17 @@ class Plugin:
             return "admin"
 
     def _get_redirect_uri(self) -> str:
-        """Determina la URL de redirección canónica para OAuth2 de Microsoft."""
+        """Determina la URL de redirección canónica para OAuth2 de Dropbox."""
         proto = request.headers.get("X-Forwarded-Proto", request.scheme)
         host = request.headers.get("X-Forwarded-Host", request.host)
         return f"{proto}://{host}/plugin/{self.plugin_id}/auth/callback"
 
     # =========================================================================
-    # PROTOCOLO CLOUD STORAGE PROVIDER (INTEROPERABILIDAD CON DHTOOLS)
+    # PROTOCOLO CLOUD STORAGE PROVIDER (DHTOOLS INTEROP)
     # =========================================================================
 
     def get_download_cloud_option(self, username: str = None) -> Dict[str, Any]:
-        """Informa a dHtools y al Bot de Telegram el estado y disponibilidad de OneDrive."""
+        """Informa a dHtools y al Bot de Telegram el estado y disponibilidad de Dropbox."""
         target_user = (username or self._get_request_username()).strip().lower()
         cfg = self.get_user_config(target_user)
         token = self.get_user_token(target_user)
@@ -287,8 +281,8 @@ class Plugin:
 
         return {
             "plugin_id": self.plugin_id,
-            "name": "Microsoft OneDrive",
-            "icon": "☁️",
+            "name": "Dropbox",
+            "icon": "📦",
             "enabled": is_enabled,
             "auto_upload": auto_up,
             "status_label": status,
@@ -302,8 +296,8 @@ class Plugin:
         progress_callback=None
     ) -> Tuple[bool, Dict[str, Any]]:
         """
-        Sube un trabajo de descarga completado a la cuenta de OneDrive del usuario.
-        Aplica modo Safe Offload si está activo en la configuración personal.
+        Sube una descarga a la cuenta de Dropbox del usuario.
+        Aplica modo Safe Offload si está activo.
         """
         target_user = (username or "admin").strip().lower()
         cfg = self.get_user_config(target_user)
@@ -311,7 +305,7 @@ class Plugin:
         # 1. Obtener token válido
         ok, access_token, err = self.get_valid_token_for_user(target_user)
         if not ok or not access_token:
-            return False, {"error": err or "No hay sesión activa con OneDrive."}
+            return False, {"error": err or "No hay sesión activa con Dropbox."}
 
         # 2. Localizar el archivo en disco
         file_path = None
@@ -341,15 +335,13 @@ class Plugin:
         if not file_path or not os.path.exists(file_path):
             return False, {"error": f"No se encontró el archivo local para la descarga '{job_id}'."}
 
-        # 3. Subir archivo a OneDrive de forma resumable
-        folder_id = cfg.get("folder_id")
+        # 3. Subir archivo a Dropbox
         folder_path = cfg.get("folder_path") or "/dHtools"
 
-        up_ok, up_res = onedrive_client.upload_file_resumable(
+        up_ok, up_res = dropbox_client.upload_file_resumable(
             access_token=access_token,
             file_path=file_path,
-            folder_id=folder_id,
-            folder_path=folder_path,
+            dropbox_folder=folder_path,
             progress_callback=progress_callback
         )
 
@@ -363,27 +355,27 @@ class Plugin:
         meta = load_downloads_meta()
         if job_id in meta:
             meta[job_id]["cloud_synced"] = True
-            meta[job_id]["cloud_provider"] = "onedrive"
+            meta[job_id]["cloud_provider"] = "dropbox"
             meta[job_id]["cloud_link"] = web_link
             if safe_offload:
                 meta[job_id]["offloaded"] = True
-                meta[job_id]["offload_provider"] = "onedrive"
+                meta[job_id]["offload_provider"] = "dropbox"
             save_downloads_meta(meta)
 
         if safe_offload:
             try:
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                    logger.info(f"[Safe Offload] Archivo local eliminado tras subida a OneDrive: {file_path}")
+                    logger.info(f"[Safe Offload] Archivo local eliminado tras subida a Dropbox: {file_path}")
             except Exception as ex:
-                logger.warning(f"[Safe Offload] No se pudo borrar archivo local: {ex}")
+                logger.warning(f"[Safe Offload] No se pudo borrar archivo local tras subida a Dropbox: {ex}")
 
         return True, {
             "success": True,
             "filename": file_name,
             "web_link": web_link,
             "offloaded": safe_offload,
-            "provider": "onedrive"
+            "provider": "dropbox"
         }
 
     def upload_file_for_user(
@@ -392,7 +384,7 @@ class Plugin:
         username: str,
         progress_callback=None
     ) -> Tuple[bool, Dict[str, Any]]:
-        """Sube cualquier archivo arbitrario en disco a la nube de OneDrive del usuario."""
+        """Sube cualquier archivo arbitrario en disco a Dropbox."""
         if not filepath or not os.path.isfile(filepath):
             return False, {"error": f"El archivo no existe: '{filepath}'"}
 
@@ -401,26 +393,24 @@ class Plugin:
 
         ok, access_token, err = self.get_valid_token_for_user(target_user)
         if not ok or not access_token:
-            return False, {"error": err or "OneDrive no autenticado."}
+            return False, {"error": err or "Dropbox no autenticado."}
 
-        folder_id = cfg.get("folder_id")
         folder_path = cfg.get("folder_path") or "/dHtools"
 
-        return onedrive_client.upload_file_resumable(
+        return dropbox_client.upload_file_resumable(
             access_token=access_token,
             file_path=filepath,
-            folder_id=folder_id,
-            folder_path=folder_path,
+            dropbox_folder=folder_path,
             progress_callback=progress_callback
         )
 
     def get_user_nav_item(self, username: str = None) -> Dict[str, Any]:
-        """Genera el acceso directo dinámico para la barra lateral y menú móvil."""
+        """Genera el acceso directo dinámico para la barra lateral."""
         return {
             "id": self.plugin_id,
-            "title": "OneDrive",
-            "full_title": "Microsoft OneDrive Sync",
-            "icon": "☁️",
+            "title": "Dropbox",
+            "full_title": "Dropbox Cloud Sync",
+            "icon": "📦",
             "url": f"/plugin/{self.plugin_id}/settings"
         }
 
@@ -435,7 +425,7 @@ class Plugin:
         logger.info(f"Plugin {self.name} apagado.")
 
     def register_routes(self, app):
-        """Registra las rutas del Blueprint del plugin bajo /plugin/onedrive/."""
+        """Registra las rutas del Blueprint del plugin bajo /plugin/dropbox/."""
         bp = Blueprint(
             f"plugin_{self.plugin_id}",
             __name__,
@@ -449,16 +439,16 @@ class Plugin:
             token = self.get_user_token(username)
 
             connected = False
-            drive_info = None
+            account_info = None
             auth_error = None
 
             if token and token.get("access_token"):
                 ok, access_token, err = self.get_valid_token_for_user(username)
                 if ok and access_token:
                     connected = True
-                    i_ok, i_data = onedrive_client.get_user_and_drive_info(access_token)
+                    i_ok, i_data = dropbox_client.get_account_and_space_info(access_token)
                     if i_ok:
-                        drive_info = i_data
+                        account_info = i_data
                     else:
                         auth_error = i_data.get("error")
                 else:
@@ -467,13 +457,13 @@ class Plugin:
             redirect_uri = self._get_redirect_uri()
 
             return render_template(
-                "onedrive/settings.html",
+                "dropbox/settings.html",
                 plugin_id=self.plugin_id,
                 name=self.name,
                 version=self.version,
                 config=cfg,
                 connected=connected,
-                drive_info=drive_info,
+                account_info=account_info,
                 auth_error=auth_error,
                 redirect_uri=redirect_uri,
                 username=username
@@ -488,35 +478,30 @@ class Plugin:
             current_cfg["enabled"] = bool(data.get("enabled", False))
             current_cfg["auto_upload"] = bool(data.get("auto_upload", False))
             current_cfg["safe_offload"] = bool(data.get("safe_offload", False))
-            current_cfg["tenant"] = (data.get("tenant") or "common").strip()
-            current_cfg["folder_id"] = (data.get("folder_id") or "").strip()
             current_cfg["folder_path"] = (data.get("folder_path") or "/dHtools").strip()
 
-            # Solo actualizar client_id/client_secret si fueron enviados expresamente
             oauth_cfg = current_cfg.setdefault("oauth", {})
-            if "client_id" in data:
-                oauth_cfg["client_id"] = str(data["client_id"]).strip()
-            if "client_secret" in data and str(data["client_secret"]).strip():
-                oauth_cfg["client_secret"] = str(data["client_secret"]).strip()
+            if "app_key" in data:
+                oauth_cfg["app_key"] = str(data["app_key"]).strip()
+            if "app_secret" in data and str(data["app_secret"]).strip():
+                oauth_cfg["app_secret"] = str(data["app_secret"]).strip()
 
             ok = self.save_user_config(username, current_cfg)
             if ok:
-                return jsonify({"success": True, "message": "Configuración de OneDrive guardada correctamente."})
+                return jsonify({"success": True, "message": "Configuración de Dropbox guardada correctamente."})
             return jsonify({"success": False, "error": "No se pudo guardar la configuración en disco."}), 500
 
         @bp.route("/auth/login")
         def auth_login():
             username = self._get_request_username()
             cfg = self.get_user_config(username)
-            client_id = cfg.get("oauth", {}).get("client_id", "").strip()
+            app_key = cfg.get("oauth", {}).get("app_key", "").strip()
 
-            if not client_id:
-                return redirect(f"/plugin/{self.plugin_id}/settings?error=client_id_required")
+            if not app_key:
+                return redirect(f"/plugin/{self.plugin_id}/settings?error=app_key_required")
 
             redirect_uri = self._get_redirect_uri()
-            tenant = cfg.get("tenant", "common")
 
-            # State contiene el usuario para verificar en el callback
             state_data = {
                 "u": username,
                 "t": int(time.time()),
@@ -525,11 +510,10 @@ class Plugin:
             import base64
             state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
 
-            auth_url = onedrive_client.get_authorization_url(
-                client_id=client_id,
+            auth_url = dropbox_client.get_authorization_url(
+                app_key=app_key,
                 redirect_uri=redirect_uri,
-                state=state,
-                tenant=tenant
+                state=state
             )
             return redirect(auth_url)
 
@@ -554,21 +538,19 @@ class Plugin:
                 username = self._get_request_username()
 
             cfg = self.get_user_config(username)
-            client_id = cfg.get("oauth", {}).get("client_id", "").strip()
-            client_secret = cfg.get("oauth", {}).get("client_secret", "").strip()
-            tenant = cfg.get("tenant", "common")
+            app_key = cfg.get("oauth", {}).get("app_key", "").strip()
+            app_secret = cfg.get("oauth", {}).get("app_secret", "").strip()
             redirect_uri = self._get_redirect_uri()
 
-            ok, token_res = onedrive_client.exchange_code_for_token(
-                client_id=client_id,
-                client_secret=client_secret,
+            ok, token_res = dropbox_client.exchange_code_for_token(
+                app_key=app_key,
+                app_secret=app_secret,
                 code=code,
-                redirect_uri=redirect_uri,
-                tenant=tenant
+                redirect_uri=redirect_uri
             )
 
             if not ok:
-                err_msg = token_res.get("error", "Fallo al canjear código por token")
+                err_msg = token_res.get("error", "Fallo al canjear código por token de Dropbox")
                 return redirect(f"/plugin/{self.plugin_id}/settings?error={urllib.parse.quote(err_msg)}")
 
             # Guardar token y activar integración
@@ -587,7 +569,7 @@ class Plugin:
             cfg["enabled"] = False
             self.save_user_config(username, cfg)
 
-            return jsonify({"success": True, "message": "Cuenta de Microsoft OneDrive desconectada exitosamente."})
+            return jsonify({"success": True, "message": "Cuenta de Dropbox desconectada exitosamente."})
 
         @bp.route("/api/test", methods=["POST"])
         def api_test_connection():
@@ -596,13 +578,13 @@ class Plugin:
             if not ok or not access_token:
                 return jsonify({"success": False, "error": err or "No hay sesión activa."}), 400
 
-            i_ok, i_data = onedrive_client.get_user_and_drive_info(access_token)
+            i_ok, i_data = dropbox_client.get_account_and_space_info(access_token)
             if not i_ok:
                 return jsonify({"success": False, "error": i_data.get("error")}), 502
 
             return jsonify({
                 "success": True,
-                "message": f"Conexión exitosa con la cuenta de {i_data.get('display_name')} ({i_data.get('email')}).",
+                "message": f"Conexión exitosa con Dropbox: {i_data.get('display_name')} ({i_data.get('email')}).",
                 "info": i_data
             })
 
@@ -613,8 +595,8 @@ class Plugin:
             if not ok or not access_token:
                 return jsonify({"success": False, "error": err or "No hay sesión activa."}), 400
 
-            parent_id = request.args.get("parent_id")
-            f_ok, f_data = onedrive_client.list_folders(access_token, parent_id=parent_id)
+            folder_path = request.args.get("path", "")
+            f_ok, f_data = dropbox_client.list_folders(access_token, folder_path=folder_path)
             if not f_ok:
                 return jsonify({"success": False, "error": f_data.get("error")}), 502
 
@@ -626,8 +608,8 @@ class Plugin:
             ok, res = self.upload_job_for_user(job_id=job_id, username=username)
             if ok:
                 return jsonify({"success": True, "result": res})
-            return jsonify({"success": False, "error": res.get("error", "Error desconocido subiendo a OneDrive")}), 500
+            return jsonify({"success": False, "error": res.get("error", "Error subiendo a Dropbox")}), 500
 
-        # Registrar el blueprint en la aplicación Flask
+        # Registrar el blueprint en Flask
         app.register_blueprint(bp, url_prefix=f"/plugin/{self.plugin_id}")
         logger.info(f"Rutas de {self.name} registradas bajo /plugin/{self.plugin_id}/")

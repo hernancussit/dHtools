@@ -1,0 +1,11 @@
+{
+  "id": "dropbox",
+  "name": "Dropbox Cloud Sync",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "Sincronización oficial y streaming resumable de descargas con Dropbox (API v2).",
+  "icon": "📦",
+  "status": "official",
+  "enabled": true,
+  "settings_url": "/plugin/dropbox/settings"
+}

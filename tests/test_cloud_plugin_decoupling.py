@@ -104,7 +104,7 @@ class TestCloudPluginDecoupling(unittest.TestCase):
         self.assertIn("desactivada", res["error"])
 
         # Plugin inexistente
-        ok, res = self.manager.upload_job_to_cloud("dropbox", "job123", "alice")
+        ok, res = self.manager.upload_job_to_cloud("mega_storage", "job123", "alice")
         self.assertFalse(ok)
         self.assertIn("no disponible", res["error"])
 

@@ -53,5 +53,11 @@ plugins/onedrive/config.json
 plugins/onedrive/token.json
 plugins/onedrive/users_data/
 
+!plugins/dropbox/
+plugins/dropbox/config.json
+plugins/dropbox/token.json
+plugins/dropbox/users_data/
+
+
 
 
