@@ -575,6 +575,18 @@ class PluginManager:
                 "error": str(e)
             }
 
+    def restart_process(self, delay: float = 1.5) -> None:
+        """
+        [EXPERIMENTAL] Solicita un reinicio ordenado del proceso del servidor (Docker / Gunicorn)
+        con un retardo de cortesía en segundos para permitir responder a la petición actual.
+        """
+        try:
+            from core.downloader import restart_process_soon
+            logger.info(f"Plugin solicitó reinicio del sistema en {delay}s...")
+            restart_process_soon(delay)
+        except Exception as e:
+            logger.error(f"Error al solicitar reinicio de proceso desde plugin: {e}", exc_info=True)
+
     def _ensure_git_safe_directory(self, path: Optional[str] = None):
         """Configura safe.directory en Git para evitar errores de permisos en contenedores."""
         try:

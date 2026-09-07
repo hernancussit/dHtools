@@ -202,6 +202,28 @@ class TestPluginGitHubUpdates(unittest.TestCase):
                     self.assertTrue(up_data["success"])
                     self.assertEqual(len(up_data["updates"]), 1)
 
+                # 3. POST /api/admin/plugins/<plugin_id>/update triggers restart_process_soon(1.5)
+                with patch("routes.admin.restart_process_soon") as mock_restart, \
+                     patch.object(plugin_manager, "update_plugin", return_value=(True, "Plugin actualizado", {"head": "123"})):
+                    res_post = client.post("/api/admin/plugins/cloud_bot/update")
+                    self.assertEqual(res_post.status_code, 200)
+                    self.assertTrue(res_post.get_json()["success"])
+                    mock_restart.assert_called_once_with(1.5)
+
+                # 4. POST /api/admin/plugins/update-all triggers restart_process_soon(1.5)
+                with patch("routes.admin.restart_process_soon") as mock_restart_all, \
+                     patch.object(plugin_manager, "check_all_plugin_updates", return_value=[{"plugin_id": "cloud_bot", "update_available": True, "can_update": True}]), \
+                     patch.object(plugin_manager, "update_plugin", return_value=(True, "Plugin actualizado", {"head": "123"})):
+                    res_all = client.post("/api/admin/plugins/update-all")
+                    self.assertEqual(res_all.status_code, 200)
+                    self.assertTrue(res_all.get_json()["success"])
+                    mock_restart_all.assert_called_once_with(1.5)
+
+                # 5. SDK helper method restart_process
+                with patch("core.downloader.restart_process_soon") as mock_sdk_restart:
+                    plugin_manager.restart_process(delay=2.0)
+                    mock_sdk_restart.assert_called_once_with(2.0)
+
         finally:
             plugin_manager.plugins_dir = old_dir
             plugin_manager.discover_and_load_plugins()

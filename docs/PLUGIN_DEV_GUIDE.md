@@ -387,6 +387,12 @@ Diccionario con todos los plugins descubiertos en el sistema y su estado.
 #### 10. `self.manager.plugins_dir -> str`
 Ruta absoluta al directorio `/plugins` en el servidor o contenedor.
 
+#### 11. `self.manager.restart_process(delay: float = 1.5) -> None`
+Solicita un reinicio ordenado y asíncrono del proceso del servidor (Docker / Gunicorn) con un retardo de cortesía en segundos (por defecto `1.5`s). Permite que la respuesta HTTP actual se envíe al cliente antes de que el proceso se reinicie para recargar módulos de Python, plantillas y rutas en memoria.
+
+> [!TIP]
+> **Reinicio Automático en Actualizaciones**: Los endpoints de administración `/api/admin/plugins/<plugin_id>/update` y `/api/admin/plugins/update-all` ejecutan automáticamente `restart_process_soon(1.5)` tras completar una actualización exitosa desde GitHub, asegurando que todos los archivos nuevos se carguen sin requerir reinicios manuales de Docker por SSH.
+
 ---
 
 ## ☁️ 6. Protocolo Oficial de Proveedores de Almacenamiento en la Nube (Cloud Storage)

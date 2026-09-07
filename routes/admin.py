@@ -1621,6 +1621,8 @@ def admin_plugin_update(plugin_id: str):
     """[EXPERIMENTAL] Ejecuta la actualización de un plugin específico desde GitHub."""
     from core.plugin_manager import plugin_manager
     success, message, details = plugin_manager.update_plugin(plugin_id)
+    if success:
+        restart_process_soon(1.5)
     return jsonify({
         "success": success,
         "experimental": True,
@@ -1647,6 +1649,9 @@ def admin_plugins_update_all():
             else:
                 fail_count += 1
             results.append({"plugin_id": pid, "success": ok, "message": msg, "details": det})
+
+    if success_count > 0:
+        restart_process_soon(1.5)
 
     return jsonify({
         "success": fail_count == 0,
