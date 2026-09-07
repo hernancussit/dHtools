@@ -428,10 +428,10 @@ class Plugin:
     # CICLO DE VIDA Y RUTAS WEB (FLASK BLUEPRINT)
     # =========================================================================
 
-    def on_startup(self):
+    def on_startup(self, *args, **kwargs):
         logger.info(f"Plugin {self.name} v{self.version} iniciado correctamente.")
 
-    def on_shutdown(self):
+    def on_shutdown(self, *args, **kwargs):
         logger.info(f"Plugin {self.name} apagado.")
 
     def register_routes(self, app):
