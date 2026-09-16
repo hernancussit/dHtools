@@ -24,6 +24,7 @@ from core.utils import (
     load_cloud_config, save_cloud_config, safe_download_path, format_bytes,
     send_system_email, load_downloads_meta, delete_download_meta,
     get_residential_proxy_config, save_residential_proxy_config,
+    get_download_proxy_config, save_download_proxy_config,
     test_residential_proxy_connection, sync_netscape_to_cobalt_json,
     get_cobalt_cookies_status
 )
@@ -759,26 +760,37 @@ def admin_smtp_test():
     return jsonify({"message": f"¡Correo de prueba enviado con éxito a {to_email}!"})
 
 
+@admin_bp.route("/api/admin/proxy", methods=["GET", "POST"])
 @admin_bp.route("/api/admin/residential-proxy", methods=["GET", "POST"])
 @require_admin
 def admin_residential_proxy():
     if request.method == "POST":
         data = request.get_json(force=True) or {}
-        proxy_cfg = get_residential_proxy_config()
-        proxy_cfg["enabled"] = bool(data.get("enabled", False))
+        proxy_cfg = get_download_proxy_config()
         
+        # Modo: "disabled" | "failsafe" | "always"
+        mode = data.get("mode")
+        if mode in ("disabled", "failsafe", "always"):
+            proxy_cfg["mode"] = mode
+        elif "enabled" in data:
+            if data.get("enabled"):
+                proxy_cfg["mode"] = "failsafe" if data.get("auto_fallback", True) else "always"
+            else:
+                proxy_cfg["mode"] = "disabled"
+
         new_url = str(data.get("url", "")).strip()
         if new_url and "••••" not in new_url:
             proxy_cfg["url"] = new_url
         elif not new_url:
             proxy_cfg["url"] = ""
 
-        proxy_cfg["auto_fallback"] = bool(data.get("auto_fallback", True))
-        proxy_cfg["fallback_on_quality_loss"] = bool(data.get("fallback_on_quality_loss", True))
-        save_residential_proxy_config(proxy_cfg)
-        return jsonify({"message": "Configuración del Enlace Residencial guardada exitosamente."})
+        if "fallback_on_quality_loss" in data:
+            proxy_cfg["fallback_on_quality_loss"] = bool(data.get("fallback_on_quality_loss", True))
 
-    res_info = dict(get_residential_proxy_config())
+        save_download_proxy_config(proxy_cfg)
+        return jsonify({"message": "Configuración del Proxy de Descargas guardada exitosamente."})
+
+    res_info = dict(get_download_proxy_config())
     raw_url = res_info.get("url", "")
     if "@" in raw_url and "://" in raw_url:
         scheme, rest = raw_url.split("://", 1)
@@ -791,9 +803,13 @@ def admin_residential_proxy():
     else:
         res_info["url_masked"] = raw_url
 
-    return jsonify({"residential_proxy": res_info})
+    return jsonify({
+        "residential_proxy": res_info,
+        "download_proxy": res_info
+    })
 
 
+@admin_bp.route("/api/admin/proxy/test", methods=["POST"])
 @admin_bp.route("/api/admin/residential-proxy/test", methods=["POST"])
 @require_admin
 def admin_residential_proxy_test():
@@ -801,7 +817,7 @@ def admin_residential_proxy_test():
     url_to_test = str(data.get("url", "")).strip()
     
     if not url_to_test or "••••" in url_to_test:
-        saved = get_residential_proxy_config()
+        saved = get_download_proxy_config()
         url_to_test = saved.get("url", "")
 
     if not url_to_test:
@@ -809,7 +825,7 @@ def admin_residential_proxy_test():
 
     result = test_residential_proxy_connection(url_to_test)
     if not result.get("success"):
-        return jsonify({"error": result.get("message", "Fallo al conectar con el proxy residencial.")}), 400
+        return jsonify({"error": result.get("message", "Fallo al conectar con el proxy.")}), 400
 
     return jsonify(result)
 

@@ -836,43 +836,68 @@
         </div>
       </div>
 
-      <!-- 🛰️ Enlace Residencial de Respaldo (Túnel / Proxy Failsafe) -->
+      <!-- 🌐 Proxy de Red para Descargas (SOCKS5 / HTTP / Residencial) -->
       <div class="card" style="border-left: 3px solid var(--primary);">
         <div class="card-title">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span>🛰️ Enlace Residencial de Respaldo (Túnel / Proxy Failsafe)</span>
-            <span class="brand-badge" style="font-size:0.75rem; background:rgba(0, 240, 255, 0.15); color:var(--primary); border:1px solid var(--primary);">Tier 4 Failsafe</span>
+            <span>🌐 Proxy de Red para Descargas</span>
+            <span class="brand-badge" id="badgeProxyStatus" style="font-size:0.75rem; background:rgba(0, 240, 255, 0.15); color:var(--primary); border:1px solid var(--primary);">Directo (Sin proxy)</span>
           </div>
-          <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
-            <input type="checkbox" id="resProxyEnabled"> Habilitar Respaldo
-          </label>
         </div>
         <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
-          Ruta de último recurso para eludir bloqueos antibot, degradación forzada a 360p (SABR) y restricciones de IP de datacenter en YouTube. Se activa <strong>únicamente cuando los métodos directos del VPS fallan</strong>, protegiendo tu ancho de banda residencial en descargas normales.
+          Configurá cómo enruta esta instalación el tráfico de descargas. Cada instancia de dHtools es autónoma e independiente: podés operar de forma directa por tu VPS, usar un proxy dedicado/comercial o vincular un enlace residencial como respaldo ante bloqueos antibot.
         </p>
 
         <form id="formResProxyConfig">
+          <!-- Selector de Modo de Enrutamiento -->
+          <div style="margin-bottom:16px;">
+            <label style="font-size:0.85rem; font-weight:600; margin-bottom:8px; display:block;">Modo de Enrutamiento del Proxy</label>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+              
+              <label class="proxy-mode-card" id="cardModeDisabled" style="border:1px solid var(--border); border-radius:8px; padding:12px; cursor:pointer; background:#090e1a; display:flex; gap:10px; align-items:flex-start; transition: border-color 0.2s;">
+                <input type="radio" name="resProxyMode" value="disabled" checked style="margin-top:3px;">
+                <div>
+                  <div style="font-weight:600; font-size:0.85rem; color:var(--text);">⚪ Desactivado (Descargas Directas)</div>
+                  <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">El tráfico sale 100% directo por la conexión y la IP de este servidor/VPS. No utiliza ningún proxy.</div>
+                </div>
+              </label>
+
+              <label class="proxy-mode-card" id="cardModeFailsafe" style="border:1px solid var(--border); border-radius:8px; padding:12px; cursor:pointer; background:#090e1a; display:flex; gap:10px; align-items:flex-start; transition: border-color 0.2s;">
+                <input type="radio" name="resProxyMode" value="failsafe" style="margin-top:3px;">
+                <div>
+                  <div style="font-weight:600; font-size:0.85rem; color:#facc15;">🟡 Solo Respaldo / Failsafe (Tier 4)</div>
+                  <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Sale directo por el servidor, y solo se activa como último recurso ante bloqueos antibot o caída forzada a 360p (SABR).</div>
+                </div>
+              </label>
+
+              <label class="proxy-mode-card" id="cardModeAlways" style="border:1px solid var(--border); border-radius:8px; padding:12px; cursor:pointer; background:#090e1a; display:flex; gap:10px; align-items:flex-start; transition: border-color 0.2s;">
+                <input type="radio" name="resProxyMode" value="always" style="margin-top:3px;">
+                <div>
+                  <div style="font-weight:600; font-size:0.85rem; color:#10b981;">🟢 Siempre Activo (Proxy Global)</div>
+                  <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Todas las extracciones y descargas salen obligatoriamente por el proxy configurado, protegiendo la IP del host.</div>
+                </div>
+              </label>
+
+            </div>
+          </div>
+
           <div style="display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:12px;">
             <div class="form-group">
               <label style="display:flex; justify-content:space-between; align-items:center;">
-                <span>URL del Proxy SOCKS5 / HTTP Residencial</span>
-                <span style="font-size:0.75rem; color:var(--muted);">Formatos: <code>socks5h://IP_FIJA:PUERTO</code> o <code>socks5h://user:pass@host:port</code></span>
+                <span>URL del Proxy (SOCKS5 / SOCKS5h / HTTP / HTTPS)</span>
+                <span style="font-size:0.75rem; color:var(--muted);">Formatos: <code>socks5h://IP:PUERTO</code> o <code>socks5h://user:pass@host:port</code></span>
               </label>
               <div style="display:flex; gap:8px;">
-                <input type="text" id="resProxyUrl" placeholder="socks5h://190.xxx.xxx.xxx:28443" style="flex:1;">
+                <input type="text" id="resProxyUrl" placeholder="socks5h://usuario:password@proxy.ejemplo.com:1080" style="flex:1;">
                 <button type="button" id="btnToggleResProxySecret" class="btn btn-secondary btn-sm" title="Ocultar / Mostrar credenciales">👁️</button>
               </div>
             </div>
           </div>
 
-          <div style="background:#090e1a; padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:14px; display:flex; flex-direction:column; gap:8px;">
-            <label style="margin:0; display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem;">
-              <input type="checkbox" id="resProxyAutoFallback" checked>
-              <span><strong>Activar automáticamente como Failsafe:</strong> Si yt-dlp y Cobalt fallan con errores de bot o bloqueo en el VPS, derivar a este enlace.</span>
-            </label>
+          <div id="proxyOptionsContainer" style="background:#090e1a; padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:14px; display:flex; flex-direction:column; gap:8px;">
             <label style="margin:0; display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem;">
               <input type="checkbox" id="resProxyQualityFallback" checked>
-              <span><strong>Protección de Calidad Full HD (SABR):</strong> Si el video solicitado es HD/1080p pero el servidor directo solo puede obtener 360p, escalar automáticamente al enlace residencial.</span>
+              <span><strong>Protección de Calidad Full HD (SABR 360p):</strong> Si se solicita calidad HD/1080p pero el servidor directo solo puede obtener 360p en YouTube, escalar automáticamente al proxy.</span>
             </label>
           </div>
 
@@ -2976,26 +3001,75 @@ document.getElementById('btnTestSmtp')?.addEventListener('click', async () => {
   }
 });
 
-// 7. Residential Proxy Management (Residential Fallback / Failsafe)
+// 7. Download Proxy Management (Direct / Failsafe / Always)
+function updateProxyModeUI(selectedMode) {
+  const badge = document.getElementById('badgeProxyStatus');
+  const cards = {
+    disabled: document.getElementById('cardModeDisabled'),
+    failsafe: document.getElementById('cardModeFailsafe'),
+    always: document.getElementById('cardModeAlways')
+  };
+  Object.keys(cards).forEach(mode => {
+    const card = cards[mode];
+    if (card) {
+      if (mode === selectedMode) {
+        card.style.borderColor = mode === 'always' ? '#10b981' : (mode === 'failsafe' ? '#facc15' : 'var(--primary)');
+        card.style.background = 'rgba(15, 23, 42, 0.8)';
+      } else {
+        card.style.borderColor = 'var(--border)';
+        card.style.background = '#090e1a';
+      }
+    }
+  });
+
+  if (badge) {
+    if (selectedMode === 'always') {
+      badge.textContent = '🟢 Proxy Global (Activo)';
+      badge.style.borderColor = '#10b981';
+      badge.style.color = '#10b981';
+      badge.style.background = 'rgba(16, 185, 129, 0.15)';
+    } else if (selectedMode === 'failsafe') {
+      badge.textContent = '🟡 Failsafe (Tier 4)';
+      badge.style.borderColor = '#facc15';
+      badge.style.color = '#facc15';
+      badge.style.background = 'rgba(250, 204, 21, 0.15)';
+    } else {
+      badge.textContent = 'Directo (Sin proxy)';
+      badge.style.borderColor = 'var(--border)';
+      badge.style.color = 'var(--muted)';
+      badge.style.background = 'rgba(255, 255, 255, 0.05)';
+    }
+  }
+}
+
+document.querySelectorAll('input[name="resProxyMode"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    updateProxyModeUI(e.target.value);
+  });
+});
+
 async function loadResidentialProxyConfig() {
   try {
-    const res = await fetch('/api/admin/residential-proxy');
+    const res = await fetch('/api/admin/proxy');
     if (!res.ok) return;
     const data = await res.json();
-    const cfg = data.residential_proxy || {};
-    const enabledEl = document.getElementById('resProxyEnabled');
+    const cfg = data.download_proxy || data.residential_proxy || {};
     const urlEl = document.getElementById('resProxyUrl');
-    const autoEl = document.getElementById('resProxyAutoFallback');
     const qualEl = document.getElementById('resProxyQualityFallback');
+
+    const mode = cfg.mode || (cfg.enabled ? (cfg.auto_fallback ? 'failsafe' : 'always') : 'disabled');
+    const radioEl = document.querySelector(`input[name="resProxyMode"][value="${mode}"]`);
+    if (radioEl) {
+      radioEl.checked = true;
+    }
+    updateProxyModeUI(mode);
     
-    if (enabledEl) enabledEl.checked = Boolean(cfg.enabled);
     if (urlEl) {
       urlEl.value = cfg.url_masked || cfg.url || '';
     }
-    if (autoEl) autoEl.checked = (cfg.auto_fallback !== undefined) ? Boolean(cfg.auto_fallback) : true;
     if (qualEl) qualEl.checked = (cfg.fallback_on_quality_loss !== undefined) ? Boolean(cfg.fallback_on_quality_loss) : true;
   } catch (e) {
-    console.error('Error loading residential proxy config:', e);
+    console.error('Error loading proxy config:', e);
   }
 }
 
@@ -3013,28 +3087,30 @@ document.getElementById('formResProxyConfig')?.addEventListener('submit', async 
   e.preventDefault();
   const notice = document.getElementById('resProxyNotice');
   const urlVal = document.getElementById('resProxyUrl').value.trim();
+  const modeVal = document.querySelector('input[name="resProxyMode"]:checked')?.value || 'disabled';
   const payload = {
-    enabled: document.getElementById('resProxyEnabled').checked,
+    mode: modeVal,
+    enabled: modeVal !== 'disabled',
     url: urlVal,
-    auto_fallback: document.getElementById('resProxyAutoFallback').checked,
-    fallback_on_quality_loss: document.getElementById('resProxyQualityFallback').checked
+    auto_fallback: modeVal === 'failsafe',
+    fallback_on_quality_loss: document.getElementById('resProxyQualityFallback')?.checked ?? true
   };
 
   try {
-    const res = await fetch('/api/admin/residential-proxy', {
+    const res = await fetch('/api/admin/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al guardar');
-    showToast(data.message || 'Configuración del Enlace Residencial guardada.', 'success');
+    showToast(data.message || 'Configuración del Proxy guardada exitosamente.', 'success');
     if (notice) {
       notice.style.display = 'none';
     }
     loadResidentialProxyConfig();
   } catch (e) {
-    showToast('Error al guardar Enlace Residencial: ' + e.message, 'error');
+    showToast('Error al guardar configuración de Proxy: ' + e.message, 'error');
   }
 });
 

@@ -91,11 +91,12 @@ def load_config() -> dict:
             "use_tls": True,
             "use_ssl": False,
         },
-        "residential_proxy": {
-            "enabled": False,
+        "download_proxy": {
+            "mode": "disabled",  # "disabled" | "failsafe" | "always"
             "url": "",
-            "auto_fallback": True,
-            "fallback_on_quality_loss": True
+            "fallback_on_quality_loss": True,
+            "enabled": False,
+            "auto_fallback": True
         }
     }
     if os.path.exists(CONFIG_FILE):
@@ -105,12 +106,24 @@ def load_config() -> dict:
                 for k, v in cfg.items():
                     if k == "smtp" and isinstance(v, dict):
                         default_cfg["smtp"].update(v)
-                    elif k == "residential_proxy" and isinstance(v, dict):
-                        default_cfg["residential_proxy"].update(v)
+                    elif k in ("residential_proxy", "download_proxy") and isinstance(v, dict):
+                        default_cfg["download_proxy"].update(v)
                     else:
                         default_cfg[k] = v
         except Exception:
             pass
+
+    # Determinar modo normalizado
+    p_raw = default_cfg.get("download_proxy", {})
+    if "mode" not in p_raw:
+        if p_raw.get("enabled"):
+            p_raw["mode"] = "failsafe" if p_raw.get("auto_fallback", True) else "always"
+        else:
+            p_raw["mode"] = "disabled"
+    # Sincronizar flags de retrocompatibilidad
+    p_raw["enabled"] = (p_raw["mode"] != "disabled")
+    p_raw["auto_fallback"] = (p_raw["mode"] == "failsafe")
+    default_cfg["residential_proxy"] = p_raw
     return default_cfg
 
 
@@ -119,28 +132,61 @@ def save_config(cfg: dict):
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
+def get_download_proxy_config() -> dict:
+    """Obtiene la configuración normalizada del proxy de descargas."""
+    cfg = load_config()
+    p_cfg = dict(cfg.get("download_proxy") or cfg.get("residential_proxy") or {})
+    mode = p_cfg.get("mode")
+    if not mode:
+        if p_cfg.get("enabled"):
+            mode = "failsafe" if p_cfg.get("auto_fallback", True) else "always"
+        else:
+            mode = "disabled"
+    p_cfg["mode"] = mode
+    p_cfg["enabled"] = (mode != "disabled")
+    p_cfg["auto_fallback"] = (mode == "failsafe")
+    if "fallback_on_quality_loss" not in p_cfg:
+        p_cfg["fallback_on_quality_loss"] = True
+    return p_cfg
+
+
 def get_residential_proxy_config() -> dict:
-    cfg = load_config()
-    default_res = {
-        "enabled": False,
-        "url": "",
-        "auto_fallback": True,
-        "fallback_on_quality_loss": True
-    }
-    loaded = cfg.get("residential_proxy", {})
-    if isinstance(loaded, dict):
-        default_res.update(loaded)
-    return default_res
+    """Alias de retrocompatibilidad para get_download_proxy_config."""
+    return get_download_proxy_config()
 
 
-def save_residential_proxy_config(proxy_cfg: dict):
+def save_download_proxy_config(proxy_cfg: dict):
+    """Guarda la configuración del proxy de descargas sincronizando claves legadas."""
     cfg = load_config()
-    current = cfg.get("residential_proxy", {})
+    current = cfg.get("download_proxy", {})
     if not isinstance(current, dict):
         current = {}
     current.update(proxy_cfg)
+
+    # Determinar modo según datos recibidos
+    if "mode" in proxy_cfg:
+        mode = proxy_cfg["mode"]
+    elif "enabled" in proxy_cfg:
+        if proxy_cfg.get("enabled"):
+            mode = "failsafe" if proxy_cfg.get("auto_fallback", current.get("auto_fallback", True)) else "always"
+        else:
+            mode = "disabled"
+    else:
+        mode = current.get("mode") or ("failsafe" if current.get("enabled") else "disabled")
+
+    current["mode"] = mode
+    current["enabled"] = (mode != "disabled")
+    current["auto_fallback"] = (mode == "failsafe")
+
+    cfg["download_proxy"] = current
     cfg["residential_proxy"] = current
     save_config(cfg)
+
+
+def save_residential_proxy_config(proxy_cfg: dict):
+    """Alias de retrocompatibilidad para save_download_proxy_config."""
+    save_download_proxy_config(proxy_cfg)
+
 
 
 def test_residential_proxy_connection(proxy_url: str) -> dict:

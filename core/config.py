@@ -66,10 +66,14 @@ TELEGRAM_BOT_TOKEN_ENV = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_BOT_ENABLED_ENV = os.environ.get("TELEGRAM_BOT_ENABLED", "true").lower() == "true"
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "").strip().rstrip("/")
 
-RESIDENTIAL_PROXY_CONFIG = {
-    "enabled": False,
+DOWNLOAD_PROXY_CONFIG = {
+    "mode": "disabled",  # "disabled" | "failsafe" | "always"
     "url": "",
-    "auto_fallback": True,
-    "fallback_on_quality_loss": True
+    "fallback_on_quality_loss": True,
+    # Retrocompatibilidad
+    "enabled": False,
+    "auto_fallback": True
 }
+RESIDENTIAL_PROXY_CONFIG = DOWNLOAD_PROXY_CONFIG
+
 

@@ -21,7 +21,7 @@ from core.utils import (
     record_download_meta, save_queue_state,
     get_disk_status, format_bytes, safe_filename,
     is_audio_quality, format_seconds, get_residential_proxy_config,
-    has_cobalt_youtube_cookies
+    get_download_proxy_config, has_cobalt_youtube_cookies
 )
 from core.plugin_manager import plugin_manager
 
@@ -282,6 +282,11 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
     else:
         candidates.append((["default"], has_cookies))
 
+    if not proxy_url:
+        p_cfg = get_download_proxy_config()
+        if p_cfg.get("mode") == "always" and p_cfg.get("url"):
+            proxy_url = p_cfg["url"]
+
     last_exc = None
     for clients, use_ck in candidates:
         if job_id:
@@ -327,13 +332,13 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return None
 
-    # Automatic fallback to Residential Proxy if not already using a proxy
+    # Automatic fallback to Proxy Failsafe if not already using a proxy
     if not proxy_url:
         try:
-            res_cfg = get_residential_proxy_config()
-            if res_cfg.get("enabled") and res_cfg.get("url") and res_cfg.get("auto_fallback", True):
+            res_cfg = get_download_proxy_config()
+            if res_cfg.get("mode") == "failsafe" and res_cfg.get("url"):
                 if job_id:
-                    append_job_log(job_id, "[*] Reintentando inspección mediante Enlace Residencial de Respaldo...")
+                    append_job_log(job_id, "[*] Reintentando inspección mediante Proxy de Respaldo...")
                 p_opts = dict(ydl_opts_base)
                 p_opts["proxy"] = res_cfg["url"]
                 if has_cookies:
@@ -1021,8 +1026,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
 
         # Check if single video download from YouTube was forced to 360p (SABR) on datacenter IP
         is_yt = detect_platform(url) == "YouTube"
-        res_cfg = get_residential_proxy_config()
-        if is_yt and not proxy_url and not playlist_mode and len(files) == 1 and res_cfg.get("enabled") and res_cfg.get("url") and res_cfg.get("fallback_on_quality_loss", True):
+        res_cfg = get_download_proxy_config()
+        if is_yt and not proxy_url and not playlist_mode and len(files) == 1 and res_cfg.get("mode") in ("failsafe", "always") and res_cfg.get("url") and res_cfg.get("fallback_on_quality_loss", True):
             if quality in ("1080p", "720p", "1440p", "2160p"):
                 try:
                     fpath_temp = os.path.join(job_dir, files[0])
@@ -1030,7 +1035,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     p_res = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
                     h_val = int(p_res.stdout.strip()) if p_res.stdout.strip().isdigit() else 0
                     if 0 < h_val <= 360:
-                        append_job_log(job_id, f"[!] Restricción SABR detectada en servidor: video limitado a {h_val}p. Escalando a Enlace Residencial...")
+                        append_job_log(job_id, f"[!] Restricción SABR detectada en servidor: video limitado a {h_val}p. Escalando a Proxy de Respaldo...")
                         for f in files:
                             try:
                                 os.remove(os.path.join(job_dir, f))
@@ -1166,10 +1171,40 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
             attempts.append({"engine": f"Motor Música ({platform})", "status": "failed", "error": err})
             append_job_log(job_id, f"[!] Motor musical no pudo procesar ({err}). Pasando a siguiente método...")
 
+    proxy_cfg = get_download_proxy_config()
+    proxy_mode = proxy_cfg.get("mode", "disabled")
+    proxy_url = proxy_cfg.get("url", "").strip() if (proxy_mode in ("always", "failsafe") and proxy_cfg.get("url")) else None
+
+    # Si el modo configurado es "always" (Proxy Global), enrutar forzosamente por el proxy
+    if proxy_mode == "always" and proxy_url:
+        with JOBS_LOCK:
+            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                return
+        append_job_log(job_id, "[*] Modo Proxy Global activo: enrutando descarga vía proxy configurado...")
+        try:
+            run_download(
+                job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery,
+                folder_name=folder_name, group_id=group_id, proxy_url=proxy_url
+            )
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "finished":
+                    append_job_log(job_id, "[+] Proceso finalizado exitosamente vía Proxy Global.")
+                    return
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+        except Exception as e:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+            err = format_friendly_error(str(e))
+            attempts.append({"engine": "yt-dlp (Proxy Global)", "status": "failed", "error": err})
+            append_job_log(job_id, f"[!] Proxy Global falló: {err}")
+
     # 2. Smart Routing for Cobalt v11:
     # Prioritize Cobalt for native social networks (TikTok, Instagram, Twitter/X, Reddit, etc.)
     # For YouTube, only attempt Cobalt if authenticated cookies are synchronized
-    cobalt_eligible = (not playlist_mode and start_time is None and end_time is None and subtitles == "none")
+    cobalt_eligible = (proxy_mode != "always" and not playlist_mode and start_time is None and end_time is None and subtitles == "none")
     should_try_cobalt = False
     if cobalt_eligible:
         if platform in COBALT_NATIVE_PLATFORMS:
@@ -1204,49 +1239,22 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
             append_job_log(job_id, f"[!] Cobalt no pudo extraer el stream ({err}). Pasando a siguiente método...")
 
     # 3. Third attempt: yt-dlp with PoToken Provider and fallback clients (Direct VPS)
-    with JOBS_LOCK:
-        if JOBS.get(job_id, {}).get("status") == "cancelled":
-            return
-    append_job_log(job_id, "[*] Probando extracción directa con yt-dlp (PoToken & Multi-Cliente)...")
-    ytdlp_success = False
-    try:
-        run_download(
-            job_id, url, quality, playlist_mode, total_count, start_time, end_time,
-            video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery,
-            folder_name=folder_name, group_id=group_id
-        )
-        with JOBS_LOCK:
-            if JOBS.get(job_id, {}).get("status") == "finished":
-                append_job_log(job_id, "[+] Proceso finalizado exitosamente con yt-dlp.")
-                ytdlp_success = True
-                return
-            if JOBS.get(job_id, {}).get("status") == "cancelled":
-                return
-    except Exception as e:
+    if proxy_mode != "always":
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
-        err = format_friendly_error(str(e))
-        attempts.append({"engine": "yt-dlp (Extractor Directo)", "status": "failed", "error": err})
-        append_job_log(job_id, f"[!] yt-dlp directo falló: {err}")
-
-    # 4. Fourth attempt: Residential Fallback (Túnel / Proxy Failsafe de Último Recurso)
-    res_cfg = get_residential_proxy_config()
-    if not ytdlp_success and res_cfg.get("enabled") and res_cfg.get("url") and res_cfg.get("auto_fallback", True):
-        with JOBS_LOCK:
-            if JOBS.get(job_id, {}).get("status") == "cancelled":
-                return
-            JOBS[job_id]["status"] = "downloading"
-        append_job_log(job_id, "[*] Activando método de último recurso: Enlace Residencial de Respaldo...")
+        append_job_log(job_id, "[*] Probando extracción directa con yt-dlp (PoToken & Multi-Cliente)...")
+        ytdlp_success = False
         try:
             run_download(
                 job_id, url, quality, playlist_mode, total_count, start_time, end_time,
                 video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery,
-                folder_name=folder_name, group_id=group_id, proxy_url=res_cfg["url"]
+                folder_name=folder_name, group_id=group_id
             )
             with JOBS_LOCK:
                 if JOBS.get(job_id, {}).get("status") == "finished":
-                    append_job_log(job_id, "[+] Proceso finalizado exitosamente vía Enlace Residencial de Respaldo.")
+                    append_job_log(job_id, "[+] Proceso finalizado exitosamente con yt-dlp.")
+                    ytdlp_success = True
                     return
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return
@@ -1255,8 +1263,35 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return
             err = format_friendly_error(str(e))
-            attempts.append({"engine": "Enlace Residencial de Respaldo (Failsafe)", "status": "failed", "error": err})
-            append_job_log(job_id, f"[!] Enlace Residencial falló: {err}")
+            attempts.append({"engine": "yt-dlp (Extractor Directo)", "status": "failed", "error": err})
+            append_job_log(job_id, f"[!] yt-dlp directo falló: {err}")
+
+        # 4. Fourth attempt: Fallback Failsafe (Túnel / Proxy de Respaldo)
+        if not ytdlp_success and proxy_mode == "failsafe" and proxy_url:
+            with JOBS_LOCK:
+                if JOBS.get(job_id, {}).get("status") == "cancelled":
+                    return
+                JOBS[job_id]["status"] = "downloading"
+            append_job_log(job_id, "[*] Activando método de último recurso: Proxy de Respaldo (Failsafe)...")
+            try:
+                run_download(
+                    job_id, url, quality, playlist_mode, total_count, start_time, end_time,
+                    video_format, subtitles, owner, user_cloud_sync, selected_indexes, playlist_delivery,
+                    folder_name=folder_name, group_id=group_id, proxy_url=proxy_url
+                )
+                with JOBS_LOCK:
+                    if JOBS.get(job_id, {}).get("status") == "finished":
+                        append_job_log(job_id, "[+] Proceso finalizado exitosamente vía Proxy de Respaldo (Failsafe).")
+                        return
+                    if JOBS.get(job_id, {}).get("status") == "cancelled":
+                        return
+            except Exception as e:
+                with JOBS_LOCK:
+                    if JOBS.get(job_id, {}).get("status") == "cancelled":
+                        return
+                err = format_friendly_error(str(e))
+                attempts.append({"engine": "Proxy de Respaldo (Failsafe)", "status": "failed", "error": err})
+                append_job_log(job_id, f"[!] Proxy de Respaldo falló: {err}")
 
     # If all engines failed, record detailed error report
     with JOBS_LOCK:
