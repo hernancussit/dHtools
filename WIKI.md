@@ -18,6 +18,8 @@ Documentación técnica detallada sobre el funcionamiento interno, componentes, 
    - [Spotify (Extracción de Metadatos + Audio Matching)](#44-spotify-extracción-de-metadatos--audio-matching)
    - [Redes Sociales (TikTok, Instagram, Facebook, Twitch, Kick, X)](#45-redes-sociales)
    - [Gestión y Ciclo de Vida de Cookies de YouTube](#46-gestión-y-ciclo-de-vida-de-cookies-de-youtube)
+   - [Selector de Modos de Proxy de Descargas & Enlace Residencial](#47-selector-de-modos-de-proxy-de-descargas--enlace-residencial)
+   - [Optimización del Motor Cobalt v11 & Enrutamiento Inteligente por Plataforma](#48-optimización-del-motor-cobalt-v11--enrutamiento-inteligente-por-plataforma)
 5. [Motor de Cola por Lotes (Batch Queue)](#5-motor-de-cola-por-lotes-batch-queue)
 6. [Módulo de Sincronización en la Nube & Presets Privados](#6-módulo-de-sincronización-en-la-nube--presets-privados)
 7. [Asistente Interactivo de Telegram (Telegram Bot Hub)](#7-asistente-interactivo-de-telegram-telegram-bot-hub)
@@ -230,17 +232,35 @@ Para acceder a videos restringidos por edad (+18) o contenido exclusivo para mie
 
 ---
 
-### 4.7. Respaldo Residencial de Último Recurso (Tier 4 / Residential Failsafe Tunnel)
-En caso de que YouTube aplique bloqueos antibot a nivel de ASN (bloqueo por Datacenter / `UNPLAYABLE`), o intente degradar streams forzados SABR a 360p en descargas Full HD:
-1. **Activación Condicional Autónoma:** La Cascada Inteligente ejecuta primero los motores del VPS (Cobalt, Deezer/Spotify, yt-dlp nativo con Deno y PO Tokens). Únicamente si el Nivel 3 falla o entrega un stream degradado, se activa de forma automática el **Nivel 4 (Respaldo Residencial)**.
-2. **Preservación del Ancho de Banda Hogareño:** Más del 90% del tráfico y las descargas habituales se procesan exclusivamente en el datacenter del VPS. El enlace residencial solo interviene ante contingencias reales en YouTube.
-3. **Arquitectura de Túnel Universal:** dHtools es compatible de forma nativa con múltiples alternativas de transporte proxy:
-   - **Túnel Inverso SSH:** Permite conectar cualquier equipo hogareño (PC, Raspberry Pi o NAS) hacia el VPS mediante redirección reversa dinámica (`ssh -N -f -R 127.0.0.1:28443:127.0.0.1:1080`) sin necesidad de abrir puertos en el router ni lidiar con CGNAT u ONTs bloqueadas.
-   - **VPN de Malla (Tailscale / WireGuard):** Permite interconectar el VPS con la red privada de tu hogar de forma encriptada punto a punto (ej. `socks5h://100.x.y.z:1080`) sin exponer puertos a la WAN pública.
-   - **Contenedores Docker SOCKS5:** Despliegue de un proxy ultraligero (`serjs/go-socks5-proxy` o `dante`) en servidores caseros, mini-PCs o NAS (TrueNAS / Unraid) con autenticación mediante usuario y contraseña.
-   - **Routers con Proxy Integrado (Ejemplos: MikroTik RouterOS / OpenWrt):** Enrutadores de red con servicio SOCKS5 interno, securizados mediante reglas de firewall que restringen el tráfico exclusivamente a la IP pública de tu VPS.
-4. **Protocolo SOCKS5h:** Se enruta a través del enlace residencial configurado (`socks5h://`) resolviendo nombres DNS de forma remota en la conexión hogareña para garantizar consistencia geográfica ante las redes CDN de YouTube.
-5. **Telemetría RTT en Tiempo Real:** El panel administrativo incluye un monitor de latencia TCP directa (RTT) medido en milisegundos y una herramienta de prueba de extracción en vivo para validar el túnel antes de que ocurra una falla real.
+### 4.7. Selector de Modos de Proxy de Descargas & Enlace Residencial
+Para garantizar disponibilidad ininterrumpida frente a bloqueos antibot de YouTube a nivel de ASN (bloqueo por Datacenter / `UNPLAYABLE`), o degradaciones forzadas SABR a 360p en descargas Full HD, **dHtools** incorpora un sistema avanzado de enrutamiento proxy configurable en 3 modos operativos desde el panel de administración (`/admin` -> **"🛡️ Proxy de Descargas"**):
+
+#### 1. Modos de Operación Disponibles:
+- 🛡️ **Directo (Desactivado - `disabled`):**
+  - Todas las peticiones, inspecciones y descargas multimedia se ejecutan directamente desde la conexión del VPS o servidor host.
+  - No se consulta ni se utiliza ningún proxy, aprovechando la velocidad y latencia nativa del centro de datos.
+- ⚡ **Respaldo Automático (`failsafe`) [Modo Recomendado]:**
+  - Las descargas se inician de forma directa en el VPS a máxima velocidad a través de la Cascada Inteligente (Cobalt y yt-dlp con Deno y PO Tokens).
+  - **Activación reactiva autónoma:** Únicamente si el intento directo falla debido a bloqueos de IP (detección de bots, HTTP 403, Cloudflare) o si YouTube estrangula la calidad máxima a 360p por directivas SABR, el sistema conmuta automáticamente al proxy de respaldo.
+  - **Preservación de cuota y ancho de banda:** Protege conexiones hogareñas o proxies con límite de datos, ya que más del 90% del tráfico se atiende en el datacenter sin consumir el enlace proxy.
+- 🌐 **Proxy Global (`always`):**
+  - **Enrutamiento forzado del 100%:** Todas las extracciones, inspecciones previas y descargas de medios de yt-dlp son derivadas obligatoriamente a través del proxy configurado desde el primer intento.
+  - Ideal cuando la IP pública del servidor VPS se encuentra totalmente vetada por YouTube o cuando se requiere una salida geográfica estricta permanente.
+
+#### 2. Protocolos y Compatibilidad de Transporte:
+El subsistema de proxy de dHtools es compatible de forma nativa con múltiples esquemas de red:
+- **`socks5h://` (Recomendado):** Resuelve los nombres de dominio (DNS) de forma remota en el endpoint del proxy, garantizando consistencia geográfica ante las redes CDN de YouTube y evitando fugas de DNS (*DNS leaks*).
+- **`socks5://`, `http://` y `https://`:** Soporte universal con autenticación mediante credenciales (`usuario:contraseña@host:puerto`). En la interfaz administrativa y respuestas de API, la contraseña se enmascara de forma segura (`••••••••`).
+- **Túnel Inverso SSH:** Permite conectar cualquier equipo hogareño (PC, Raspberry Pi o NAS) hacia el VPS mediante redirección reversa dinámica (`ssh -N -f -R 127.0.0.1:28443:127.0.0.1:1080`) sin requerir apertura de puertos en el router hogareño ni lidiar con CGNAT.
+- **VPN de Malla (Tailscale / WireGuard):** Permite interconectar el VPS con una máquina casera de forma encriptada punto a punto (ej. `socks5h://100.x.y.z:1080`).
+- **Routers con SOCKS5 (MikroTik RouterOS / OpenWrt):** Enrutadores de red con servicio de proxy interno securizados mediante firewall hacia la IP del VPS.
+
+#### 3. Diagnóstico en Vivo & Telemetría RTT:
+El panel de administración incluye una suite de diagnóstico en tiempo real accesible con el botón **"Probar Conexión"**:
+- **Ping TCP Directo (RTT):** Mide la latencia de ida y vuelta a nivel de socket de red contra el host y puerto del proxy en milisegundos.
+- **Tiempo de Respuesta HTTP:** Mide el tiempo total en resolver una consulta externa segura a través del túnel proxy.
+- **Detección de IP Pública & ISP:** Identifica la dirección IP de salida y el proveedor de servicios de internet detectado (ej. Telecom, Movistar, Claro, etc.).
+- **Prueba Canary de YouTube:** Ejecuta una consulta de extracción real contra un stream de prueba en YouTube para certificar que el proxy puede navegar y extraer flujos sin presentar desafíos antibot.
 
 ---
 

@@ -29,7 +29,11 @@ Está construida sobre una **arquitectura modular de Flask Blueprints**, pensada
 ### 🎯 Extracción Multiplataforma Inteligente
 - **Motor en Cascada Inteligente (4 Niveles):** Combina de manera transparente **Cobalt v11 Oficial**, **SpotDL / Deezer nativo**, **yt-dlp core** y un **Túnel Residencial de Contingencia (Tier 4 / Failsafe)**.
 - **Evasión Antibot & Tokens PO:** Microservicio `pot-provider` estabilizado junto al runtime `Deno` para resolver desafíos JavaScript y generar tokens Proof-of-Origin automáticos.
-- **Túnel Residencial de Respaldo (SOCKS5 / MikroTik):** Activación automática en caso de bloqueos por IP de datacenter o degradación SABR a 360p, preservando el ancho de banda residencial con telemetría de latencia RTT por ping TCP.
+- **Selector Inteligente de Proxy de Descargas (SOCKS5 / MikroTik / HTTP):** Control de enrutamiento con 3 modalidades configurables desde el panel de administración:
+  - 🛡️ **Directo (Desactivado):** Operación a máxima velocidad del VPS sin intermediarios.
+  - ⚡ **Respaldo Automático (Failsafe) [Recomendado]:** Evasión reactiva automática si YouTube o cualquier servicio bloquea la IP del datacenter o estrangula la calidad SABR a 360p, protegiendo el consumo del enlace residencial.
+  - 🌐 **Proxy Global:** Enrutamiento obligatorio del 100% de las extracciones y descargas multimedia a través del proxy configurado.
+  - 🔬 **Telemetría y Diagnóstico en Vivo:** Medición de latencia HTTP, ping TCP (RTT) y prueba canary directa contra YouTube mostrando la IP pública detectada y el ISP.
 - **Calidades de Video Ultra HD:** Descargas en 4K (2160p), 2K (1440p), Full HD (1080p), 720p y 480p con selección de contenedor (`MP4` / `MKV`) y subtítulos incrustados.
 - **Suite de Audio Hi-Fi:** Extracción directa con carátulas en alta resolución y metadatos ID3 automáticos en calidades `128 kbps`, `192 kbps`, `256 kbps` y `320 kbps (CBR MP3)`.
 - **Playlists & Álbumes Completos:** Detección de listas con inspección ítem por ítem, selección selectiva, reordenamiento interactivo (⬆️/⬇️) y descarga agrupada en carpetas virtuales o archivo `.zip`.
