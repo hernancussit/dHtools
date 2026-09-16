@@ -113,16 +113,27 @@ def load_config() -> dict:
         except Exception:
             pass
 
-    # Determinar modo normalizado
+    # Determinar modo normalizado inspeccionando la configuración original guardada
     p_raw = default_cfg.get("download_proxy", {})
-    if "mode" not in p_raw:
-        if p_raw.get("enabled"):
-            p_raw["mode"] = "failsafe" if p_raw.get("auto_fallback", True) else "always"
-        else:
-            p_raw["mode"] = "disabled"
-    # Sincronizar flags de retrocompatibilidad
-    p_raw["enabled"] = (p_raw["mode"] != "disabled")
-    p_raw["auto_fallback"] = (p_raw["mode"] == "failsafe")
+    raw_saved = {}
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                saved_json = json.load(f)
+                raw_saved = saved_json.get("download_proxy") or saved_json.get("residential_proxy") or {}
+        except Exception:
+            raw_saved = {}
+
+    if "mode" in raw_saved:
+        mode = raw_saved["mode"]
+    elif "enabled" in raw_saved:
+        mode = ("failsafe" if raw_saved.get("auto_fallback", True) else "always") if raw_saved.get("enabled") else "disabled"
+    else:
+        mode = "disabled"
+
+    p_raw["mode"] = mode
+    p_raw["enabled"] = (mode != "disabled")
+    p_raw["auto_fallback"] = (mode == "failsafe")
     default_cfg["residential_proxy"] = p_raw
     return default_cfg
 
