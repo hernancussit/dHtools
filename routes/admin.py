@@ -878,6 +878,98 @@ def admin_user_clean_downloads(username):
     })
 
 
+@admin_bp.route("/api/admin/users/<username>/downloads", methods=["GET"])
+@require_admin
+def admin_user_downloads(username):
+    users = load_users()
+    if username not in users and username != APP_USERNAME and username != "admin":
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    meta = load_downloads_meta()
+    user_items = []
+    existing_files = set(os.listdir(DOWNLOAD_DIR)) if os.path.exists(DOWNLOAD_DIR) else set()
+
+    for jid, item in meta.items():
+        owner = item.get("username")
+        if owner == username or (username in ("admin", APP_USERNAME) and not owner):
+            created_at = item.get("created_at") or 0
+            if isinstance(created_at, (int, float)) and created_at > 0:
+                created_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(created_at))
+            else:
+                created_formatted = "Desconocida"
+
+            file_on_disk = False
+            disk_filename = None
+            for f in existing_files:
+                if f.startswith(f"{jid}_") or f == jid or f == f"{jid}.zip":
+                    file_on_disk = True
+                    disk_filename = f
+                    break
+
+            is_offloaded = bool(item.get("offloaded", False))
+
+            if is_offloaded:
+                status_label = "cloud"
+            elif file_on_disk:
+                status_label = "local"
+            else:
+                status_label = "purged"
+
+            user_items.append({
+                "job_id": jid,
+                "filename": item.get("filename") or disk_filename or jid,
+                "size_bytes": item.get("size_bytes", 0),
+                "size_formatted": format_bytes(item.get("size_bytes", 0)),
+                "created_at": created_at,
+                "created_at_formatted": created_formatted,
+                "folder_name": item.get("folder_name"),
+                "group_id": item.get("group_id"),
+                "offloaded": is_offloaded,
+                "cloud_destinations": item.get("cloud_destinations", []),
+                "file_exists": file_on_disk,
+                "status": status_label,
+                "download_url": f"/api/files/{jid}" if file_on_disk else None,
+            })
+
+    user_items.sort(key=lambda x: x.get("created_at") or 0, reverse=True)
+    total_bytes = sum(it["size_bytes"] for it in user_items)
+
+    return jsonify({
+        "success": True,
+        "username": username,
+        "downloads": user_items,
+        "total_count": len(user_items),
+        "total_bytes": total_bytes,
+        "total_formatted": format_bytes(total_bytes),
+    })
+
+
+@admin_bp.route("/api/admin/users/<username>/downloads/<job_id>", methods=["DELETE"])
+@require_admin
+def admin_user_delete_download(username, job_id):
+    meta = load_downloads_meta()
+    item = meta.get(job_id)
+    if not item and not os.path.exists(DOWNLOAD_DIR):
+        return jsonify({"error": "Descarga no encontrada"}), 404
+
+    deleted = False
+    if os.path.exists(DOWNLOAD_DIR):
+        for entry in os.listdir(DOWNLOAD_DIR):
+            if entry.startswith(job_id):
+                fpath = os.path.join(DOWNLOAD_DIR, entry)
+                try:
+                    os.remove(fpath)
+                    deleted = True
+                except Exception:
+                    pass
+
+    delete_download_meta(job_id)
+    with JOBS_LOCK:
+        JOBS.pop(job_id, None)
+
+    return jsonify({"success": True, "deleted": deleted})
+
+
 @admin_bp.route("/api/admin/cobalt-status")
 @require_admin
 def admin_cobalt_status():

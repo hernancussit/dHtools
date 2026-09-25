@@ -201,6 +201,7 @@ def recent_downloads():
                     "size_bytes": stat.st_size,
                     "size_formatted": format_bytes(stat.st_size),
                     "mtime": stat.st_mtime,
+                    "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime)),
                     "owner": item_owner,
                     "download_url": f"/api/files/{matched_jid}",
                 }
@@ -235,12 +236,14 @@ def recent_downloads():
             if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
                 continue
             sz = info.get("size_bytes", 0)
+            offload_mtime = info.get("created_at", time.time())
             offload_obj = {
                 "job_id": jid,
                 "filename": info.get("filename", "archivo"),
                 "size_bytes": sz,
                 "size_formatted": format_bytes(sz),
-                "mtime": info.get("created_at", time.time()),
+                "mtime": offload_mtime,
+                "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(offload_mtime)) if offload_mtime else "",
                 "owner": item_owner,
                 "download_url": None,
                 "offloaded": True,

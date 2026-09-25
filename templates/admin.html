@@ -1312,7 +1312,7 @@ docker run -d --name residential-socks5 \
                 <th style="min-width:100px;">Cuota</th>
                 <th style="min-width:130px;">Descargas Servidor</th>
                 <th style="min-width:120px;">Fecha Alta</th>
-                <th style="text-align:right; min-width:220px;">Acciones</th>
+                <th style="text-align:right; min-width:300px;">Acciones</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
@@ -1475,6 +1475,56 @@ docker run -d --name residential-socks5 \
         <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Cambios</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: HISTORIAL DE DESCARGAS DE USUARIO -->
+<div id="modalUserHistory" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; max-width:880px; width:100%; max-height:85vh; display:flex; flex-direction:column; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.6); backdrop-filter:blur(16px);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+      <div>
+        <h3 style="margin:0; font-size:1.15rem; color:var(--text); display:flex; align-items:center; gap:8px;">
+          <span>📜 Historial de Descargas:</span>
+          <span id="userHistoryTitle" style="color:var(--accent-blue);"></span>
+        </h3>
+        <div style="font-size:0.78rem; color:var(--muted); margin-top:4px;" id="userHistorySubtitle">
+          Cargando registros...
+        </div>
+      </div>
+      <button type="button" id="btnCloseUserHistory" style="background:none; border:none; color:var(--muted); font-size:1.3rem; cursor:pointer; line-height:1; padding:4px;" onclick="closeUserHistoryModal()">✕</button>
+    </div>
+
+    <!-- Search & Summary Bar -->
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+      <input type="text" id="filterUserHistoryInput" placeholder="🔍 Filtrar por nombre de archivo o carpeta..." style="flex:1; min-width:220px; padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:0.84rem;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="status-badge" style="background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-size:0.75rem;" id="userHistoryStatCount">0 descargas</span>
+        <span class="status-badge" style="background:rgba(255,255,255,0.06); color:var(--text); border:1px solid var(--border); font-size:0.75rem;" id="userHistoryStatSize">0 B</span>
+      </div>
+    </div>
+
+    <!-- Scrollable Table -->
+    <div style="flex:1; overflow-y:auto; border:1px solid var(--border); border-radius:8px; background:var(--bg-input);">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead style="position:sticky; top:0; background:var(--bg-sidebar); z-index:2;">
+          <tr>
+            <th style="padding:10px 12px; text-align:left; font-size:0.78rem; color:var(--muted); border-bottom:1px solid var(--border); min-width:150px;">🕒 Fecha y Hora</th>
+            <th style="padding:10px 12px; text-align:left; font-size:0.78rem; color:var(--muted); border-bottom:1px solid var(--border); min-width:240px;">📄 Archivo / Colección</th>
+            <th style="padding:10px 12px; text-align:left; font-size:0.78rem; color:var(--muted); border-bottom:1px solid var(--border); min-width:90px;">Tamaño</th>
+            <th style="padding:10px 12px; text-align:left; font-size:0.78rem; color:var(--muted); border-bottom:1px solid var(--border); min-width:115px;">Estado</th>
+            <th style="padding:10px 12px; text-align:right; font-size:0.78rem; color:var(--muted); border-bottom:1px solid var(--border); min-width:115px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="userHistoryTableBody">
+          <tr><td colspan="5" style="text-align:center; padding:28px; color:var(--muted);">Cargando historial...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="exportUserHistoryCsv()" id="btnExportUserHistoryCsv">📥 Exportar CSV</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeUserHistoryModal()">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -2699,7 +2749,10 @@ async function loadUsers() {
         <td>${quotaText}</td>
         <td style="font-size:0.84rem; color:var(--muted);">${dlInfo}</td>
         <td style="font-size:0.84rem; color:var(--muted);">${u.created_at || 'Inicial'}</td>
-        <td style="text-align:right;">
+        <td style="text-align:right; white-space:nowrap;">
+          <button class="btn btn-secondary btn-sm" onclick="openUserHistoryModal('${u.username}')" title="Ver historial detallado de descargas" style="margin-right:4px;">
+            📜 Historial
+          </button>
           <button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.username}', '${u.status}')" title="Suspender o reactivar cuenta">
             ${isSuspended ? '▶️ Activar' : '⏸️ Suspender'}
           </button>
@@ -2912,6 +2965,194 @@ async function deleteUser(username) {
     showToast('Error al eliminar usuario: ' + e.message, 'error');
   }
 }
+
+// User Download History Modal
+let currentUserHistory = { username: '', downloads: [] };
+
+async function openUserHistoryModal(username) {
+  const modal = document.getElementById('modalUserHistory');
+  const title = document.getElementById('userHistoryTitle');
+  const subtitle = document.getElementById('userHistorySubtitle');
+  const tbody = document.getElementById('userHistoryTableBody');
+  const statCount = document.getElementById('userHistoryStatCount');
+  const statSize = document.getElementById('userHistoryStatSize');
+  const filterInput = document.getElementById('filterUserHistoryInput');
+
+  if (!modal) return;
+  modal.style.display = 'flex';
+  if (title) title.textContent = `@${username}`;
+  if (subtitle) subtitle.textContent = 'Cargando historial de descargas...';
+  if (filterInput) filterInput.value = '';
+  if (statCount) statCount.textContent = '...';
+  if (statSize) statSize.textContent = '...';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:28px; color:var(--muted);"><span class="badge-dot" style="background:var(--accent-blue); display:inline-block; margin-right:6px;"></span> Obteniendo registros de descargas...</td></tr>';
+
+  currentUserHistory = { username, downloads: [] };
+
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/downloads`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    currentUserHistory = {
+      username: username,
+      downloads: data.downloads || []
+    };
+
+    if (subtitle) subtitle.textContent = `Registros totales asociados a @${username}`;
+    if (statCount) statCount.textContent = `${data.total_count || 0} descargas`;
+    if (statSize) statSize.textContent = data.total_formatted || '0 B';
+
+    renderUserHistoryTable(currentUserHistory.downloads);
+  } catch (e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--danger);">Error al cargar historial: ${e.message}</td></tr>`;
+    if (subtitle) subtitle.textContent = 'Error de conexión';
+  }
+}
+
+function renderUserHistoryTable(items) {
+  const tbody = document.getElementById('userHistoryTableBody');
+  if (!tbody) return;
+
+  if (!items || items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--muted);">No se encontraron descargas para este usuario.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => {
+    let statusBadge = '';
+    if (item.status === 'cloud') {
+      statusBadge = '<span class="status-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-size:0.72rem;"><span class="badge-dot" style="background:#38bdf8;"></span> ☁️ En la nube</span>';
+    } else if (item.status === 'local') {
+      statusBadge = '<span class="status-badge status-online" style="font-size:0.72rem;"><span class="badge-dot" style="background:#10b981;"></span> 💾 En disco</span>';
+    } else {
+      statusBadge = '<span class="status-badge" style="background:#1e293b; color:#94a3b8; border:1px solid #334155; font-size:0.72rem;"><span class="badge-dot" style="background:#64748b;"></span> 🗑️ Eliminado</span>';
+    }
+
+    const folderTag = item.folder_name ? `<div style="font-size:0.73rem; color:var(--accent-blue); margin-top:3px;">📁 Colección: ${escapeHtmlAdmin(item.folder_name)}</div>` : '';
+    const dlBtn = item.download_url ? `<a href="${item.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" title="Descargar al dispositivo">⬇️ Bajar</a>` : '';
+    const delBtn = `<button class="btn btn-danger btn-sm" style="padding:2px 8px; font-size:0.72rem; margin-left:4px;" onclick="deleteSingleDownloadFromModal('${item.job_id}')" title="Eliminar registro / archivo">🗑️</button>`;
+
+    return `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 12px; font-size:0.8rem; font-family:monospace; color:var(--text); white-space:nowrap;">
+          🕒 ${item.created_at_formatted || 'Desconocida'}
+        </td>
+        <td style="padding:10px 12px; font-size:0.84rem; font-weight:600; word-break:break-word;" title="${escapeHtmlAdmin(item.filename)}">
+          📄 ${escapeHtmlAdmin(item.filename)}
+          ${folderTag}
+        </td>
+        <td style="padding:10px 12px; font-size:0.82rem; color:var(--muted); white-space:nowrap;">
+          ${item.size_formatted}
+        </td>
+        <td style="padding:10px 12px; white-space:nowrap;">
+          ${statusBadge}
+        </td>
+        <td style="padding:10px 12px; text-align:right; white-space:nowrap;">
+          ${dlBtn}
+          ${delBtn}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function closeUserHistoryModal() {
+  const modal = document.getElementById('modalUserHistory');
+  if (modal) modal.style.display = 'none';
+}
+
+function escapeHtmlAdmin(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function deleteSingleDownloadFromModal(jobId) {
+  if (!confirm('¿Deseas eliminar este registro de descarga (y su archivo en disco si existe)?')) return;
+  const username = currentUserHistory.username;
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/downloads/${encodeURIComponent(jobId)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast('Descarga eliminada correctamente.', 'success');
+
+    currentUserHistory.downloads = currentUserHistory.downloads.filter(it => it.job_id !== jobId);
+    const filterVal = (document.getElementById('filterUserHistoryInput')?.value || '').toLowerCase();
+    const filtered = currentUserHistory.downloads.filter(it =>
+      (it.filename && it.filename.toLowerCase().includes(filterVal)) ||
+      (it.folder_name && it.folder_name.toLowerCase().includes(filterVal))
+    );
+    renderUserHistoryTable(filtered);
+
+    const statCount = document.getElementById('userHistoryStatCount');
+    const statSize = document.getElementById('userHistoryStatSize');
+    if (statCount) statCount.textContent = `${currentUserHistory.downloads.length} descargas`;
+    const totalBytes = currentUserHistory.downloads.reduce((acc, it) => acc + (it.size_bytes || 0), 0);
+    if (statSize) statSize.textContent = formatBytesJs(totalBytes);
+
+    loadUsers();
+    loadServicesStatus();
+  } catch (e) {
+    showToast('Error al eliminar descarga: ' + e.message, 'error');
+  }
+}
+
+function formatBytesJs(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function exportUserHistoryCsv() {
+  if (!currentUserHistory.downloads || currentUserHistory.downloads.length === 0) {
+    showToast('No hay descargas para exportar.', 'error');
+    return;
+  }
+  const headers = ['Fecha_Hora', 'Archivo', 'Coleccion_Carpeta', 'Tamano_Bytes', 'Tamano_Formateado', 'Estado'];
+  const rows = currentUserHistory.downloads.map(d => [
+    `"${(d.created_at_formatted || '').replace(/"/g, '""')}"`,
+    `"${(d.filename || '').replace(/"/g, '""')}"`,
+    `"${(d.folder_name || '').replace(/"/g, '""')}"`,
+    d.size_bytes || 0,
+    `"${(d.size_formatted || '').replace(/"/g, '""')}"`,
+    `"${(d.status || '').replace(/"/g, '""')}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `historial_descargas_${currentUserHistory.username}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Archivo CSV descargado con éxito.', 'success');
+}
+
+document.getElementById('filterUserHistoryInput')?.addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  if (!q) {
+    renderUserHistoryTable(currentUserHistory.downloads);
+    return;
+  }
+  const filtered = currentUserHistory.downloads.filter(it =>
+    (it.filename && it.filename.toLowerCase().includes(q)) ||
+    (it.folder_name && it.folder_name.toLowerCase().includes(q))
+  );
+  renderUserHistoryTable(filtered);
+});
+
+document.getElementById('modalUserHistory')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modalUserHistory') closeUserHistoryModal();
+});
 
 // Logout handler
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
