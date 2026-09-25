@@ -8,6 +8,7 @@ import subprocess
 import requests
 import zipfile
 import yt_dlp
+from urllib.parse import urlparse, parse_qs, urlencode
 
 from core.config import (
     COOKIES_FILE, DOWNLOAD_DIR, COBALT_URL,
@@ -403,6 +404,54 @@ def detect_platform(url: str) -> str:
     if "dailymotion.com" in url_lower:
         return "Dailymotion"
     return "Web"
+
+
+def strip_playlist_from_url(url: str) -> str:
+    """If the URL contains both an individual video and playlist/mix parameters
+    (e.g., YouTube watch?v=...&list=RD... or youtu.be/...&list=...),
+    strips the playlist, radio, mix and index parameters so that only the single video is targeted.
+    """
+    if not url:
+        return url
+    try:
+        parsed = urlparse(url.strip())
+        netloc = (parsed.netloc or "").lower()
+        if "youtube.com" in netloc or "youtu.be" in netloc:
+            # Check youtu.be/<video_id>?list=...
+            if "youtu.be" in netloc:
+                video_id = parsed.path.lstrip("/").split("/")[0]
+                if video_id:
+                    qs = parse_qs(parsed.query)
+                    clean_query = {"v": video_id}
+                    if "t" in qs:
+                        clean_query["t"] = qs["t"][0]
+                    return f"https://www.youtube.com/watch?{urlencode(clean_query)}"
+
+            # Check youtube.com/watch?v=<video_id>&list=...
+            if "/watch" in parsed.path:
+                qs = parse_qs(parsed.query)
+                video_id = qs.get("v", [None])[0]
+                if video_id:
+                    clean_query = {"v": video_id}
+                    if "t" in qs:
+                        clean_query["t"] = qs["t"][0]
+                    scheme = parsed.scheme or "https"
+                    return f"{scheme}://{parsed.netloc}/watch?{urlencode(clean_query)}"
+    except Exception:
+        pass
+    return url
+
+
+def is_pure_playlist_url(url: str) -> bool:
+    """Returns True ONLY if the URL represents a playlist/album without an individual track/video id."""
+    url_l = (url or "").lower()
+    if "youtube.com/playlist" in url_l and "watch?v=" not in url_l:
+        return True
+    if ("spotify.com/playlist" in url_l or "spotify.com/album" in url_l) and "/track/" not in url_l:
+        return True
+    if ("deezer.com/playlist" in url_l or "deezer.com/album" in url_l) and "/track/" not in url_l:
+        return True
+    return False
 
 
 def is_playlist_url(url: str) -> bool:

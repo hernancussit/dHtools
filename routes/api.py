@@ -19,7 +19,7 @@ from core.utils import (
 from core.downloader import (
     get_ytdlp_version, run_pip_update, restart_process_soon,
     extract_with_fallback, normalize_url, detect_platform, is_playlist_url,
-    get_deezer_info, get_spotify_info
+    get_deezer_info, get_spotify_info, strip_playlist_from_url, is_pure_playlist_url
 )
 
 api_bp = Blueprint("api_bp", __name__)
@@ -84,10 +84,14 @@ def update_ytdlp():
 def info():
     data = request.get_json(force=True)
     raw_url = (data or {}).get("url", "").strip()
+    playlist_requested = bool((data or {}).get("playlist", False))
     if not raw_url:
         return jsonify({"error": "Falta la URL"}), 400
     if not validate_media_url(raw_url):
         return jsonify({"error": "La URL ingresada no es válida o contiene caracteres no permitidos"}), 400
+
+    if not playlist_requested:
+        raw_url = strip_playlist_from_url(raw_url)
 
     url = normalize_url(raw_url)
 
@@ -107,7 +111,7 @@ def info():
         "quiet": True,
         "skip_download": True,
         "extract_flat": "in_playlist",
-        "noplaylist": False,
+        "noplaylist": not playlist_requested,
         "ignore_no_formats_error": True,
         "socket_timeout": 10,
         "playlistend": 300,
@@ -173,8 +177,12 @@ def download():
     video_format = (data or {}).get("video_format", "mp4")
     subtitles = (data or {}).get("subtitles", "none")
     playlist_mode = bool((data or {}).get("playlist", False))
-    if not playlist_mode and is_playlist_url(raw_url):
-        playlist_mode = True
+    if not playlist_mode:
+        cleaned_url = strip_playlist_from_url(raw_url)
+        if cleaned_url != raw_url:
+            raw_url = cleaned_url
+        elif is_pure_playlist_url(raw_url):
+            playlist_mode = True
     total_count = int((data or {}).get("total_count") or 0)
     start_raw = (data or {}).get("start_time")
     end_raw = (data or {}).get("end_time")

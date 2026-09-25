@@ -99,6 +99,59 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertTrue(data.get("success"))
         mock_del.assert_called_once_with("job999")
 
+    @patch("routes.api.enqueue_job")
+    @patch("routes.api.validate_media_url", return_value=True)
+    def test_download_strips_playlist_when_unchecked(self, mock_val, mock_enq):
+        """Verifica que si playlist=False, una URL con list=RD... se limpie y solo descargue el video individual."""
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        payload = {
+            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1",
+            "quality": "best",
+            "format_type": "video",
+            "playlist": False
+        }
+        res = self.client.post("/api/download", json=payload)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(mock_enq.called)
+        # Check args passed to enqueue_job(job_id, job_spec)
+        call_args = mock_enq.call_args[0]
+        job_spec = call_args[1]
+        called_url = job_spec["url"]
+        called_playlist_mode = job_spec["playlist"]
+        self.assertEqual(called_playlist_mode, False)
+        self.assertNotIn("list=", called_url)
+        self.assertNotIn("start_radio=1", called_url)
+        self.assertIn("v=dQw4w9WgXcQ", called_url)
+
+    @patch("routes.api.enqueue_job")
+    @patch("routes.api.validate_media_url", return_value=True)
+    def test_download_keeps_playlist_when_checked(self, mock_val, mock_enq):
+        """Verifica que si playlist=True, la URL conserve la lista y playlist_mode=True."""
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        payload = {
+            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL12345678",
+            "quality": "best",
+            "format_type": "video",
+            "playlist": True
+        }
+        res = self.client.post("/api/download", json=payload)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(mock_enq.called)
+        call_args = mock_enq.call_args[0]
+        job_spec = call_args[1]
+        called_url = job_spec["url"]
+        called_playlist_mode = job_spec["playlist"]
+        self.assertEqual(called_playlist_mode, True)
+        self.assertIn("list=PL12345678", called_url)
+
 
 if __name__ == "__main__":
     unittest.main()

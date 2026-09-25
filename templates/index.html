@@ -1319,6 +1319,16 @@
                 <button id="btnInspectQuick" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
               </div>
             </div>
+            <!-- CHECKBOX PLAYLIST MODO FÁCIL -->
+            <div style="margin-top:8px; background:rgba(0,0,0,0.18); border:1px solid var(--border); border-radius:8px; padding:8px 12px;">
+              <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-size:0.83rem; color:var(--text); font-weight:600; user-select:none;">
+                <input type="checkbox" id="chkQuickDownloadPlaylist" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
+                <span>📥 Descargar lista de reproducción completa (playlist / álbum)</span>
+              </label>
+              <div style="font-size:0.73rem; color:var(--muted); margin-top:3px; margin-left:24px;">
+                Desmarcado por defecto: solo descarga el video del enlace, ignorando playlists o mixes automáticos (Radio).
+              </div>
+            </div>
           </div>
 
           <div id="quickBatchUrlWrap" style="display:none;">
@@ -1436,6 +1446,16 @@
               <div class="url-input-actions">
                 <button type="button" id="btnPasteAdv" class="btn btn-secondary btn-sm" style="white-space:nowrap;">📋 Pegar</button>
                 <button type="button" id="btnInspectAdv" class="btn btn-secondary btn-sm" style="white-space:nowrap;">🔍 Inspeccionar</button>
+              </div>
+            </div>
+            <!-- CHECKBOX PLAYLIST MODO AVANZADO -->
+            <div style="margin-top:8px; background:rgba(0,0,0,0.18); border:1px solid var(--border); border-radius:8px; padding:8px 12px;">
+              <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-size:0.83rem; color:var(--text); font-weight:600; user-select:none;">
+                <input type="checkbox" id="chkAdvDownloadPlaylist" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
+                <span>📥 Descargar lista de reproducción completa (playlist / álbum)</span>
+              </label>
+              <div style="font-size:0.73rem; color:var(--muted); margin-top:3px; margin-left:24px;">
+                Desmarcado por defecto: solo descarga el video del enlace, ignorando playlists o mixes automáticos (Radio).
               </div>
             </div>
           </div>
@@ -2605,16 +2625,61 @@ document.getElementById('btnAdvDeliveryIndividual')?.addEventListener('click', (
 });
 
 // ==================== URL INSPECTION & PLAYLIST EXPLORERS ====================
+function cleanVideoUrl(url) {
+  if (!url) return url;
+  try {
+    const trimmed = url.trim();
+    const u = new URL(trimmed);
+    const host = u.hostname.toLowerCase();
+    if (host.includes('youtube.com') || host.includes('youtu.be')) {
+      if (host.includes('youtu.be')) {
+        const vid = u.pathname.replace(/^\/+/, '').split('/')[0];
+        if (vid) {
+          const newUrl = new URL(`https://www.youtube.com/watch?v=${vid}`);
+          if (u.searchParams.has('t')) newUrl.searchParams.set('t', u.searchParams.get('t'));
+          return newUrl.toString();
+        }
+      }
+      if (u.pathname.includes('/watch')) {
+        const vid = u.searchParams.get('v');
+        if (vid) {
+          const newUrl = new URL(`${u.protocol}//${u.host}/watch?v=${vid}`);
+          if (u.searchParams.has('t')) newUrl.searchParams.set('t', u.searchParams.get('t'));
+          return newUrl.toString();
+        }
+      }
+    }
+  } catch (e) {}
+  return url;
+}
+
 async function inspectUrl(url, mode = 'quick') {
   if (!url) return;
-  appendUserConsole(`[*] Inspeccionando enlace: ${url}`);
+
+  const chkId = mode === 'quick' ? 'chkQuickDownloadPlaylist' : 'chkAdvDownloadPlaylist';
+  const chk = document.getElementById(chkId);
+
+  // If user pasted a pure playlist URL (e.g. /playlist?list=...) without a single video, auto-check the playlist checkbox
+  const lowerUrl = url.toLowerCase();
+  const isPurePlaylist = (lowerUrl.includes('/playlist') || lowerUrl.includes('album/')) && !lowerUrl.includes('/watch') && !lowerUrl.includes('youtu.be/');
+  if (isPurePlaylist) {
+    const chkQ = document.getElementById('chkQuickDownloadPlaylist');
+    const chkA = document.getElementById('chkAdvDownloadPlaylist');
+    if (chkQ && !chkQ.checked) chkQ.checked = true;
+    if (chkA && !chkA.checked) chkA.checked = true;
+  }
+
+  const wantsPlaylist = Boolean((chk && chk.checked) || isPurePlaylist);
+  const targetUrl = wantsPlaylist ? url : cleanVideoUrl(url);
+
+  appendUserConsole(`[*] Inspeccionando enlace: ${targetUrl} (${wantsPlaylist ? 'Modo: Playlist Completa' : 'Modo: Video Individual'})`);
   
   const btnQuick = document.getElementById('btnInspectQuick');
   const btnAdv = document.getElementById('btnInspectAdv');
   if (btnQuick) { btnQuick.disabled = true; btnQuick.textContent = '⏳ Buscando...'; }
   if (btnAdv) { btnAdv.disabled = true; btnAdv.textContent = '⏳ Buscando...'; }
 
-  if (url.includes('deezer.com') && document.getElementById('advDeezerBox')) {
+  if (targetUrl.includes('deezer.com') && document.getElementById('advDeezerBox')) {
     document.getElementById('advDeezerBox').style.display = 'block';
   }
 
@@ -2622,7 +2687,7 @@ async function inspectUrl(url, mode = 'quick') {
     const res = await fetch('/api/info', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url: targetUrl, playlist: wantsPlaylist })
     });
     const data = await res.json();
     if (data.error) {
@@ -2631,7 +2696,7 @@ async function inspectUrl(url, mode = 'quick') {
       return;
     }
 
-    if (data.type === 'playlist') {
+    if (data.type === 'playlist' && wantsPlaylist) {
       appendUserConsole(`[+] Playlist/Álbum detectado: '${data.title}' con ${data.count || (data.items || []).length} elementos.`);
       showToast(`Playlist detectada: ${data.title}`, 'info', 3000);
       
@@ -2754,6 +2819,39 @@ document.getElementById('advUrlInput')?.addEventListener('paste', (e) => {
   setTimeout(() => inspectUrl(document.getElementById('advUrlInput').value.trim(), 'adv'), 200);
 });
 
+// Sync and re-inspect on playlist checkbox change
+document.getElementById('chkQuickDownloadPlaylist')?.addEventListener('change', (e) => {
+  const isChecked = e.target.checked;
+  const advChk = document.getElementById('chkAdvDownloadPlaylist');
+  if (advChk) advChk.checked = isChecked;
+  const url = document.getElementById('quickUrlInput')?.value.trim();
+  if (url) {
+    inspectUrl(url, 'quick');
+  } else {
+    if (!isChecked) {
+      document.getElementById('quickPlaylistExplorer').style.display = 'none';
+      const advExp = document.getElementById('advPlaylistExplorer');
+      if (advExp) advExp.style.display = 'none';
+    }
+  }
+});
+
+document.getElementById('chkAdvDownloadPlaylist')?.addEventListener('change', (e) => {
+  const isChecked = e.target.checked;
+  const quickChk = document.getElementById('chkQuickDownloadPlaylist');
+  if (quickChk) quickChk.checked = isChecked;
+  const url = document.getElementById('advUrlInput')?.value.trim();
+  if (url) {
+    inspectUrl(url, 'adv');
+  } else {
+    if (!isChecked) {
+      document.getElementById('quickPlaylistExplorer').style.display = 'none';
+      const advExp = document.getElementById('advPlaylistExplorer');
+      if (advExp) advExp.style.display = 'none';
+    }
+  }
+});
+
 // ==================== API HELPERS & SUBMIT DOWNLOADS ====================
 async function safeApiPost(url, payload) {
   const res = await fetch(url, {
@@ -2866,13 +2964,15 @@ document.getElementById('btnQuickDownload')?.addEventListener('click', async () 
   }
 
   // Single URL execution
-  const url = document.getElementById('quickUrlInput').value.trim();
-  if (!url) {
+  const rawUrl = document.getElementById('quickUrlInput').value.trim();
+  if (!rawUrl) {
     showToast('Ingresá una URL de descarga', 'error');
     return;
   }
-  const isPlaylist = document.getElementById('quickPlaylistExplorer').style.display !== 'none';
-  const playlistTitle = document.getElementById('quickPlaylistTitle')?.textContent || '';
+  const wantsPlaylist = Boolean(document.getElementById('chkQuickDownloadPlaylist')?.checked);
+  const url = wantsPlaylist ? rawUrl : cleanVideoUrl(rawUrl);
+  const isPlaylist = wantsPlaylist && (document.getElementById('quickPlaylistExplorer').style.display !== 'none');
+  const playlistTitle = isPlaylist ? (document.getElementById('quickPlaylistTitle')?.textContent || '') : '';
   
   let selected_indexes = [];
   let selected_items = [];
@@ -3006,15 +3106,17 @@ document.getElementById('btnAdvDownload')?.addEventListener('click', async () =>
   }
 
   // Single URL execution
-  const url = document.getElementById('advUrlInput').value.trim();
-  if (!url) {
+  const rawUrl = document.getElementById('advUrlInput').value.trim();
+  if (!rawUrl) {
     showToast('Ingresá una URL válida', 'error');
     return;
   }
+  const wantsPlaylist = Boolean(document.getElementById('chkAdvDownloadPlaylist')?.checked);
+  const url = wantsPlaylist ? rawUrl : cleanVideoUrl(rawUrl);
 
   const advExp = document.getElementById('advPlaylistExplorer');
-  const isPlaylist = advExp && advExp.style.display !== 'none';
-  const playlistTitle = document.getElementById('advPlaylistTitle')?.textContent || '';
+  const isPlaylist = wantsPlaylist && advExp && advExp.style.display !== 'none';
+  const playlistTitle = isPlaylist ? (document.getElementById('advPlaylistTitle')?.textContent || '') : '';
   
   let selected_indexes = [];
   let selected_items = [];
