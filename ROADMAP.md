@@ -31,17 +31,18 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 ## 🎯 Versión `v1.6.0` — Taller Multimedia & Conectores Cloud Directos
 
 ### 🎬 Taller Multimedia, Conversor de Formatos & Edición (Media Studio)
-- [ ] **Conversor Universal de Formatos (Video & Audio):**
-  - **Video:** `MP4` (H.264 / H.265), `MKV`, `WebM` (VP9 / AV1), `AVI`, `MOV` y generación de **GIFs animados** a partir de fragmentos de video.
-  - **Audio:** `MP3` (320/256/192/128 kbps CBR/VBR), `FLAC` (Hi-Res sin pérdida), `WAV`, `AAC`, `M4A`, `Opus` y `OGG`.
-- [ ] **Compresor Inteligente para Redes Sociales:**
-  - Perfiles predefinidos de reducción de peso con preservación visual de calidad (*CRF Rate Control*) para compartir archivos fácilmente por WhatsApp, Telegram o Discord (ej. "Comprimir a menos de 25 MB").
+- [x] **Conversor Universal de Formatos (Video & Audio):**
+  - **Video:** `MP4` (H.264 / AAC), `MKV`, `WebM` (VP9 / Opus), `AVI` y generación de **GIFs animados** de alta calidad a partir de fragmentos de video.
+  - **Audio:** `MP3` (320/256/192/128 kbps CBR), `FLAC` (Hi-Res sin pérdida), `WAV` (PCM), `AAC`, `M4A`, `Opus` y `OGG Vorbis`.
+- [x] **Compresor Inteligente para Redes Sociales:**
+  - Perfiles predefinidos de reducción de peso con optimización automática para compartir por **WhatsApp Estándar** (< 16 MB), **WhatsApp HD** (1080p < 25 MB) y **Discord / Telegram** (< 25 MB).
 - [ ] **Editor y Recortador Visual Integrado:**
-  - Línea de tiempo interactiva (*timeline*) para recortar inicios y finales de videos y canciones antes o después de la descarga.
-  - **Extractor de Pistas:** Separar la pista de audio o extraer subtítulos de videos existentes sin recodificar.
-  - **Unión de Archivos (Merge / Concatenación):** Combinar múltiples pistas o videos en un único archivo continuo.
-- [ ] **Normalizador de Potencia Acústica (EBU R128):**
-  - Nivelación automática de volumen para que todas las canciones de un álbum o lista suenen con la misma intensidad sonora sin saturación.
+  - [x] **Recorte Temporal Milimétrico:** Recorte de inicio y fin (`start_time` / `end_time`) directo sin recompresión innecesaria (`-c copy`).
+  - [x] **Extractor de Pistas:** Extracción directa de la pista de audio (MP3 320 kbps) a partir de cualquier archivo de video.
+  - [ ] **Línea de Tiempo Interactiva (*Timeline Scrubber*):** Reproductor visual integrado con manejadores de arrastre para seleccionar el segmento de corte visualmente.
+  - [ ] **Unión de Archivos (Merge / Concatenación):** Combinar múltiples canciones o videos en un único archivo continuo.
+- [x] **Normalizador de Potencia Acústica (EBU R128):**
+  - Nivelación automática de sonoridad a **-14 LUFS** (estándar EBU R128 / ITU-R BS.1770) con filtro acústico `loudnorm` para eliminar desniveles de volumen sin saturación ni clipping.
 
 ### ☁️ Integración Directa con Proveedores Cloud Principales
 - [x] **Google Drive [EXPERIMENTAL]:** Implementado como **Plugin Oficial Bundled** (`plugins/google_drive/`) con soporte para Service Account, OAuth2, streaming resumable por bloques de 10 MB (RAM-Safe), selector de carpetas y modo Safe Offload.
