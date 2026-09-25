@@ -263,6 +263,92 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* DOWNLOADS SEGMENTED SUBNAV */
+  .downloads-subnav {
+    display: flex;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-bottom: 18px;
+    gap: 6px;
+    backdrop-filter: blur(10px);
+    flex-wrap: wrap;
+  }
+  .subnav-btn {
+    flex: 1;
+    min-width: 140px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    padding: 9px 14px;
+    border-radius: 9px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .subnav-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .subnav-btn.active {
+    background: var(--bg-card);
+    color: var(--accent-blue);
+    border-color: rgba(56, 189, 248, 0.35);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  /* MEDIA STUDIO TOOLS */
+  .studio-tool-btn {
+    flex: 1;
+    min-width: 130px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .studio-tool-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .studio-tool-btn.active {
+    background: var(--bg-card);
+    color: var(--accent-blue);
+    border-color: rgba(56, 189, 248, 0.35);
+  }
+  .compress-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .compress-card:hover {
+    border-color: var(--border-highlight);
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .compress-card.active {
+    border-color: var(--accent-blue);
+    background: rgba(56, 189, 248, 0.09);
+  }
+
   /* INPUTS & BUTTONS */
   label {
     display: block;
@@ -1152,25 +1238,23 @@
 
       <!-- NAVIGATION TABS -->
       <nav class="nav-group">
-        <div class="nav-title">Modos de Descarga</div>
-        <button class="nav-item active" id="tabNavQuick" data-tab="tab-quick">
-          <span>⚡</span>
-          <span>Modo Fácil (Rápido)</span>
-        </button>
-        <button class="nav-item" id="tabNavAdv" data-tab="tab-adv">
-          <span>🎛️</span>
-          <span>Modo Avanzado</span>
-        </button>
-        
-        <div class="nav-title" style="margin-top:10px;">Gestión & Servidor</div>
-        <button class="nav-item" id="tabNavQueue" data-tab="tab-queue">
-          <span>⏳</span>
-          <span>Cola en 2º Plano</span>
+        <div class="nav-title">Espacio de Trabajo</div>
+        <button class="nav-item active" id="tabNavDownloads" data-tab="tab-downloads">
+          <span>📥</span>
+          <span>Descargas</span>
           <span id="sidebarQueueBadge" style="display:none; margin-left:auto; background:var(--accent); color:#fff; padding:2px 7px; border-radius:10px; font-size:0.68rem; font-weight:700;">0</span>
         </button>
         <button class="nav-item" id="tabNavHistory" data-tab="tab-history">
           <span>📂</span>
-          <span>Mis Descargas</span>
+          <span>Mis Archivos</span>
+        </button>
+        <button class="nav-item" id="tabNavStudio" data-tab="tab-studio">
+          <span>🎬</span>
+          <span>Estudio Multimedia</span>
+        </button>
+        <button class="nav-item" id="tabNavSettings" data-tab="tab-settings">
+          <span>⚙️</span>
+          <span>Mi Perfil & Ajustes</span>
         </button>
       </nav>
     </div>
@@ -1294,8 +1378,24 @@
       </div>
     </div>
 
-    <!-- ==================== TAB 1: MODO FÁCIL (RÁPIDO) ==================== -->
-    <div id="tab-quick" class="tab-pane active">
+    <!-- ==================== ZONA 1: DESCARGAS (UNIFICADA) ==================== -->
+    <div id="tab-downloads" class="tab-pane active">
+      <!-- SUBNAV / SEGMENTED SWITCH -->
+      <div class="downloads-subnav">
+        <button type="button" class="subnav-btn active" id="btnDlSubQuick" onclick="switchDlSubView('quick')">
+          <span>⚡ Modo Rápido (1 Clic)</span>
+        </button>
+        <button type="button" class="subnav-btn" id="btnDlSubAdv" onclick="switchDlSubView('adv')">
+          <span>🎛️ Modo Avanzado</span>
+        </button>
+        <button type="button" class="subnav-btn" id="btnDlSubQueue" onclick="switchDlSubView('queue')">
+          <span>⏳ Cola en 2º Plano</span>
+          <span id="downloadsSubQueueBadge" style="display:none; background:var(--accent); color:#fff; padding:1px 6px; border-radius:10px; font-size:0.68rem; font-weight:700; margin-left:6px;">0</span>
+        </button>
+      </div>
+
+      <!-- SUBVIEW 1: MODO RÁPIDO (QUICK) -->
+      <div id="dlSubViewQuick" class="dl-subview" style="display:block;">
       <div class="card">
         <div class="card-title">
           <span>⚡ Descarga Rápida (1 Solo Clic)</span>
@@ -1421,10 +1521,10 @@
           <div id="quickActivityConsole" style="background:#020617; border:1px solid #0f172a; border-radius:8px; padding:10px; font-family:monospace; font-size:0.78rem; color:#a5f3fc; height:150px; overflow-y:auto; white-space:pre-wrap; line-height:1.5;">[Listo] Esperando operaciones...</div>
         </div>
       </div>
-    </div>
+    </div> <!-- close dlSubViewQuick -->
 
-    <!-- ==================== TAB 2: MODO AVANZADO ==================== -->
-    <div id="tab-adv" class="tab-pane">
+    <!-- SUBVIEW 2: MODO AVANZADO (ADVANCED) -->
+    <div id="dlSubViewAdv" class="dl-subview" style="display:none;">
       <div class="card">
         <div class="card-title">
           <span>🎛️ Configuración Avanzada de Extracción</span>
@@ -1540,107 +1640,19 @@
           </div>
         </div>
 
-        <div class="accordion-box">
-          <div class="accordion-header" id="advCloudHeader">
-            <span>☁️ Enviar a mi Nube Personal (S3 / WebDAV / FTP / Offload)</span>
-            <span id="advCloudIcon">▼</span>
-          </div>
-          <div class="accordion-body" id="advCloudBody">
-            <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <label style="font-size:0.78rem; color:var(--muted); margin:0;">Perfil Guardado:</label>
-              <select id="userCloudPresetSelector" style="flex:1; min-width:180px; padding:6px 10px; font-size:0.8rem;">
-                <option value="">-- Configuración Personal Activa --</option>
-              </select>
-              <button type="button" id="btnSaveCloudPreset" class="btn btn-secondary btn-sm" style="font-size:0.75rem;">💾 Guardar Preset</button>
-              <button type="button" id="btnDeleteCloudPreset" class="btn btn-danger btn-sm" style="font-size:0.75rem; display:none;">🗑️ Borrar</button>
-            </div>
-
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
-              <!-- S3 / MinIO / Cloudflare R2 -->
-              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
-                  <input type="checkbox" id="userS3Enabled"> 🪣 S3 / MinIO / R2
-                </label>
-                <input type="text" id="userS3Endpoint" placeholder="Endpoint URL (vacío para AWS)" style="margin-bottom:4px; font-size:0.78rem;" title="Opcional para AWS, obligatorio para MinIO o Cloudflare R2">
-                <input type="text" id="userS3Bucket" placeholder="Nombre del Bucket" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="text" id="userS3Key" placeholder="Access Key ID" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="password" id="userS3Secret" placeholder="Secret Access Key" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="text" id="userS3Region" placeholder="Región (ej. us-east-1)" value="us-east-1" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="text" id="userS3Dir" placeholder="Prefijo / Carpeta en bucket" style="margin-bottom:6px; font-size:0.78rem;">
-                <button type="button" id="btnTestUserS3" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar S3</button>
-              </div>
-
-              <!-- WebDAV -->
-              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
-                  <input type="checkbox" id="userWebdavEnabled"> ☁️ Nextcloud / WebDAV
-                </label>
-                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="text" id="userWebdavUser" placeholder="Usuario" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="password" id="userWebdavPass" placeholder="App Token / Clave" style="font-size:0.78rem; margin-bottom:6px;">
-                <button type="button" id="btnTestUserWebdav" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar WebDAV</button>
-              </div>
-
-              <!-- FTP -->
-              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
-                  <input type="checkbox" id="userFtpEnabled"> 📁 Servidor FTP
-                </label>
-                <input type="text" id="userFtpHost" placeholder="ftp.servidor.com" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="margin-bottom:4px; font-size:0.78rem;">
-                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.78rem; margin-bottom:6px;">
-                <button type="button" id="btnTestUserFtp" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar FTP</button>
-              </div>
-
-              <!-- CONECTORES CLOUD INYECTADOS POR PLUGINS [EXPERIMENTAL] -->
-              {% for opt in plugin_download_cloud_options %}
-              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid {% if opt.enabled %}rgba(56,189,248,0.35){% else %}rgba(100,116,139,0.3){% endif %};" class="plugin-cloud-card" data-plugin-id="{{ opt.id }}">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                  <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text); margin:0; {% if opt.enabled %}cursor:pointer;{% else %}cursor:not-allowed; opacity:0.8;{% endif %}">
-                    <input type="checkbox" id="pluginCloud_{{ opt.id }}_enabled" class="plugin-cloud-check" data-plugin="{{ opt.id }}" {% if not opt.enabled %}disabled title="Integración desactivada. Habilítala en Ajustes primero"{% endif %}>
-                    <span>{{ opt.icon or '☁️' }} {{ opt.name }}</span>
-                  </label>
-                  <div style="display:flex; align-items:center; gap:4px;">
-                    {% if not opt.enabled %}
-                    <span class="badge" style="background:rgba(239,68,68,0.18); color:#f87171; font-size:0.65rem; font-weight:700;">DESACTIVADO</span>
-                    {% else %}
-                    <span class="badge" style="background:rgba(34,197,94,0.18); color:#4ade80; font-size:0.65rem; font-weight:700;">ACTIVO</span>
-                    {% endif %}
-                    <span class="badge" style="background:rgba(234,179,8,0.18); color:#fbbf24; font-size:0.65rem; font-weight:700;">{{ opt.badge or 'PLUGIN' }}</span>
-                  </div>
-                </div>
-                {% if opt.description %}
-                <p style="font-size:0.72rem; color:var(--muted); margin-bottom:6px; line-height:1.3;">{{ opt.description }}</p>
-                {% endif %}
-                {% if not opt.enabled %}
-                <div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px; background:rgba(255,255,255,0.03); padding:5px 8px; border-radius:4px; border:1px dashed var(--border); line-height:1.3;">
-                  ⚠️ La integración está actualmente <b>desactivada</b>. Podés conectar tu cuenta y habilitarla en <a href="{{ opt.settings_url }}" style="color:var(--accent-blue); text-decoration:underline;">⚙️ Ajustes</a>.
-                </div>
-                {% endif %}
-                {% if opt.fields %}
-                  {% for f in opt.fields %}
-                  <input type="{{ f.type or 'text' }}" id="pluginCloud_{{ opt.id }}_{{ f.id }}" class="plugin-cloud-input" data-plugin="{{ opt.id }}" data-field="{{ f.id }}" placeholder="{{ f.placeholder or f.label }}" style="margin-bottom:4px; font-size:0.78rem;" {% if not opt.enabled %}disabled{% endif %}>
-                  {% endfor %}
-                {% endif %}
-                {% if opt.settings_url %}
-                <div style="text-align:right; margin-top:4px;">
-                  <a href="{{ opt.settings_url }}" target="_blank" style="font-size:0.72rem; color:var(--accent-blue); text-decoration:none;">⚙️ Ajustes de {{ opt.name }}</a>
-                </div>
-                {% endif %}
-              </div>
-              {% endfor %}
-            </div>
-
-            <!-- MODO OFFLOAD -->
-            <div style="margin-top:14px; padding:10px 12px; background:rgba(3,105,161,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:8px;">
-              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:0.84rem; color:#38bdf8; margin:0;">
-                <input type="checkbox" id="userCloudOffload">
-                <span>🗑️ Modo Offload ("Subir y Mover"): Eliminar copia local en el VPS tras confirmar subida a la nube</span>
-              </label>
-              <div style="font-size:0.75rem; color:var(--muted); margin-left:24px; margin-top:3px;">
-                El archivo se descarga en el VPS, se envía de inmediato a tu almacenamiento cloud elegido y se borra del servidor local para liberar espacio de disco. Si la subida falla, se conserva localmente.
+        <!-- CLOUD AUTO-SYNC SUMMARY IN ADVANCED MODE -->
+        <div style="margin-top:14px; padding:12px 14px; background:rgba(0,0,0,0.18); border:1px solid var(--border); border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.15rem;">☁️</span>
+              <div>
+                <strong style="font-size:0.85rem; color:var(--text);">Sincronización en la Nube</strong>
+                <div style="font-size:0.73rem; color:var(--muted);">Tus descargas se enviarán automáticamente a tus cuentas de almacenamiento activas al finalizar.</div>
               </div>
             </div>
+            <button type="button" onclick="switchTab('tab-settings')" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:4px 10px;">
+              ⚙️ Gestionar Nubes & Presets
+            </button>
           </div>
         </div>
 
@@ -1695,47 +1707,14 @@
             <strong style="color:#fca5a5; font-size:0.9rem;">⚠️ Fallo de Motores en Cascada</strong>
             <button id="btnCloseCascadeError" class="btn btn-secondary btn-sm" style="padding:1px 6px; font-size:0.72rem;">✕</button>
           </div>
-          <div style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
-            Se intentaron todos los métodos de descarga disponibles y todos reportaron errores:
           </div>
           <div id="cascadeErrorList" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
       </div>
-    </div>
+    </div> <!-- close dlSubViewAdv -->
 
-
-    <!-- ==================== TAB: MIS DESCARGAS ==================== -->
-    <div id="tab-history" class="tab-pane">
-      <div class="card">
-        <div class="card-title">
-          <span>📂 Mis Archivos & Descargas Recientes</span>
-          <div style="display:flex; gap:8px; align-items:center;">
-            {% if is_admin %}
-            <label style="font-size:0.75rem; margin:0; display:flex; align-items:center; gap:4px;">
-              <input type="checkbox" id="chkShowAllUsers"> Ver todo el servidor
-            </label>
-            {% endif %}
-            <button id="btnCleanMyDownloads" class="btn btn-secondary btn-sm" style="color:var(--danger);">🧹 Liberar Espacio</button>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:8px; margin-bottom:14px;">
-          <input type="text" id="filterDownloadsInput" placeholder="🔍 Buscar por nombre de carpeta o archivo...">
-        </div>
-
-        <!-- FOLDERS / PLAYLISTS / BATCHES SECTION -->
-        <div id="foldersContainer" style="margin-bottom:16px;"></div>
-
-        <!-- STANDALONE FILES SECTION -->
-        <div id="standaloneFilesWrap">
-          <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em;" id="standaloneTitle">📄 Archivos Individuales</div>
-          <div class="recent-grid" id="recentDownloadsGrid"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================== TAB 5: COLA EN SEGUNDO PLANO ==================== -->
-    <div id="tab-queue" class="tab-pane">
+    <!-- SUBVIEW 3: COLA EN SEGUNDO PLANO (QUEUE) -->
+    <div id="dlSubViewQueue" class="dl-subview" style="display:none;">
       <div class="card">
         <div class="card-title">
           <div>
@@ -1771,9 +1750,7 @@
           <strong style="font-size:0.85rem;">📋 Elementos en Espera (<span id="queuePendingCount">0</span>)</strong>
           <span style="font-size:0.72rem; color:var(--muted);">Usa ⬆️/⬇️ para cambiar la prioridad</span>
         </div>
-        <div id="queuePendingList" style="display:flex; flex-direction:column; gap:8px;">
-          <!-- Populated dynamically -->
-        </div>
+        <div id="queuePendingList" style="display:flex; flex-direction:column; gap:8px;"></div>
 
         <!-- COMPLETED HISTORY IN QUEUE -->
         <div style="margin-top:22px;">
@@ -1782,28 +1759,445 @@
         </div>
       </div>
     </div>
+  </div> <!-- close tab-downloads -->
+
+
+    <!-- ==================== ZONA 2: MIS ARCHIVOS ==================== -->
+    <div id="tab-history" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>📂 Mis Archivos & Descargas Recientes</span>
+          <div style="display:flex; gap:8px; align-items:center;">
+            {% if is_admin %}
+            <label style="font-size:0.75rem; margin:0; display:flex; align-items:center; gap:4px;">
+              <input type="checkbox" id="chkShowAllUsers"> Ver todo el servidor
+            </label>
+            {% endif %}
+            <button id="btnCleanMyDownloads" class="btn btn-secondary btn-sm" style="color:var(--danger);">🧹 Liberar Espacio</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <input type="text" id="filterDownloadsInput" placeholder="🔍 Buscar por nombre de carpeta o archivo...">
+        </div>
+
+        <!-- FOLDERS / PLAYLISTS / BATCHES SECTION -->
+        <div id="foldersContainer" style="margin-bottom:16px;"></div>
+
+        <!-- STANDALONE FILES SECTION -->
+        <div id="standaloneFilesWrap">
+          <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em;" id="standaloneTitle">📄 Archivos Individuales</div>
+          <div class="recent-grid" id="recentDownloadsGrid"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== ZONA 3: ESTUDIO MULTIMEDIA (MEDIA STUDIO) ==================== -->
+    <div id="tab-studio" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.3rem;">🎬</span>
+            <div>
+              <div style="font-size:1.05rem; font-weight:800; color:var(--text);">Estudio Multimedia (Media Studio)</div>
+              <div style="font-size:0.75rem; color:var(--muted); font-weight:normal;">Conversor universal, compresor para redes, recortador visual y normalizador de volumen</div>
+            </div>
+          </div>
+          <span class="brand-badge" style="background:rgba(56,189,248,0.15); color:var(--accent-blue); font-size:0.72rem;">✨ Suite v1.6.0</span>
+        </div>
+
+        <!-- SOURCE FILE SELECTION (CROSS-FUNCTIONAL) -->
+        <div style="background:var(--bg-card); border:1px solid var(--border-highlight); border-radius:12px; padding:16px; margin-bottom:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <label style="font-size:0.85rem; font-weight:700; color:var(--text); margin:0;">📁 Archivo de Trabajo</label>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnStudioRefreshFiles" onclick="refreshStudioSourceFiles()" style="font-size:0.75rem;">🔄 Actualizar Lista</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-history')" style="font-size:0.75rem;">📂 Ir a Mis Archivos</button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+            <div>
+              <label style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">1. Elegir de tus descargas existentes:</label>
+              <select id="studioSourceFileSelect" onchange="onStudioSourceFileSelect()" style="width:100%; padding:8px 10px; font-size:0.82rem; border-radius:8px;">
+                <option value="">-- Seleccionar archivo descargado --</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;">2. O subir un archivo desde tu dispositivo:</label>
+              <input type="file" id="studioUploadFileInput" onchange="onStudioFileUploaded()" style="width:100%; font-size:0.8rem; padding:6px;" accept="video/*,audio/*">
+            </div>
+          </div>
+
+          <!-- Active File Card Indicator -->
+          <div id="studioActiveFileBanner" style="display:none; margin-top:12px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); border-radius:8px; padding:10px 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="studioActiveFileIcon" style="font-size:1.2rem;">🎬</span>
+                <div>
+                  <strong id="studioActiveFileName" style="font-size:0.88rem; color:var(--text); word-break:break-all;">archivo.mp4</strong>
+                  <div id="studioActiveFileMeta" style="font-size:0.72rem; color:var(--muted);">Tamaño desconocido</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="clearStudioSelection()" style="font-size:0.72rem; padding:2px 8px;">✕ Limpiar Selección</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STUDIO TOOLS NAVIGATION (TABBED) -->
+        <div style="display:flex; background:rgba(0,0,0,0.25); padding:4px; border-radius:10px; border:1px solid var(--border); margin-bottom:16px; gap:4px; overflow-x:auto;">
+          <button type="button" class="studio-tool-btn active" id="btnToolConvert" onclick="switchStudioTool('convert')">
+            🔄 Conversor de Formatos
+          </button>
+          <button type="button" class="studio-tool-btn" id="btnToolCompress" onclick="switchStudioTool('compress')">
+            📉 Compresor para Redes
+          </button>
+          <button type="button" class="studio-tool-btn" id="btnToolTrim" onclick="switchStudioTool('trim')">
+            ✂️ Recorte & Extracción
+          </button>
+          <button type="button" class="studio-tool-btn" id="btnToolNormalize" onclick="switchStudioTool('normalize')">
+            🔊 Normalizador EBU R128
+          </button>
+        </div>
+
+        <!-- TOOL 1: CONVERT -->
+        <div id="studioToolPaneConvert" class="studio-tool-pane" style="display:block;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+            <div>
+              <label>Formato de Salida Deseado</label>
+              <select id="studioTargetFormat" onchange="onStudioFormatChange()">
+                <optgroup label="🎬 Formatos de Video">
+                  <option value="mp4" selected>MP4 (Universal H.264 / AAC)</option>
+                  <option value="mkv">MKV (Matroska)</option>
+                  <option value="webm">WebM (VP9 / Opus)</option>
+                  <option value="avi">AVI (DivX / MP3)</option>
+                  <option value="gif">GIF Animado</option>
+                </optgroup>
+                <optgroup label="🎵 Formatos de Audio">
+                  <option value="mp3">MP3 (Universal CBR)</option>
+                  <option value="flac">FLAC (Lossless Hi-Res)</option>
+                  <option value="wav">WAV (Sin compresión)</option>
+                  <option value="m4a">M4A (AAC)</option>
+                  <option value="opus">Opus</option>
+                  <option value="ogg">OGG Vorbis</option>
+                </optgroup>
+              </select>
+            </div>
+            <div id="studioAudioBitrateWrap" style="display:none;">
+              <label>Bitrate / Fidelidad de Audio</label>
+              <select id="studioAudioBitrate">
+                <option value="320k" selected>320 kbps (Máxima Fidelidad)</option>
+                <option value="256k">256 kbps (Muy Alta)</option>
+                <option value="192k">192 kbps (Estándar)</option>
+                <option value="128k">128 kbps (Ahorro de espacio)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOOL 2: COMPRESS -->
+        <div id="studioToolPaneCompress" class="studio-tool-pane" style="display:none;">
+          <label>Perfil de Compresión Inteligente para Redes</label>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+            <div class="compress-card active" id="cardCompWa16" onclick="selectCompressProfile('whatsapp_16', this)">
+              <strong>📱 WhatsApp Estándar</strong>
+              <div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Comprime a menos de 16 MB para enviar rápido en cualquier chat</div>
+            </div>
+            <div class="compress-card" id="cardCompWa25" onclick="selectCompressProfile('whatsapp_25', this)">
+              <strong>📺 WhatsApp HD</strong>
+              <div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Preserva 1080p comprimiendo para no superar los 25 MB</div>
+            </div>
+            <div class="compress-card" id="cardCompDiscord" onclick="selectCompressProfile('discord', this)">
+              <strong>👾 Discord / Telegram</strong>
+              <div style="font-size:0.72rem; color:var(--muted); margin-top:2px;">Optimizado para canales y servidores (límite 25 MB)</div>
+            </div>
+          </div>
+          <input type="hidden" id="studioCompressProfile" value="whatsapp_16">
+        </div>
+
+        <!-- TOOL 3: TRIM -->
+        <div id="studioToolPaneTrim" class="studio-tool-pane" style="display:none;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
+            <div>
+              <label>Recortar desde (ej. 00:00:15)</label>
+              <input type="text" id="studioTrimStart" placeholder="00:00:00">
+            </div>
+            <div>
+              <label>Recortar hasta (ej. 00:02:30)</label>
+              <input type="text" id="studioTrimEnd" placeholder="00:00:00">
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.83rem;">
+              <input type="checkbox" id="studioExtractAudioOnly">
+              <span>🎵 Extraer únicamente la pista de audio (MP3 320k) sin video</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- TOOL 4: NORMALIZE -->
+        <div id="studioToolPaneNormalize" class="studio-tool-pane" style="display:none;">
+          <div style="background:rgba(255,255,255,0.03); border:1px dashed var(--border); border-radius:8px; padding:14px;">
+            <strong style="color:var(--accent-blue); font-size:0.88rem;">🔊 Nivelación de Potencia Sonora (Estándar EBU R128 / ITU-R BS.1770)</strong>
+            <p style="font-size:0.78rem; color:var(--muted); margin:6px 0 0; line-height:1.4;">
+              Aplica un filtro acústico que analiza y normaliza la sonoridad a <b>-14 LUFS</b>. Ideal para nivelar el volumen de canciones procedentes de distintas fuentes o eliminar desniveles de grabaciones sin provocar distorsión ni saturación.
+            </p>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTON & PROGRESS -->
+        <div style="margin-top:20px;">
+          <button type="button" id="btnRunStudioProcess" class="btn btn-primary btn-block" style="padding:12px; font-size:0.95rem;" onclick="runStudioProcess()">
+            🚀 Iniciar Procesamiento en Estudio
+          </button>
+        </div>
+
+        <!-- STUDIO CONSOLE & RESULT -->
+        <div id="studioResultBanner" style="display:none; margin-top:16px; background:rgba(16,185,129,0.12); border:1px solid var(--success); border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <strong style="color:var(--success); font-size:0.92rem;">✅ ¡Procesamiento completado con éxito!</strong>
+              <div id="studioResultMeta" style="font-size:0.78rem; color:var(--text); margin-top:3px;">Archivo listo</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <a id="btnStudioDownloadResult" href="#" class="btn btn-primary btn-sm" style="font-size:0.78rem;">⬇️ Descargar</a>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-history')" style="font-size:0.78rem;">📂 Ver en Mis Archivos</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; background:#060b14; border:1px solid #1e293b; border-radius:10px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-family:monospace; font-weight:700; font-size:0.8rem; color:#38bdf8;">
+              📟 Consola del Estudio Multimedia
+            </span>
+            <button class="btn btn-secondary btn-sm" style="font-size:0.7rem; padding:2px 6px;" onclick="document.getElementById('studioConsole').textContent='[Listo]'">🧹</button>
+          </div>
+          <div id="studioConsole" style="background:#020617; border:1px solid #0f172a; border-radius:6px; padding:8px; font-family:monospace; font-size:0.75rem; color:#a5f3fc; height:85px; overflow-y:auto; line-height:1.4;">[Estudio listo] Seleccioná un archivo y herramienta para comenzar.</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== ZONA 4: MI PERFIL & AJUSTES ==================== -->
+    <div id="tab-settings" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>⚙️ Mi Perfil & Gestión de Usuario</span>
+          <span style="font-size:0.78rem; font-weight:normal; color:var(--muted);">Almacenamiento en la nube, seguridad y cuotas</span>
+        </div>
+
+        <!-- 1. FICHA DE USUARIO & CUOTA -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:18px;">
+          <!-- User info card -->
+          <div style="background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:6px; text-transform:uppercase;">👤 Datos de la Sesión</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:6px;">{{ username }}</div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              {% if is_admin %}
+              <span class="brand-badge" style="background:rgba(239,68,68,0.2); color:var(--accent-2); border-color:rgba(239,68,68,0.4);">👑 Administrador</span>
+              {% else %}
+              <span class="brand-badge" style="background:rgba(56,189,248,0.15); color:var(--accent-blue);">👤 Usuario Downloader</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Storage Quota Card -->
+          <div style="background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:0.8rem; font-weight:700; color:var(--muted); text-transform:uppercase;">💾 Almacenamiento en Disco</span>
+              <span id="settingsQuotaTextVal" style="font-size:0.78rem; color:var(--text); font-weight:600;">Calculando...</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); height:8px; border-radius:4px; overflow:hidden; margin:8px 0;">
+              <div id="settingsQuotaBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-2)); transition:width 0.3s;"></div>
+            </div>
+            <div style="font-size:0.72rem; color:var(--muted);">
+              Tu espacio asignado en el servidor para almacenar descargas multimedia y archivos procesados.
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. CLOUD SYNCHRONIZATION ACCORDION -->
+        <div class="accordion-box" style="margin-bottom:18px;">
+          <div class="accordion-header" id="advCloudHeader" style="cursor:pointer;">
+            <span>☁️ Almacenamiento en la Nube (S3 / WebDAV / FTP / Google Drive / OneDrive / Dropbox)</span>
+            <span id="advCloudIcon">▼</span>
+          </div>
+          <div class="accordion-body" id="advCloudBody" style="display:block;">
+            <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <label style="font-size:0.78rem; color:var(--muted); margin:0;">Perfil Guardado:</label>
+              <select id="userCloudPresetSelector" style="flex:1; min-width:180px; padding:6px 10px; font-size:0.8rem;">
+                <option value="">-- Configuración Personal Activa --</option>
+              </select>
+              <button type="button" id="btnSaveCloudPreset" class="btn btn-secondary btn-sm" style="font-size:0.75rem;">💾 Guardar Preset</button>
+              <button type="button" id="btnDeleteCloudPreset" class="btn btn-danger btn-sm" style="font-size:0.75rem; display:none;">🗑️ Borrar</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+              <!-- S3 / MinIO / Cloudflare R2 -->
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
+                  <input type="checkbox" id="userS3Enabled"> 🪣 S3 / MinIO / R2
+                </label>
+                <input type="text" id="userS3Endpoint" placeholder="Endpoint URL (vacío para AWS)" style="margin-bottom:4px; font-size:0.78rem;" title="Opcional para AWS, obligatorio para MinIO o Cloudflare R2">
+                <input type="text" id="userS3Bucket" placeholder="Nombre del Bucket" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userS3Key" placeholder="Access Key ID" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="password" id="userS3Secret" placeholder="Secret Access Key" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userS3Region" placeholder="Región (ej. us-east-1)" value="us-east-1" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userS3Dir" placeholder="Prefijo / Carpeta en bucket" style="margin-bottom:6px; font-size:0.78rem;">
+                <button type="button" id="btnTestUserS3" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar S3</button>
+              </div>
+
+              <!-- WebDAV -->
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
+                  <input type="checkbox" id="userWebdavEnabled"> ☁️ Nextcloud / WebDAV
+                </label>
+                <input type="text" id="userWebdavUrl" placeholder="https://nube.com/remote.php/dav/files/user/" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userWebdavUser" placeholder="Usuario" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="password" id="userWebdavPass" placeholder="App Token / Clave" style="font-size:0.78rem; margin-bottom:6px;">
+                <button type="button" id="btnTestUserWebdav" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar WebDAV</button>
+              </div>
+
+              <!-- FTP -->
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text);">
+                  <input type="checkbox" id="userFtpEnabled"> 📁 Servidor FTP
+                </label>
+                <input type="text" id="userFtpHost" placeholder="ftp.servidor.com" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="text" id="userFtpUser" placeholder="Usuario FTP" style="margin-bottom:4px; font-size:0.78rem;">
+                <input type="password" id="userFtpPass" placeholder="Clave FTP" style="font-size:0.78rem; margin-bottom:6px;">
+                <button type="button" id="btnTestUserFtp" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 8px; width:100%;">🧪 Probar FTP</button>
+              </div>
+
+              <!-- CONECTORES CLOUD INYECTADOS POR PLUGINS -->
+              {% for opt in plugin_download_cloud_options %}
+              <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid {% if opt.enabled %}rgba(56,189,248,0.35){% else %}rgba(100,116,139,0.3){% endif %};" class="plugin-cloud-card" data-plugin-id="{{ opt.id }}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text); margin:0; {% if opt.enabled %}cursor:pointer;{% else %}cursor:not-allowed; opacity:0.8;{% endif %}">
+                    <input type="checkbox" id="pluginCloud_{{ opt.id }}_enabled" class="plugin-cloud-check" data-plugin="{{ opt.id }}" {% if not opt.enabled %}disabled title="Integración desactivada. Habilítala en Ajustes primero"{% endif %}>
+                    <span>{{ opt.icon or '☁️' }} {{ opt.name }}</span>
+                  </label>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    {% if not opt.enabled %}
+                    <span class="badge" style="background:rgba(239,68,68,0.18); color:#f87171; font-size:0.65rem; font-weight:700;">DESACTIVADO</span>
+                    {% else %}
+                    <span class="badge" style="background:rgba(34,197,94,0.18); color:#4ade80; font-size:0.65rem; font-weight:700;">ACTIVO</span>
+                    {% endif %}
+                    <span class="badge" style="background:rgba(234,179,8,0.18); color:#fbbf24; font-size:0.65rem; font-weight:700;">{{ opt.badge or 'PLUGIN' }}</span>
+                  </div>
+                </div>
+                {% if opt.description %}
+                <p style="font-size:0.72rem; color:var(--muted); margin-bottom:6px; line-height:1.3;">{{ opt.description }}</p>
+                {% endif %}
+                {% if not opt.enabled %}
+                <div style="font-size:0.72rem; color:var(--muted); margin-bottom:6px; background:rgba(255,255,255,0.03); padding:5px 8px; border-radius:4px; border:1px dashed var(--border); line-height:1.3;">
+                  ⚠️ La integración está actualmente <b>desactivada</b>. Podés conectar tu cuenta y habilitarla en <a href="{{ opt.settings_url }}" style="color:var(--accent-blue); text-decoration:underline;">⚙️ Ajustes</a>.
+                </div>
+                {% endif %}
+                {% if opt.fields %}
+                  {% for f in opt.fields %}
+                  <input type="{{ f.type or 'text' }}" id="pluginCloud_{{ opt.id }}_{{ f.id }}" class="plugin-cloud-input" data-plugin="{{ opt.id }}" data-field="{{ f.id }}" placeholder="{{ f.placeholder or f.label }}" style="margin-bottom:4px; font-size:0.78rem;" {% if not opt.enabled %}disabled{% endif %}>
+                  {% endfor %}
+                {% endif %}
+                {% if opt.settings_url %}
+                <div style="text-align:right; margin-top:4px;">
+                  <a href="{{ opt.settings_url }}" target="_blank" style="font-size:0.72rem; color:var(--accent-blue); text-decoration:none;">⚙️ Ajustes de {{ opt.name }}</a>
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- MODO OFFLOAD -->
+            <div style="margin-top:14px; padding:10px 12px; background:rgba(3,105,161,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:8px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:0.84rem; color:#38bdf8; margin:0;">
+                <input type="checkbox" id="userCloudOffload">
+                <span>🗑️ Modo Safe Offload: Eliminar copia local en el VPS tras confirmar subida a la nube</span>
+              </label>
+              <div style="font-size:0.75rem; color:var(--muted); margin-left:24px; margin-top:3px;">
+                El archivo se descarga en el VPS, se envía de inmediato a tu almacenamiento cloud elegido y se borra del servidor local para liberar espacio de disco. Si la subida falla, se conserva localmente.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SEGURIDAD & 2FA -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+          <!-- Password change -->
+          <div style="background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <strong style="display:block; font-size:0.88rem; color:var(--text); margin-bottom:10px;">🔑 Cambiar Contraseña</strong>
+            <div style="margin-bottom:8px;">
+              <input type="password" id="settingsCurrentPass" placeholder="Contraseña actual" style="font-size:0.8rem; width:100%;">
+            </div>
+            <div style="margin-bottom:8px;">
+              <input type="password" id="settingsNewPass" placeholder="Nueva contraseña" style="font-size:0.8rem; width:100%;">
+            </div>
+            <div style="margin-bottom:10px;">
+              <input type="password" id="settingsConfirmPass" placeholder="Confirmar nueva contraseña" style="font-size:0.8rem; width:100%;">
+            </div>
+            <button type="button" id="btnSettingsChangePass" class="btn btn-secondary btn-sm" style="width:100%; font-size:0.8rem;" onclick="settingsChangePassword()">
+              Actualizar Contraseña
+            </button>
+          </div>
+
+          <!-- 2FA Status Card -->
+          <div style="background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong style="font-size:0.88rem; color:var(--text);">🛡️ Autenticación 2FA (TOTP)</strong>
+              <span id="settingsTotpBadge" class="brand-badge" style="font-size:0.7rem; background:rgba(56,189,248,0.15); color:var(--accent-blue);">Verificando...</span>
+            </div>
+            <p style="font-size:0.76rem; color:var(--muted); margin-bottom:12px; line-height:1.4;">
+              Protegé tu cuenta con Google Authenticator, Authy, Bitwarden o Microsoft Authenticator para requerir un código de 6 dígitos al iniciar sesión.
+            </p>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-primary btn-sm" id="btnSettingsOpen2fa" onclick="document.getElementById('btnOpen2faModal').click()" style="font-size:0.8rem; flex:1;">
+                ⚙️ Configurar 2FA & Códigos
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. TELEGRAM BOT LINKING -->
+        {% if telegram_enabled %}
+        <div style="margin-top:18px; background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <strong style="font-size:0.88rem; color:var(--text);">✈️ Asistente de Telegram Autónomo</strong>
+              <div style="font-size:0.76rem; color:var(--muted); margin-top:2px;">Descargá contenido directamente desde Telegram enviándole cualquier enlace al bot</div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('btnOpenTelegramModal').click()" style="font-size:0.8rem;">
+              🤖 Vincular / Gestionar Bot
+            </button>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
   </main>
 
   <!-- MOBILE BOTTOM NAVIGATION BAR (Permanently docked, always visible across all tabs) -->
   <nav class="mobile-bottom-nav" aria-label="Navegación principal móvil">
-    <button type="button" class="mobile-nav-btn active" data-tab="tab-quick" id="mNavQuick">
-      <span class="mobile-nav-icon">⚡</span>
-      <span class="mobile-nav-label">Rápido</span>
-    </button>
-    <button type="button" class="mobile-nav-btn" data-tab="tab-adv" id="mNavAdv">
-      <span class="mobile-nav-icon">🎛️</span>
-      <span class="mobile-nav-label">Avanzado</span>
-    </button>
-    <button type="button" class="mobile-nav-btn" data-tab="tab-queue" id="mNavQueue">
+    <button type="button" class="mobile-nav-btn active" data-tab="tab-downloads" id="mNavDownloads">
       <span class="mobile-nav-icon" style="position:relative;">
-        ⏳
+        📥
         <span id="mobileBottomQueueBadge" class="mobile-badge" style="display:none;">0</span>
       </span>
-      <span class="mobile-nav-label">Cola</span>
+      <span class="mobile-nav-label">Descargas</span>
     </button>
     <button type="button" class="mobile-nav-btn" data-tab="tab-history" id="mNavHistory">
       <span class="mobile-nav-icon">📂</span>
       <span class="mobile-nav-label">Archivos</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-studio" id="mNavStudio">
+      <span class="mobile-nav-icon">🎬</span>
+      <span class="mobile-nav-label">Estudio</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-settings" id="mNavSettings">
+      <span class="mobile-nav-icon">⚙️</span>
+      <span class="mobile-nav-label">Ajustes</span>
     </button>
   </nav>
 
@@ -1841,6 +2235,25 @@
         <div style="background:var(--bg-input); height:6px; border-radius:3px; overflow:hidden;">
           <div id="drawerQuotaProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-2)); transition:width 0.3s;"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Main Navigation Zones -->
+    <div class="drawer-section">
+      <label style="font-size:0.76rem; font-weight:700; margin-bottom:6px;">🧭 Zonas de Trabajo</label>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-downloads'); closeMobileDrawer();" style="justify-content:flex-start; padding:9px 12px; font-size:0.85rem;">
+          <span>📥</span> <span>Descargas (Fácil / Avanzado)</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-history'); closeMobileDrawer();" style="justify-content:flex-start; padding:9px 12px; font-size:0.85rem;">
+          <span>📂</span> <span>Mis Archivos</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-studio'); closeMobileDrawer();" style="justify-content:flex-start; padding:9px 12px; font-size:0.85rem;">
+          <span>🎬</span> <span>Estudio Multimedia</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-settings'); closeMobileDrawer();" style="justify-content:flex-start; padding:9px 12px; font-size:0.85rem;">
+          <span>⚙️</span> <span>Mi Perfil & Ajustes</span>
+        </button>
       </div>
     </div>
 
@@ -2104,8 +2517,38 @@ function showToast(msg, type = 'info', timeout = 4000) {
 }
 
 // Unified Navigation Tabs (Desktop Sidebar + Mobile Bottom Navigation)
+function switchDlSubView(subview) {
+  const views = {
+    'quick': { pane: 'dlSubViewQuick', btn: 'btnDlSubQuick' },
+    'adv': { pane: 'dlSubViewAdv', btn: 'btnDlSubAdv' },
+    'queue': { pane: 'dlSubViewQueue', btn: 'btnDlSubQueue' }
+  };
+  Object.keys(views).forEach(k => {
+    const p = document.getElementById(views[k].pane);
+    const b = document.getElementById(views[k].btn);
+    if (p) p.style.display = (k === subview) ? 'block' : 'none';
+    if (b) b.classList.toggle('active', k === subview);
+  });
+  if (subview === 'queue' && typeof fetchQueueState === 'function') {
+    fetchQueueState();
+  }
+}
+
 function switchTab(target) {
   if (!target) return;
+
+  // Aliases mapping old or deep targets to unified tab-downloads
+  if (target === 'tab-quick') {
+    target = 'tab-downloads';
+    switchDlSubView('quick');
+  } else if (target === 'tab-adv') {
+    target = 'tab-downloads';
+    switchDlSubView('adv');
+  } else if (target === 'tab-queue') {
+    target = 'tab-downloads';
+    switchDlSubView('queue');
+  }
+
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === target);
@@ -2119,8 +2562,13 @@ function switchTab(target) {
     pane.classList.add('active');
     const mainViewport = document.querySelector('.main-content');
     if (mainViewport) mainViewport.scrollTop = 0;
-    if (target === 'tab-history') loadRecentDownloads();
-    if (target === 'tab-queue') fetchQueueState();
+    if (target === 'tab-history' && typeof loadRecentDownloads === 'function') loadRecentDownloads();
+    if (target === 'tab-downloads' && typeof fetchQueueState === 'function') fetchQueueState();
+    if (target === 'tab-studio' && typeof refreshStudioSourceFiles === 'function') refreshStudioSourceFiles();
+    if (target === 'tab-settings') {
+      if (typeof loadUserQuota === 'function') loadUserQuota();
+      if (typeof loadTotpStatus === 'function') loadTotpStatus();
+    }
   }
 }
 
@@ -3430,8 +3878,9 @@ function renderQueueState(data) {
   const badge = document.getElementById('sidebarQueueBadge');
   const topBadge = document.getElementById('mobileTopQueueBadge');
   const bottomBadge = document.getElementById('mobileBottomQueueBadge');
+  const subBadge = document.getElementById('downloadsSubQueueBadge');
   const totalQueued = data.total_queued || 0;
-  [badge, topBadge, bottomBadge].forEach(b => {
+  [badge, topBadge, bottomBadge, subBadge].forEach(b => {
     if (!b) return;
     if (totalQueued > 0) {
       b.textContent = totalQueued;
@@ -3638,6 +4087,7 @@ function renderRecentDownloads(data) {
                       <span>${sub.size_formatted} ${sub.mtime ? `<span style="margin-left:6px; font-size:0.72rem; color:var(--muted);" title="Hora de descarga">🕒 ${new Date(sub.mtime * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>` : ''}</span>
                       <div style="display:flex; gap:4px; align-items:center;">
                         ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>`}
+                        ${(!sub.offloaded) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToMediaStudio('${encodeURIComponent(sub.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬</button>` : ''}
                         ${(!sub.offloaded && window.GOOGLE_DRIVE_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="uploadToGoogleDrive('${sub.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
                         ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
                         <button class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="deleteUserDownload('${sub.job_id}')">🗑️</button>
@@ -3679,6 +4129,7 @@ function renderRecentDownloads(data) {
           </div>
           <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px; align-items:center;">
             ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:4px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>`}
+            ${(!item.offloaded) ? `<button class="btn btn-secondary btn-sm" onclick="sendToMediaStudio('${encodeURIComponent(item.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬 Estudio</button>` : ''}
             ${(!item.offloaded && window.GOOGLE_DRIVE_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="uploadToGoogleDrive('${item.job_id}', this)" title="Subir este archivo a mi Google Drive">📁 Drive</button>` : ''}
             ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
@@ -3846,12 +4297,14 @@ async function loadUserQuota() {
   const barEl = document.getElementById('quotaProgressBar');
   const dTextEl = document.getElementById('drawerQuotaTextVal');
   const dBarEl = document.getElementById('drawerQuotaProgressBar');
+  const sTextEl = document.getElementById('settingsQuotaTextVal');
+  const sBarEl = document.getElementById('settingsQuotaBar');
   if (!textEl || !barEl) return;
   try {
     const res = await fetch('/api/user/quota');
     const data = await res.json();
-    const textVals = [textEl, dTextEl].filter(Boolean);
-    const barEls = [barEl, dBarEl].filter(Boolean);
+    const textVals = [textEl, dTextEl, sTextEl].filter(Boolean);
+    const barEls = [barEl, dBarEl, sBarEl].filter(Boolean);
 
     if (data.quota_bytes > 0) {
       const formatted = `${data.used_formatted} / ${data.quota_formatted}`;
@@ -3887,6 +4340,7 @@ async function loadTotpStatus() {
   const actionContainer = document.getElementById('totpStatusActionBtn');
   const setupBox = document.getElementById('totpSetupBox');
   const disableBox = document.getElementById('totpDisableBox');
+  const sBadge = document.getElementById('settingsTotpBadge');
   if (!statusLabel || !actionContainer) return;
 
   try {
@@ -3896,6 +4350,11 @@ async function loadTotpStatus() {
     disableBox.style.display = 'none';
 
     if (data.totp_enabled) {
+      if (sBadge) {
+        sBadge.innerHTML = '✅ Activado';
+        sBadge.style.background = 'rgba(16,185,129,0.15)';
+        sBadge.style.color = '#10b981';
+      }
       statusLabel.innerHTML = '<span style="color:var(--success);">✅ Activado</span> <span style="font-size:0.75rem; color:var(--muted);">(' + data.backup_codes_count + ' códigos de respaldo)</span>';
       actionContainer.innerHTML = '<button type="button" id="btnShowDisable2fa" class="btn btn-danger btn-sm" style="font-size:0.78rem;">Desactivar 2FA</button>';
       document.getElementById('btnShowDisable2fa')?.addEventListener('click', () => {
@@ -3903,6 +4362,11 @@ async function loadTotpStatus() {
         disableBox.style.display = 'block';
       });
     } else {
+      if (sBadge) {
+        sBadge.innerHTML = '⚪ Desactivado';
+        sBadge.style.background = 'rgba(255,255,255,0.06)';
+        sBadge.style.color = 'var(--muted)';
+      }
       statusLabel.innerHTML = '<span style="color:var(--muted);">⚪ Desactivado</span>';
       actionContainer.innerHTML = '<button type="button" id="btnStartSetup2fa" class="btn btn-primary btn-sm" style="font-size:0.78rem;">🚀 Activar 2FA</button>';
       document.getElementById('btnStartSetup2fa')?.addEventListener('click', start2faSetup);
@@ -4125,6 +4589,321 @@ document.getElementById('btnUnlinkTelegram')?.addEventListener('click', async ()
     }
   }
 });
+
+// ==================== ZONA 3: ESTUDIO MULTIMEDIA (MEDIA STUDIO) ====================
+let currentStudioTool = 'convert';
+let currentCompressProfile = 'whatsapp_16';
+let studioSelectedFileObj = null;
+
+function switchStudioTool(tool) {
+  currentStudioTool = tool;
+  const toolBtns = {
+    'convert': 'btnToolConvert',
+    'compress': 'btnToolCompress',
+    'trim': 'btnToolTrim',
+    'normalize': 'btnToolNormalize'
+  };
+  const toolPanes = {
+    'convert': 'studioToolPaneConvert',
+    'compress': 'studioToolPaneCompress',
+    'trim': 'studioToolPaneTrim',
+    'normalize': 'studioToolPaneNormalize'
+  };
+
+  Object.keys(toolBtns).forEach(k => {
+    const btn = document.getElementById(toolBtns[k]);
+    const pane = document.getElementById(toolPanes[k]);
+    if (btn) btn.classList.toggle('active', k === tool);
+    if (pane) pane.style.display = (k === tool) ? 'block' : 'none';
+  });
+}
+
+function selectCompressProfile(profile, el) {
+  currentCompressProfile = profile;
+  const input = document.getElementById('studioCompressProfile');
+  if (input) input.value = profile;
+  document.querySelectorAll('.compress-card').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function onStudioFormatChange() {
+  const fmt = document.getElementById('studioTargetFormat')?.value;
+  const bitrateWrap = document.getElementById('studioAudioBitrateWrap');
+  if (bitrateWrap) {
+    bitrateWrap.style.display = (fmt === 'mp3') ? 'block' : 'none';
+  }
+}
+
+async function refreshStudioSourceFiles(preselectedFilename = null) {
+  const select = document.getElementById('studioSourceFileSelect');
+  if (!select) return;
+
+  try {
+    const res = await fetch('/api/recent-downloads');
+    const data = await res.json();
+    const items = data.items || data.downloads || [];
+    const folders = data.folders || [];
+
+    let allFiles = [...items];
+    folders.forEach(f => {
+      (f.items || []).forEach(sub => {
+        allFiles.push(sub);
+      });
+    });
+
+    const uniqueFiles = [];
+    const seen = new Set();
+    allFiles.forEach(f => {
+      if (f.filename && !seen.has(f.filename)) {
+        seen.add(f.filename);
+        uniqueFiles.push(f);
+      }
+    });
+
+    select.innerHTML = '<option value="">-- Seleccionar archivo descargado (' + uniqueFiles.length + ' disponibles) --</option>';
+    uniqueFiles.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.filename;
+      opt.textContent = `${f.filename} (${f.size_formatted || ''})`;
+      opt.dataset.size = f.size_formatted || '';
+      select.appendChild(opt);
+    });
+
+    if (preselectedFilename) {
+      select.value = preselectedFilename;
+      onStudioSourceFileSelect();
+    }
+  } catch (e) {
+    console.error('Error cargando archivos para estudio:', e);
+  }
+}
+
+function onStudioSourceFileSelect() {
+  const select = document.getElementById('studioSourceFileSelect');
+  const uploadInput = document.getElementById('studioUploadFileInput');
+  if (!select) return;
+
+  const val = select.value;
+  if (val) {
+    if (uploadInput) uploadInput.value = '';
+    const selectedOpt = select.options[select.selectedIndex];
+    const size = selectedOpt ? selectedOpt.dataset.size : '';
+    studioSelectedFileObj = { type: 'download', filename: val, size_formatted: size };
+    displayStudioActiveFile(val, size ? `Tamaño: ${size}` : 'Desde descargas locales');
+  } else {
+    if (!uploadInput?.files?.length) {
+      clearStudioSelection();
+    }
+  }
+}
+
+function onStudioFileUploaded() {
+  const uploadInput = document.getElementById('studioUploadFileInput');
+  const select = document.getElementById('studioSourceFileSelect');
+  if (!uploadInput || !uploadInput.files.length) return;
+
+  if (select) select.value = '';
+  const file = uploadInput.files[0];
+  const formattedSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+  studioSelectedFileObj = { type: 'upload', file: file, filename: file.name, size_formatted: formattedSize };
+  displayStudioActiveFile(file.name, `Archivo local subido (${formattedSize})`);
+}
+
+function displayStudioActiveFile(filename, metaText) {
+  const banner = document.getElementById('studioActiveFileBanner');
+  const nameEl = document.getElementById('studioActiveFileName');
+  const metaEl = document.getElementById('studioActiveFileMeta');
+  const iconEl = document.getElementById('studioActiveFileIcon');
+  if (!banner) return;
+
+  const ext = filename.split('.').pop().toLowerCase();
+  const isAudio = ['mp3', 'm4a', 'flac', 'wav', 'aac', 'opus', 'ogg'].includes(ext);
+  if (iconEl) iconEl.textContent = isAudio ? '🎵' : '🎬';
+
+  if (nameEl) nameEl.textContent = filename;
+  if (metaEl) metaEl.textContent = metaText;
+  banner.style.display = 'block';
+
+  const consoleEl = document.getElementById('studioConsole');
+  if (consoleEl) {
+    consoleEl.textContent = `[Listo] Archivo cargado en estudio: "${filename}". Seleccioná la herramienta deseada.`;
+  }
+}
+
+function clearStudioSelection() {
+  studioSelectedFileObj = null;
+  const select = document.getElementById('studioSourceFileSelect');
+  const uploadInput = document.getElementById('studioUploadFileInput');
+  const banner = document.getElementById('studioActiveFileBanner');
+  if (select) select.value = '';
+  if (uploadInput) uploadInput.value = '';
+  if (banner) banner.style.display = 'none';
+  const consoleEl = document.getElementById('studioConsole');
+  if (consoleEl) {
+    consoleEl.textContent = '[Estudio listo] Seleccioná un archivo y herramienta para comenzar.';
+  }
+}
+
+window.sendToMediaStudio = function(encodedFilename) {
+  const filename = decodeURIComponent(encodedFilename);
+  switchTab('tab-studio');
+  refreshStudioSourceFiles(filename);
+  showToast(`Archivo "${filename}" enviado al Estudio Multimedia`, 'info', 3000);
+};
+
+async function runStudioProcess() {
+  if (!studioSelectedFileObj) {
+    showToast('Seleccioná un archivo de origen para procesar en el Estudio', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnRunStudioProcess');
+  const consoleEl = document.getElementById('studioConsole');
+  const resultBanner = document.getElementById('studioResultBanner');
+  const resultMeta = document.getElementById('studioResultMeta');
+  const downloadBtn = document.getElementById('btnStudioDownloadResult');
+
+  if (resultBanner) resultBanner.style.display = 'none';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Procesando con FFmpeg en servidor...';
+  }
+
+  if (consoleEl) {
+    consoleEl.textContent = `[Iniciando] Herramienta: "${currentStudioTool}" sobre "${studioSelectedFileObj.filename}"...\nEspere mientras se procesa el flujo audiovisual con FFmpeg...`;
+  }
+
+  try {
+    let res;
+    if (studioSelectedFileObj.type === 'upload') {
+      const formData = new FormData();
+      formData.append('tool', currentStudioTool);
+      formData.append('file', studioSelectedFileObj.file);
+
+      if (currentStudioTool === 'convert') {
+        formData.append('target_format', document.getElementById('studioTargetFormat')?.value || 'mp4');
+        formData.append('audio_bitrate', document.getElementById('studioAudioBitrate')?.value || '320k');
+      } else if (currentStudioTool === 'compress') {
+        formData.append('profile', currentCompressProfile);
+      } else if (currentStudioTool === 'trim') {
+        formData.append('start_time', document.getElementById('studioTrimStart')?.value || '');
+        formData.append('end_time', document.getElementById('studioTrimEnd')?.value || '');
+        formData.append('extract_audio', document.getElementById('studioExtractAudioOnly')?.checked ? '1' : '0');
+      }
+
+      res = await fetch('/api/studio/process', {
+        method: 'POST',
+        body: formData
+      });
+    } else {
+      const payload = {
+        tool: currentStudioTool,
+        source_filename: studioSelectedFileObj.filename
+      };
+
+      if (currentStudioTool === 'convert') {
+        payload.target_format = document.getElementById('studioTargetFormat')?.value || 'mp4';
+        payload.audio_bitrate = document.getElementById('studioAudioBitrate')?.value || '320k';
+      } else if (currentStudioTool === 'compress') {
+        payload.profile = currentCompressProfile;
+      } else if (currentStudioTool === 'trim') {
+        payload.start_time = document.getElementById('studioTrimStart')?.value || '';
+        payload.end_time = document.getElementById('studioTrimEnd')?.value || '';
+        payload.extract_audio = document.getElementById('studioExtractAudioOnly')?.checked || false;
+      }
+
+      res = await fetch('/api/studio/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (consoleEl) {
+        consoleEl.textContent += `\n[Éxito] ✅ Proceso completado: ${data.filename} (${data.size_formatted})`;
+      }
+      if (resultBanner && resultMeta && downloadBtn) {
+        resultMeta.textContent = `Archivo: ${data.filename} (${data.size_formatted})`;
+        downloadBtn.href = data.download_url;
+        downloadBtn.textContent = '⬇️ Descargar ' + data.filename;
+        resultBanner.style.display = 'block';
+      }
+      showToast(data.message || 'Procesamiento completado con éxito', 'success');
+      loadRecentDownloads();
+      loadUserQuota();
+      refreshStudioSourceFiles();
+    } else {
+      const errMsg = data.error || 'Fallo al procesar el archivo.';
+      if (consoleEl) {
+        consoleEl.textContent += `\n[Error] ❌ ${errMsg}`;
+      }
+      showToast(errMsg, 'error');
+    }
+  } catch (e) {
+    if (consoleEl) {
+      consoleEl.textContent += `\n[Error Excepción] ${e.message}`;
+    }
+    showToast(e.message || 'Error al comunicarse con el servidor', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🚀 Iniciar Procesamiento en Estudio';
+    }
+  }
+}
+
+// ==================== ZONA 4: AJUSTES Y SEGURIDAD ====================
+async function settingsChangePassword() {
+  const currentPass = document.getElementById('settingsCurrentPass')?.value || '';
+  const newPass = document.getElementById('settingsNewPass')?.value || '';
+  const confirmPass = document.getElementById('settingsConfirmPass')?.value || '';
+  const btn = document.getElementById('btnSettingsChangePass');
+
+  if (!currentPass || !newPass) {
+    showToast('Debes ingresar la contraseña actual y la nueva.', 'error');
+    return;
+  }
+  if (newPass !== confirmPass) {
+    showToast('La nueva contraseña y la confirmación no coinciden.', 'error');
+    return;
+  }
+  if (newPass.length < 6) {
+    showToast('La contraseña debe tener al menos 6 caracteres.', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Actualizando...';
+  }
+
+  try {
+    const res = await fetch('/api/user/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: currentPass, new_password: newPass })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message || 'Contraseña actualizada exitosamente', 'success');
+      document.getElementById('settingsCurrentPass').value = '';
+      document.getElementById('settingsNewPass').value = '';
+      document.getElementById('settingsConfirmPass').value = '';
+    } else {
+      showToast(data.error || 'Error al actualizar contraseña', 'error');
+    }
+  } catch (e) {
+    showToast(e.message || 'Error de comunicación', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Actualizar Contraseña';
+    }
+  }
+}
 
 // Load on start
 fetchQueueState();

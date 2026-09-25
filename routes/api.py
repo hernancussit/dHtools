@@ -3,6 +3,7 @@ import re
 import time
 import zipfile
 import uuid
+import subprocess
 from flask import Blueprint, request, jsonify, send_file, abort
 
 from core.config import DOWNLOAD_DIR
@@ -862,4 +863,174 @@ def api_test_user_cloud_preset():
     if ok:
         return jsonify({"success": True, "message": msg})
     return jsonify({"error": msg}), 400
+
+
+# ==================== MEDIA STUDIO API (ROADMAP v1.6.0) ====================
+
+@api_bp.route("/api/studio/process", methods=["POST"])
+def api_studio_process():
+    from flask import session
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username") or session.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+
+    import subprocess
+    import shutil
+
+    if request.is_json:
+        data = request.get_json(force=True) or {}
+    else:
+        data = request.form.to_dict()
+
+    tool = data.get("tool", "convert")  # convert, compress, trim, normalize
+    source_filename = (data.get("source_filename") or "").strip()
+
+    uploaded_file = request.files.get("file")
+    source_path = None
+
+    if uploaded_file and uploaded_file.filename:
+        safe_up_name = safe_download_path(uploaded_file.filename)
+        if not safe_up_name:
+            return jsonify({"error": "Nombre de archivo no válido"}), 400
+        source_path = safe_up_name
+        uploaded_file.save(source_path)
+    elif source_filename:
+        target = safe_download_path(source_filename)
+        if not target or not os.path.exists(target):
+            found = False
+            if os.path.exists(DOWNLOAD_DIR):
+                for entry in os.listdir(DOWNLOAD_DIR):
+                    if entry == source_filename or entry.endswith(source_filename):
+                        cand = os.path.join(DOWNLOAD_DIR, entry)
+                        if os.path.isfile(cand):
+                            target = cand
+                            found = True
+                            break
+            if not found or not target or not os.path.exists(target):
+                return jsonify({"error": f"Archivo '{source_filename}' no encontrado en el servidor"}), 404
+        source_path = target
+    else:
+        return jsonify({"error": "Debe seleccionar un archivo de origen o subir uno nuevo"}), 400
+
+    base_name, orig_ext = os.path.splitext(os.path.basename(source_path))
+    clean_base = re.sub(r'^[a-f0-9]{32}_?', '', base_name)
+    if not clean_base:
+        clean_base = "media"
+
+    output_ext = orig_ext.lstrip(".")
+    ffmpeg_args = ["ffmpeg", "-y", "-i", source_path]
+
+    if tool == "convert":
+        target_format = data.get("target_format", "mp4").lower().strip(".")
+        output_ext = target_format
+        if target_format in ("mp3", "flac", "wav", "aac", "m4a", "opus", "ogg"):
+            ffmpeg_args.extend(["-vn"])
+            if target_format == "mp3":
+                bitrate = data.get("audio_bitrate", "320k")
+                ffmpeg_args.extend(["-c:a", "libmp3lame", "-b:a", bitrate])
+            elif target_format == "flac":
+                ffmpeg_args.extend(["-c:a", "flac"])
+            elif target_format == "wav":
+                ffmpeg_args.extend(["-c:a", "pcm_s16le"])
+            elif target_format == "m4a":
+                ffmpeg_args.extend(["-c:a", "aac", "-b:a", "256k"])
+            elif target_format == "opus":
+                ffmpeg_args.extend(["-c:a", "libopus", "-b:a", "192k"])
+            elif target_format == "ogg":
+                ffmpeg_args.extend(["-c:a", "libvorbis", "-q:a", "6"])
+        elif target_format == "gif":
+            start = data.get("start_time", "00:00:00")
+            dur = data.get("duration", "5")
+            ffmpeg_args = ["ffmpeg", "-y", "-ss", start, "-t", str(dur), "-i", source_path,
+                           "-vf", "fps=12,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                           "-loop", "0"]
+        else:
+            if target_format == "mp4":
+                ffmpeg_args.extend(["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-crf", "22"])
+            elif target_format == "mkv":
+                ffmpeg_args.extend(["-c:v", "libx264", "-c:a", "aac"])
+            elif target_format == "webm":
+                ffmpeg_args.extend(["-c:v", "libvpx-vp9", "-c:a", "libopus"])
+            elif target_format == "avi":
+                ffmpeg_args.extend(["-c:v", "libxvid", "-c:a", "mp3"])
+
+    elif tool == "compress":
+        profile = data.get("profile", "whatsapp_16")
+        output_ext = "mp4"
+        if profile == "whatsapp_16":
+            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "slow", "-crf", "28", "-vf", "scale=-2:720", "-c:a", "aac", "-b:a", "96k"])
+        elif profile == "whatsapp_25":
+            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "26", "-vf", "scale=-2:1080", "-c:a", "aac", "-b:a", "128k"])
+        elif profile == "discord":
+            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "25", "-c:a", "aac", "-b:a", "128k"])
+        else:
+            crf = str(data.get("crf", "24"))
+            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", crf, "-c:a", "aac", "-b:a", "128k"])
+
+    elif tool == "trim":
+        start_time = data.get("start_time", "").strip()
+        end_time = data.get("end_time", "").strip()
+        extract_audio = bool(data.get("extract_audio", False))
+
+        args = ["ffmpeg", "-y"]
+        if start_time:
+            args.extend(["-ss", start_time])
+        args.extend(["-i", source_path])
+        if end_time:
+            args.extend(["-to", end_time])
+
+        if extract_audio:
+            output_ext = "mp3"
+            args.extend(["-vn", "-c:a", "libmp3lame", "-b:a", "320k"])
+        else:
+            args.extend(["-c", "copy"])
+        ffmpeg_args = args
+
+    elif tool == "normalize":
+        output_ext = "mp3" if orig_ext.lower() in (".mp3", ".wav", ".flac", ".m4a", ".ogg") else orig_ext.lstrip(".")
+        if output_ext == "mp3":
+            ffmpeg_args.extend(["-af", "loudnorm=I=-14:TP=-1.5:LRA=11", "-c:a", "libmp3lame", "-b:a", "320k"])
+        else:
+            ffmpeg_args.extend(["-c:v", "copy", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11", "-c:a", "aac", "-b:a", "192k"])
+
+    new_jid = uuid.uuid4().hex
+    out_filename = f"{new_jid}_{clean_base}_{tool}.{output_ext}"
+    out_path = os.path.join(DOWNLOAD_DIR, out_filename)
+    ffmpeg_args.append(out_path)
+
+    try:
+        proc = subprocess.run(ffmpeg_args, capture_output=True, text=True, timeout=300)
+        if proc.returncode != 0 or not os.path.exists(out_path):
+            err_msg = proc.stderr[-400:] if proc.stderr else "Error desconocido de FFmpeg"
+            return jsonify({"error": f"Fallo al procesar con FFmpeg: {err_msg}"}), 500
+
+        file_size = os.path.getsize(out_path)
+        from core.utils import save_downloads_meta
+        meta = load_downloads_meta()
+        meta[new_jid] = {
+            "job_id": new_jid,
+            "filename": f"{clean_base}_{tool}.{output_ext}",
+            "username": username,
+            "size_bytes": file_size,
+            "mtime": time.time(),
+            "tool": tool,
+            "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "source_file": source_filename,
+        }
+        save_downloads_meta(meta)
+
+        return jsonify({
+            "success": True,
+            "job_id": new_jid,
+            "filename": f"{clean_base}_{tool}.{output_ext}",
+            "size_formatted": format_bytes(file_size),
+            "download_url": f"/api/files/{new_jid}",
+            "message": "Archivo procesado exitosamente en Estudio Multimedia."
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "El procesamiento excedió el límite de tiempo de 5 minutos"}), 504
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado: {str(e)}"}), 500
+
 

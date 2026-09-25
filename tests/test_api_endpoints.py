@@ -183,6 +183,75 @@ class TestApiEndpoints(unittest.TestCase):
             self.assertEqual(job_spec["url"], test_url)
             self.assertEqual(job_spec["playlist"], False)
 
+    @patch("routes.api.subprocess.run")
+    @patch("routes.api.load_downloads_meta", return_value={})
+    @patch("core.utils.save_downloads_meta")
+    @patch("os.path.exists", return_value=True)
+    @patch("os.path.getsize", return_value=1024)
+    def test_media_studio_process_convert(self, mock_size, mock_exists, mock_save, mock_meta, mock_run):
+        """Verifica que /api/studio/process procese una conversión con ffmpeg y retorne la descarga."""
+        mock_proc = unittest.mock.MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stderr = ""
+        mock_run.return_value = mock_proc
+
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        payload = {
+            "tool": "convert",
+            "source_filename": "test_video.mp4",
+            "target_format": "mp3",
+            "audio_bitrate": "320k"
+        }
+        res = self.client.post("/api/studio/process", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("job_id", data)
+        self.assertTrue(data["download_url"].startswith("/api/files/"))
+        self.assertTrue(mock_run.called)
+
+    @patch("routes.auth.load_users")
+    @patch("routes.auth.save_users")
+    @patch("routes.auth.check_auth")
+    def test_user_change_password(self, mock_check, mock_save, mock_load):
+        """Verifica el endpoint /api/user/change-password con validaciones de contraseña."""
+        mock_check.return_value = True
+        mock_load.return_value = {"testuser": {"password_hash": "oldhash", "role": "downloader"}}
+
+        with self.client.session_transaction() as sess:
+            sess["username"] = "testuser"
+            sess["role"] = "downloader"
+
+        # 1. Contraseña muy corta
+        res = self.client.post("/api/user/change-password", json={
+            "current_password": "currentpass",
+            "new_password": "123"
+        })
+        self.assertEqual(res.status_code, 400)
+
+        # 2. Contraseña actual incorrecta
+        mock_check.return_value = False
+        res = self.client.post("/api/user/change-password", json={
+            "current_password": "wrongpass",
+            "new_password": "newsecretpassword123"
+        })
+        self.assertEqual(res.status_code, 403)
+
+        # 3. Éxito
+        mock_check.return_value = True
+        res = self.client.post("/api/user/change-password", json={
+            "current_password": "correctpass",
+            "new_password": "newsecretpassword123"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertTrue(mock_save.called)
+
 
 if __name__ == "__main__":
     unittest.main()

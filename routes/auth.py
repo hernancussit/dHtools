@@ -518,6 +518,33 @@ def totp_disable():
     return jsonify({"success": True, "message": "Autenticación de Dos Factores desactivada."})
 
 
+@auth_bp.route("/api/user/change-password", methods=["POST"])
+def user_change_password():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "No autenticado"}), 401
+    data = request.get_json(silent=True) or {}
+    current_password = data.get("current_password", "")
+    new_password = str(data.get("new_password", "")).strip()
+
+    if not current_password or not new_password:
+        return jsonify({"error": "Debes completar la contraseña actual y la nueva."}), 400
+
+    if not check_auth(username, current_password):
+        return jsonify({"error": "La contraseña actual no es correcta."}), 403
+
+    if len(new_password) < 6:
+        return jsonify({"error": "La nueva contraseña debe tener al menos 6 caracteres."}), 400
+
+    users = load_users()
+    if username in users:
+        users[username]["password_hash"] = hash_password(new_password)
+        save_users(users)
+        return jsonify({"success": True, "message": "Contraseña actualizada exitosamente."})
+    return jsonify({"error": "Usuario no encontrado"}), 404
+
+
+
 
 @auth_bp.route("/api/auth/forgot-password", methods=["POST"])
 def forgot_password():
