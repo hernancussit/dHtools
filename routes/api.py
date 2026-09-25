@@ -644,11 +644,14 @@ def files(job_id):
         if meta_owner and not is_admin and meta_owner != username:
             return jsonify({"error": "No tenés permiso para acceder a este archivo"}), 403
 
+    is_stream = (request.args.get("stream") == "1" or request.args.get("preview") == "1")
+    as_attachment = not is_stream
+
     if job and job.get("status") == "finished" and job.get("filepath"):
         safe_path = safe_download_path(job["filepath"])
         if safe_path and os.path.isfile(safe_path):
             dl_name = job.get("filename") or os.path.basename(safe_path)
-            return send_file(safe_path, as_attachment=True, download_name=dl_name)
+            return send_file(safe_path, as_attachment=as_attachment, download_name=dl_name)
 
     # If this is a group/playlist or batch job, search for the pre-generated zip first!
     if os.path.exists(DOWNLOAD_DIR):
@@ -658,7 +661,7 @@ def files(job_id):
                 safe_path = safe_download_path(entry)
                 if safe_path and os.path.isfile(safe_path):
                     disp_name = entry[len(job_id):].lstrip("_-") or entry
-                    return send_file(safe_path, as_attachment=True, download_name=disp_name)
+                    return send_file(safe_path, as_attachment=as_attachment, download_name=disp_name)
 
         # 2. Priority 2: Look for any single file starting with job_id
         for entry in os.listdir(DOWNLOAD_DIR):
@@ -666,7 +669,7 @@ def files(job_id):
                 safe_path = safe_download_path(entry)
                 if safe_path and os.path.isfile(safe_path):
                     disp_name = entry[len(job_id):].lstrip("_-") or entry
-                    return send_file(safe_path, as_attachment=True, download_name=disp_name)
+                    return send_file(safe_path, as_attachment=as_attachment, download_name=disp_name)
 
     abort(404)
 
@@ -883,8 +886,102 @@ def api_studio_process():
     else:
         data = request.form.to_dict()
 
-    tool = data.get("tool", "convert")  # convert, compress, trim, normalize
+    tool = data.get("tool", "convert")  # convert, compress, trim, normalize, merge
     source_filename = (data.get("source_filename") or "").strip()
+
+    # SPECIAL TOOL: MERGE MULTIPLE FILES
+    if tool == "merge":
+        files_to_merge = data.get("files", [])
+        if isinstance(files_to_merge, str):
+            try:
+                import json
+                files_to_merge = json.loads(files_to_merge)
+            except Exception:
+                files_to_merge = [f.strip() for f in files_to_merge.split(",") if f.strip()]
+        if not isinstance(files_to_merge, list) or len(files_to_merge) < 2:
+            return jsonify({"error": "Debe seleccionar al menos 2 archivos para realizar la unión o concatenación"}), 400
+
+        resolved_paths = []
+        for fname in files_to_merge:
+            fname = str(fname).strip()
+            target = safe_download_path(fname)
+            if not target or not os.path.exists(target):
+                found = False
+                if os.path.exists(DOWNLOAD_DIR):
+                    for entry in os.listdir(DOWNLOAD_DIR):
+                        if entry == fname or entry.endswith(fname):
+                            cand = os.path.join(DOWNLOAD_DIR, entry)
+                            if os.path.isfile(cand):
+                                target = cand
+                                found = True
+                                break
+                if not found or not target or not os.path.exists(target):
+                    return jsonify({"error": f"Archivo '{fname}' no encontrado en el servidor"}), 404
+            resolved_paths.append(target)
+
+        target_fmt = (data.get("output_format") or "").strip().lower().lstrip(".")
+        if not target_fmt:
+            first_ext = os.path.splitext(resolved_paths[0])[1].lower().lstrip(".")
+            target_fmt = first_ext if first_ext else "mp4"
+
+        output_ext = target_fmt
+        new_jid = uuid.uuid4().hex
+        clean_base = f"union_{len(resolved_paths)}_archivos"
+        out_filename = f"{new_jid}_{clean_base}.{output_ext}"
+        out_path = os.path.join(DOWNLOAD_DIR, out_filename)
+
+        import tempfile
+        concat_file = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+        try:
+            for p in resolved_paths:
+                clean_p = os.path.abspath(p).replace("\\", "/").replace("'", "'\\''")
+                concat_file.write(f"file '{clean_p}'\n")
+            concat_file.close()
+
+            args_copy = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_file.name, "-c", "copy", out_path]
+            proc = subprocess.run(args_copy, capture_output=True, text=True, timeout=300)
+            if proc.returncode != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+                if output_ext in ("mp3", "wav", "m4a", "flac", "ogg", "opus"):
+                    args_trans = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_file.name,
+                                  "-c:a", "libmp3lame", "-b:a", "320k", out_path]
+                else:
+                    args_trans = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_file.name,
+                                  "-c:v", "libx264", "-c:a", "aac", "-preset", "fast", out_path]
+                proc = subprocess.run(args_trans, capture_output=True, text=True, timeout=300)
+
+            if proc.returncode != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+                err_msg = proc.stderr[-400:] if proc.stderr else "Error desconocido de concatenación FFmpeg"
+                return jsonify({"error": f"Fallo al unir archivos: {err_msg}"}), 500
+
+            file_size = os.path.getsize(out_path)
+            from core.utils import save_downloads_meta
+            meta = load_downloads_meta()
+            meta[new_jid] = {
+                "job_id": new_jid,
+                "filename": f"{clean_base}.{output_ext}",
+                "username": username,
+                "size_bytes": file_size,
+                "mtime": time.time(),
+                "tool": "merge",
+                "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "source_files": files_to_merge,
+            }
+            save_downloads_meta(meta)
+
+            return jsonify({
+                "success": True,
+                "job_id": new_jid,
+                "filename": f"{clean_base}.{output_ext}",
+                "size_formatted": format_bytes(file_size),
+                "download_url": f"/api/files/{new_jid}",
+                "message": f"¡{len(resolved_paths)} archivos unidos exitosamente!"
+            })
+        finally:
+            if os.path.exists(concat_file.name):
+                try:
+                    os.remove(concat_file.name)
+                except Exception:
+                    pass
 
     uploaded_file = request.files.get("file")
     source_path = None

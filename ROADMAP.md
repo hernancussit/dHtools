@@ -36,11 +36,11 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - **Audio:** `MP3` (320/256/192/128 kbps CBR), `FLAC` (Hi-Res sin pérdida), `WAV` (PCM), `AAC`, `M4A`, `Opus` y `OGG Vorbis`.
 - [x] **Compresor Inteligente para Redes Sociales:**
   - Perfiles predefinidos de reducción de peso con optimización automática para compartir por **WhatsApp Estándar** (< 16 MB), **WhatsApp HD** (1080p < 25 MB) y **Discord / Telegram** (< 25 MB).
-- [ ] **Editor y Recortador Visual Integrado:**
+- [x] **Editor y Recortador Visual Integrado:**
   - [x] **Recorte Temporal Milimétrico:** Recorte de inicio y fin (`start_time` / `end_time`) directo sin recompresión innecesaria (`-c copy`).
   - [x] **Extractor de Pistas:** Extracción directa de la pista de audio (MP3 320 kbps) a partir de cualquier archivo de video.
-  - [ ] **Línea de Tiempo Interactiva (*Timeline Scrubber*):** Reproductor visual integrado con manejadores de arrastre para seleccionar el segmento de corte visualmente.
-  - [ ] **Unión de Archivos (Merge / Concatenación):** Combinar múltiples canciones o videos en un único archivo continuo.
+  - [x] **Línea de Tiempo Interactiva (*Timeline Scrubber*):** Reproductor visual HTML5 integrado con barra de rango interactiva, posicionador playhead, botones de marcado rápido (`[ Fijar Inicio`, `Fijar Fin ]`), prueba de selección (`▶️ Probar`) y reset en 1 clic.
+  - [x] **Unión de Archivos (Merge / Concatenación):** Herramienta dedicada para seleccionar dos o más archivos de audio o video, reordenarlos en cola con botones ⬆️ / ⬇️ / ✕ y fusionarlos en un archivo único continuo vía FFmpeg Concat.
 - [x] **Normalizador de Potencia Acústica (EBU R128):**
   - Nivelación automática de sonoridad a **-14 LUFS** (estándar EBU R128 / ITU-R BS.1770) con filtro acústico `loudnorm` para eliminar desniveles de volumen sin saturación ni clipping.
 

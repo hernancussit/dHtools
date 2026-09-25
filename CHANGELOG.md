@@ -4,6 +4,26 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.6.0] - 2026-09-25
+
+### 🎬 Taller Multimedia & Edición (Media Studio)
+- **Separación de Zonas de Trabajo:**
+  - Reestructuración de la interfaz en 5 áreas funcionales con navegación SPA fluida: Zona de Descargas (con subnav segmentado para Modo Rápido, Avanzado y Cola), Mis Archivos, Estudio Multimedia, Mi Perfil & Ajustes, y Panel de Administración.
+  - Flujo de trabajo cruzado: botón `🎬 Estudio` en cada archivo descargado para enviarlo directamente al taller de edición.
+- **Suite de Herramientas Multimedia (`/api/studio/process`):**
+  - **Conversor Universal de Formatos:** Conversión a MP4, MKV, WebM, AVI, GIF animados, o extracción de audio a MP3 (bitrate seleccionable de 128k a 320k), FLAC, WAV, M4A, Opus y OGG.
+  - **Compresor para Redes:** Perfiles automáticos para WhatsApp Estándar (< 16 MB), WhatsApp HD (< 25 MB) y Discord/Telegram (< 25 MB).
+  - **Recorte & Extracción con Reproductor Visual y Timeline Scrubber:** Previsualización en tiempo real de video o audio en el navegador (soporte `stream=1`), barra de línea de tiempo con playhead interactivo, botones para marcar inicio `[ Fijar Inicio` y fin `Fijar Fin ]`, prueba de selección (`▶️ Probar`) y extracción de audio MP3 (320 kbps).
+  - **Unión / Concatenación de Archivos (Merge):** Herramienta para unir 2 o más canciones o videos en un archivo continuo mediante FFmpeg Concat, con selector de archivos, reordenamiento en cola (⬆️ / ⬇️) y selector de formato de salida.
+  - **Normalizador Acústico EBU R128:** Nivelación automática de sonoridad a -14 LUFS con filtro acústico `loudnorm`.
+  - **Consola del Estudio en Vivo:** Registro de ejecución de comandos FFmpeg y enlace de descarga directa integrado con la cuota y almacenamiento del usuario.
+
+### ☁️ Plugins de Almacenamiento Cloud Bundled
+- **Google Drive (`plugins/google_drive/`):** Conector con Service Account y OAuth2, streaming chunked por bloques y Safe Offload.
+- **Microsoft OneDrive / SharePoint (`plugins/onedrive/`):** Conector con Microsoft Graph API y soporte personal/M365.
+- **Dropbox (`plugins/dropbox/`):** Conector con API v2, sesiones de subida por bloques y enlaces compartidos.
+- **Acciones Cruzadas en "Mis Archivos":** Botones directos de 1 clic para subir cualquier archivo individual o contenido en carpetas a Google Drive, OneDrive o Dropbox dinámicamente según las integraciones activas del usuario, con soporte de Safe Offload.
+
 ## [1.5.0] - 2026-09-06
 
 ### 🚀 Lanzamiento Oficial Estable v1.5.0

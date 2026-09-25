@@ -252,6 +252,44 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertTrue(data.get("success"))
         self.assertTrue(mock_save.called)
 
+    @patch("routes.api.subprocess.run")
+    @patch("routes.api.load_downloads_meta", return_value={})
+    @patch("core.utils.save_downloads_meta")
+    @patch("os.path.exists", return_value=True)
+    @patch("os.path.getsize", return_value=2048)
+    def test_media_studio_process_merge(self, mock_size, mock_exists, mock_save, mock_meta, mock_run):
+        """Verifica que /api/studio/process con tool=merge concatene 2 o más archivos correctamente."""
+        mock_proc = unittest.mock.MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stderr = ""
+        mock_run.return_value = mock_proc
+
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        # 1. Menos de 2 archivos falla
+        res = self.client.post("/api/studio/process", json={
+            "tool": "merge",
+            "files": ["part1.mp3"]
+        })
+        self.assertEqual(res.status_code, 400)
+
+        # 2. Unión exitosa de 2 archivos
+        payload = {
+            "tool": "merge",
+            "files": ["part1.mp3", "part2.mp3"],
+            "output_format": "mp3"
+        }
+        res = self.client.post("/api/studio/process", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("job_id", data)
+        self.assertTrue(data["download_url"].startswith("/api/files/"))
+        self.assertTrue(mock_run.called)
+
 
 if __name__ == "__main__":
     unittest.main()
