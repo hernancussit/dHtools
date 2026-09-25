@@ -2661,7 +2661,7 @@ async function inspectUrl(url, mode = 'quick') {
 
   // If user pasted a pure playlist URL (e.g. /playlist?list=...) without a single video, auto-check the playlist checkbox
   const lowerUrl = url.toLowerCase();
-  const isPurePlaylist = (lowerUrl.includes('/playlist') || lowerUrl.includes('album/')) && !lowerUrl.includes('/watch') && !lowerUrl.includes('youtu.be/');
+  const isPurePlaylist = (lowerUrl.includes('/playlist') || lowerUrl.includes('album/') || lowerUrl.includes('/sets/')) && !lowerUrl.includes('/watch') && !lowerUrl.includes('youtu.be/') && !lowerUrl.includes('/track/');
   if (isPurePlaylist) {
     const chkQ = document.getElementById('chkQuickDownloadPlaylist');
     const chkA = document.getElementById('chkAdvDownloadPlaylist');

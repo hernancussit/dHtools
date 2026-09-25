@@ -451,6 +451,8 @@ def is_pure_playlist_url(url: str) -> bool:
         return True
     if ("deezer.com/playlist" in url_l or "deezer.com/album" in url_l) and "/track/" not in url_l:
         return True
+    if "soundcloud.com" in url_l and "/sets/" in url_l:
+        return True
     return False
 
 

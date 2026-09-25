@@ -152,6 +152,37 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertEqual(called_playlist_mode, True)
         self.assertIn("list=PL12345678", called_url)
 
+    @patch("routes.api.enqueue_job")
+    @patch("routes.api.validate_media_url", return_value=True)
+    def test_download_non_youtube_services_unaffected(self, mock_val, mock_enq):
+        """Verifica que Instagram, Twitch, Deezer, TikTok no se alteren con los cambios de playlist."""
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        urls_to_test = [
+            "https://www.instagram.com/reel/C8xyz123/",
+            "https://www.twitch.tv/videos/123456789",
+            "https://www.deezer.com/track/987654321",
+            "https://www.tiktok.com/@user/video/1234567890"
+        ]
+
+        for test_url in urls_to_test:
+            mock_enq.reset_mock()
+            payload = {
+                "url": test_url,
+                "quality": "best",
+                "format_type": "video",
+                "playlist": False
+            }
+            res = self.client.post("/api/download", json=payload)
+            self.assertEqual(res.status_code, 200)
+            self.assertTrue(mock_enq.called)
+            job_spec = mock_enq.call_args[0][1]
+            self.assertEqual(job_spec["url"], test_url)
+            self.assertEqual(job_spec["playlist"], False)
+
 
 if __name__ == "__main__":
     unittest.main()
