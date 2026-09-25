@@ -714,9 +714,13 @@ class TelegramBot:
 
         # Inspect asynchronously in worker thread
         def do_inspect():
-            from core.downloader import extract_with_fallback, normalize_url, detect_platform
-            clean_url = normalize_url(url)
+            from core.downloader import (
+                extract_with_fallback, normalize_url, detect_platform,
+                strip_playlist_from_url, is_pure_playlist_url
+            )
+            clean_url = strip_playlist_from_url(normalize_url(url))
             platform = detect_platform(clean_url)
+            is_pure_pl = is_pure_playlist_url(clean_url)
             title = clean_url
             duration_str = "Desconocida"
 
@@ -767,9 +771,13 @@ class TelegramBot:
                     notes.append(f"\n{c_opt.get('icon', '☁️')} <i>Respaldo en tu {c_opt.get('name', pid)}: <b>Activado</b></i>")
             cloud_notes = "".join(notes)
 
+            pl_notice = ""
+            if is_pure_pl:
+                pl_notice = "\n\n⚠️ <i>Nota: Detectamos una lista de reproducción. El bot de Telegram procesará únicamente el primer elemento (límite 50 MB por chat). Para descargar la playlist completa en ZIP o individualmente, por favor usá la web.</i>"
+
             text = (
                 f"📌 <b>{title}</b>\n"
-                f"🌐 Origen: <b>{platform}</b> | ⏱️ Duración: <b>{duration_str}</b>{cloud_notes}\n\n"
+                f"🌐 Origen: <b>{platform}</b> | ⏱️ Duración: <b>{duration_str}</b>{cloud_notes}{pl_notice}\n\n"
                 f"Elegí el formato y calidad para comenzar la descarga:"
             )
 
