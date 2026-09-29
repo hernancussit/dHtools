@@ -384,101 +384,313 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* Brand styles for desktop & mobile */
+  .sidebar-brand-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sidebar-brand-link {
+    display: block;
+    text-decoration: none;
+    margin-bottom: 10px;
+  }
+  .sidebar-brand-img {
+    width: 100%;
+    height: auto;
+    max-height: 74px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: #080b12;
+    border: 1px solid rgba(56,189,248,0.22);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35), 0 0 15px rgba(56,189,248,0.15);
+    display: block;
+  }
+  .sidebar-brand-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: -2px;
+    margin-bottom: 4px;
+  }
+  .mobile-admin-top-actions {
+    display: none;
+  }
+
+  /* OFF-CANVAS MOBILE DRAWER & BACKDROP */
+  .mobile-drawer-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .mobile-drawer-backdrop.open {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .mobile-drawer {
+    display: none;
+    position: fixed;
+    top: 0; bottom: 0; right: 0;
+    width: 86%;
+    max-width: 330px;
+    background: var(--bg-sidebar, #0b1120);
+    border-left: 1px solid var(--border);
+    z-index: 1000;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.7);
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+  .mobile-drawer.open {
+    display: flex;
+    transform: translateX(0);
+  }
+  .mobile-drawer-header {
+    padding: 16px 16px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-drawer-close {
+    background: var(--bg-input, #0b1222);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: all 0.18s ease;
+  }
+  .mobile-drawer-close:active {
+    background: var(--border);
+    color: var(--text);
+  }
+  .mobile-drawer-body {
+    padding: 14px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-drawer-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .drawer-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.18s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .drawer-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+  }
+  .drawer-nav-btn.active {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fff;
+  }
+  .drawer-nav-btn.active .drawer-nav-title {
+    color: var(--accent-2, #f87171);
+    font-weight: 700;
+  }
+  .drawer-nav-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .drawer-nav-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .drawer-nav-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .drawer-nav-desc {
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   @media (max-width: 860px) {
     body {
-      overflow-x: hidden;
-      height: auto;
-      min-height: 100vh;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      height: auto !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      display: block !important;
+      -webkit-overflow-scrolling: touch;
     }
     .admin-layout {
-      flex-direction: column;
-      height: auto;
-      min-height: 100vh;
-      overflow: visible;
+      display: flex !important;
+      flex-direction: column !important;
+      width: 100% !important;
+      height: auto !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      overflow: visible !important;
     }
     .sidebar {
-      width: 100%;
-      min-width: 100%;
-      height: auto;
-      border-right: none;
-      border-bottom: 1px solid var(--border);
-      padding: 10px 12px;
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(11, 17, 32, 0.96);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      width: 100% !important;
+      min-width: 100% !important;
+      height: auto !important;
+      border-right: none !important;
+      border-bottom: 1px solid var(--border) !important;
+      padding: 0 !important;
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 100 !important;
+      background: rgba(11, 17, 32, 0.98) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
     }
     .sidebar-header {
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
+      padding: 8px 12px 6px !important;
+      margin-bottom: 0 !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 10px !important;
     }
-    .sidebar-title {
-      font-size: 1.05rem;
+    .sidebar-brand-wrapper {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 10px !important;
     }
-    .sidebar-subtitle {
-      margin-bottom: 0;
+    .sidebar-brand-link {
+      margin-bottom: 0 !important;
     }
-    .sidebar-nav {
-      flex-direction: row;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-      padding: 4px 2px 6px;
-      gap: 6px;
-      scroll-snap-type: x mandatory;
+    .sidebar-brand-img {
+      max-height: 30px !important;
+      width: auto !important;
+      border-radius: 6px !important;
     }
-    .sidebar-nav::-webkit-scrollbar {
-      display: none;
-    }
-    .nav-btn {
-      white-space: nowrap;
-      flex-shrink: 0;
-      scroll-snap-align: start;
-      border-radius: 20px;
-      padding: 7px 12px;
-      font-size: 0.78rem;
-    }
-    .sidebar-footer {
-      display: none;
-    }
-    .main-content {
-      height: auto;
-      overflow: visible;
-      padding: 14px 12px 30px;
-    }
-    .content-header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .content-title {
-      font-size: 1.1rem;
-    }
-    .services-grid {
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-    .card {
-      padding: 14px 12px;
-      margin-bottom: 14px;
-      border-radius: 12px;
+    .sidebar-brand-meta {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      margin: 0 !important;
     }
     .mobile-admin-top-actions {
       display: flex !important;
-      align-items: center;
-      gap: 6px;
+      align-items: center !important;
+      gap: 6px !important;
     }
-  }
-
-  .mobile-admin-top-actions {
-    display: none;
+    .sidebar-nav {
+      display: flex !important;
+      flex-direction: row !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: var(--border) transparent !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 8px 10px !important;
+      gap: 8px !important;
+      scroll-snap-type: none !important;
+    }
+    .sidebar-nav::-webkit-scrollbar {
+      height: 3px;
+    }
+    .sidebar-nav::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .sidebar-nav::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    .nav-btn {
+      width: auto !important;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      border-radius: 9999px !important;
+      padding: 6px 13px !important;
+      font-size: 0.78rem !important;
+      background: rgba(255, 255, 255, 0.04) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--muted) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      transition: all 0.15s ease !important;
+      user-select: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: var(--text) !important;
+    }
+    .nav-btn.active {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border-color: var(--accent) !important;
+      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4) !important;
+    }
+    .sidebar-footer {
+      display: none !important;
+    }
+    .main-content {
+      width: 100% !important;
+      height: auto !important;
+      overflow-y: visible !important;
+      overflow-x: hidden !important;
+      padding: 14px 12px 60px !important;
+    }
+    .content-header {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 10px !important;
+      margin-bottom: 14px !important;
+    }
+    .content-title {
+      font-size: 1.15rem !important;
+    }
+    .services-grid {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+    .card {
+      padding: 14px 12px !important;
+      margin-bottom: 14px !important;
+      border-radius: 12px !important;
+    }
   }
 </style>
 </head>
@@ -487,15 +699,18 @@
   <!-- SIDEBAR NAVIGATION -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <a href="/" style="display:block; text-decoration:none; margin-bottom:10px;" title="dHtools Multimedia Suite">
-        <img src="/static/icons/brand_horizontal.png" alt="dHtools" style="width:100%; height:auto; max-height:74px; border-radius:12px; object-fit:contain; background:#080b12; border:1px solid rgba(56,189,248,0.22); box-shadow:0 4px 18px rgba(0,0,0,0.35), 0 0 15px rgba(56,189,248,0.15); display:block;">
-      </a>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:-2px; margin-bottom:4px;">
-        <span style="font-size:0.75rem; font-weight:700; color:var(--accent-2); display:flex; align-items:center; gap:4px;">⚙️ Panel Admin</span>
-        <span class="version-tag">v{{ version }}</span>
+      <div class="sidebar-brand-wrapper">
+        <a href="/" class="sidebar-brand-link" title="dHtools Multimedia Suite">
+          <img src="/static/icons/brand_horizontal.png" alt="dHtools" class="sidebar-brand-img">
+        </a>
+        <div class="sidebar-brand-meta">
+          <span style="font-size:0.75rem; font-weight:700; color:var(--accent-2); display:flex; align-items:center; gap:4px;">⚙️ Panel Admin</span>
+          <span class="version-tag">v{{ version }}</span>
+        </div>
       </div>
       <div class="mobile-admin-top-actions">
-        <a href="/" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:5px 10px;">⬅ Descargador</a>
+        <a href="/" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:5px 8px;" title="Ir al Descargador">⬅ Web</a>
+        <button type="button" id="btnToggleMobileMenu" class="btn btn-secondary btn-sm" style="font-size:0.8rem; padding:5px 9px;" title="Menú de Navegación">☰ Menú</button>
       </div>
     </div>
 
@@ -1528,6 +1743,89 @@ docker run -d --name residential-socks5 \
   </div>
 </div>
 
+<!-- MOBILE NAVIGATION DRAWER & BACKDROP -->
+<div id="mobileDrawerBackdrop" class="mobile-drawer-backdrop"></div>
+<div id="mobileDrawer" class="mobile-drawer">
+  <div class="mobile-drawer-header">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:1.05rem; font-weight:700;">⚙️ Panel Admin</span>
+      <span class="version-tag">v{{ version }}</span>
+    </div>
+    <button id="btnCloseMobileDrawer" class="mobile-drawer-close" aria-label="Cerrar menú">&times;</button>
+  </div>
+  <div class="mobile-drawer-body">
+    <div style="font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; padding-left:4px;">Secciones & Funciones</div>
+    <div class="mobile-drawer-nav">
+      <button class="drawer-nav-btn active" data-tab="tab-services">
+        <span class="drawer-nav-icon">📊</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Diagnóstico & RAM</div>
+          <div class="drawer-nav-desc">Microservicios, latencia y memoria</div>
+        </div>
+      </button>
+      <button class="drawer-nav-btn" data-tab="tab-engines">
+        <span class="drawer-nav-icon">🚀</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Motores & Updates</div>
+          <div class="drawer-nav-desc">yt-dlp, Cobalt, Deno y Git core</div>
+        </div>
+      </button>
+      <button class="drawer-nav-btn" data-tab="tab-settings">
+        <span class="drawer-nav-icon">⚙️</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Parámetros & Cookies</div>
+          <div class="drawer-nav-desc">Configuración global y cookies.txt</div>
+        </div>
+      </button>
+      <button class="drawer-nav-btn" data-tab="tab-cloud">
+        <span class="drawer-nav-icon">☁️</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Cloud Sync & Telegram</div>
+          <div class="drawer-nav-desc">S3, WebDAV, FTP, Bot y Alertas</div>
+        </div>
+      </button>
+      <button class="drawer-nav-btn" data-tab="tab-users">
+        <span class="drawer-nav-icon">👥</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Gestión de Usuarios</div>
+          <div class="drawer-nav-desc">Cuentas, roles, cuotas y sesiones</div>
+        </div>
+      </button>
+      <button class="drawer-nav-btn" data-tab="tab-diagnostics">
+        <span class="drawer-nav-icon">🧪</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Diagnóstico Avanzado</div>
+          <div class="drawer-nav-desc">IP, DNS, Cascada y Auditoría</div>
+        </div>
+      </button>
+      <button class="drawer-nav-btn" data-tab="tab-plugins">
+        <span class="drawer-nav-icon">🧩</span>
+        <div class="drawer-nav-text">
+          <div class="drawer-nav-title">Plugins & Extensiones</div>
+          <div class="drawer-nav-desc">Módulos externos de dHtools</div>
+        </div>
+      </button>
+    </div>
+    
+    <div style="border-top:1px solid var(--border); margin:16px 0 12px;"></div>
+    <div style="font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; padding-left:4px;">Accesos Rápidos</div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <a href="/" class="sidebar-link-btn" style="padding:10px 12px;">
+        <span>⬅</span> Ir al Descargador
+      </a>
+      <a href="/wiki" class="sidebar-link-btn" style="padding:10px 12px;">
+        <span>📚</span> Wiki Técnica
+      </a>
+      <a href="/about" class="sidebar-link-btn" style="padding:10px 12px;">
+        <span>ℹ️</span> Acerca de & Donar
+      </a>
+      <button id="mobileLogoutBtn" class="btn btn-danger btn-sm" style="width:100%; margin-top:6px; padding:10px 12px; font-size:0.85rem;">
+        🚪 Cerrar Sesión
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Sidebar Tab Navigation
 const sectionTitles = {
@@ -1540,23 +1838,95 @@ const sectionTitles = {
   'tab-plugins': '🧩 Extensiones & Plugins [EXPERIMENTAL]'
 };
 
+function switchAdminTab(tabId) {
+  if (!tabId) return;
+
+  // Update sidebar buttons
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+
+  // Update drawer buttons
+  document.querySelectorAll('.drawer-nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+
+  // Update tab panes
+  document.querySelectorAll('.tab-pane').forEach(c => c.classList.remove('active'));
+  const targetPane = document.getElementById(tabId);
+  if (targetPane) targetPane.classList.add('active');
+
+  // Update header section title
+  const titleEl = document.getElementById('currentSectionTitle');
+  if (titleEl && sectionTitles[tabId]) titleEl.textContent = sectionTitles[tabId];
+
+  // Auto scroll active pill into view smoothly in mobile horizontal bar
+  const activePill = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+  if (activePill) {
+    activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+
+  // Scroll page to top on mobile so the user sees the start of the section
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Tab specific data loaders
+  if (tabId === 'tab-plugins') {
+    loadPluginsList();
+  } else if (tabId === 'tab-engines') {
+    if (typeof loadEnginesInfo === 'function') loadEnginesInfo();
+    if (typeof loadGitStatus === 'function') loadGitStatus();
+  }
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-pane').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    const tabId = btn.dataset.tab;
-    const targetPane = document.getElementById(tabId);
-    if (targetPane) targetPane.classList.add('active');
-    const titleEl = document.getElementById('currentSectionTitle');
-    if (titleEl && sectionTitles[tabId]) titleEl.textContent = sectionTitles[tabId];
-    if (tabId === 'tab-plugins') {
-      loadPluginsList();
-    } else if (tabId === 'tab-engines') {
-      if (typeof loadEnginesInfo === 'function') loadEnginesInfo();
-      if (typeof loadGitStatus === 'function') loadGitStatus();
-    }
+    switchAdminTab(btn.dataset.tab);
   });
+});
+
+// Mobile Drawer controls
+const mobileDrawer = document.getElementById('mobileDrawer');
+const mobileBackdrop = document.getElementById('mobileDrawerBackdrop');
+const btnToggleMobile = document.getElementById('btnToggleMobileMenu');
+const btnCloseMobile = document.getElementById('btnCloseMobileDrawer');
+
+function openMobileDrawer() {
+  if (mobileDrawer && mobileBackdrop) {
+    mobileDrawer.classList.add('open');
+    mobileBackdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMobileDrawer() {
+  if (mobileDrawer && mobileBackdrop) {
+    mobileDrawer.classList.remove('open');
+    mobileBackdrop.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+btnToggleMobile?.addEventListener('click', openMobileDrawer);
+btnCloseMobile?.addEventListener('click', closeMobileDrawer);
+mobileBackdrop?.addEventListener('click', closeMobileDrawer);
+
+document.querySelectorAll('.drawer-nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    switchAdminTab(btn.dataset.tab);
+    closeMobileDrawer();
+  });
+});
+
+// Close drawer on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeMobileDrawer();
+});
+
+// Mobile logout button in drawer
+document.getElementById('mobileLogoutBtn')?.addEventListener('click', () => {
+  if (confirm('¿Cerrar sesión de Administrador?')) {
+    window.location.href = '/logout';
+  }
 });
 
 async function loadPluginsList() {
