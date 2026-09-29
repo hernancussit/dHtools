@@ -4,6 +4,22 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.6.1] - 2026-09-29
+
+### 🔒 Seguridad & Hardening de Plugins Cloud (`plugins/`)
+- **Protección contra Fuga de Secretos en el DOM/HTML (`plugins/dropbox/`, `plugins/onedrive/`):**
+  - Enmascaramiento de `app_secret` (Dropbox) y `client_secret` (OneDrive) en las plantillas HTML de ajustes. Los secretos configurados en el servidor ya no se envían al cliente ni se imprimen en el DOM, utilizando placeholders `••••••••` informativos y preservando los valores preexistentes si el campo se deja vacío.
+- **Prevención de IDOR y Destrucción de Archivos Ajenos (`plugins/dropbox/`, `plugins/onedrive/`):**
+  - Implementación de control de propiedad fail-fast en `/api/upload/<job_id>` y `upload_job_for_user`. Si un usuario intenta transferir un trabajo perteneciente a otro usuario, la petición es denegada con HTTP 403 Forbidden y se preserva el archivo local, previniendo borrados involuntarios por Safe Offload.
+- **Mitigación de Path Traversal en Credenciales (`plugins/google_drive/`):**
+  - Canonicalización estricta de rutas en `drive_client._resolve_path`. Se neutralizan intentos de evasión con `../`, barras invertidas y rutas absolutas que apunten fuera de los directorios base o de usuario designados.
+- **Eliminación del Fallback Inseguro a 'admin':**
+  - Eliminación definitiva del valor por defecto `"admin"` en `_get_request_username` en todos los plugins oficiales (`google_drive`, `dropbox`, `onedrive`). Las solicitudes no autenticadas se tratan estrictamente como anónimas y responden con HTTP 401 Unauthorized o redirección segura al panel de login.
+- **Blindaje contra Suplantación en Callbacks OAuth2:**
+  - Validación de origen del parámetro `state` en los callbacks de Dropbox y OneDrive para garantizar que el usuario que inició el flujo de autorización coincida con la sesión activa, mitigando ataques de account takeover y CSRF en el login OAuth.
+- **Suite de Pruebas de Auditoría de Seguridad (`tests/test_plugin_security_audit.py`):**
+  - 11 nuevas pruebas unitarias automatizadas cubriendo enmascaramiento de credenciales, bloqueo de IDOR, rechazo de path traversal, códigos de estado 401 y verificación de state OAuth2.
+
 ## [1.6.0] - 2026-09-25
 
 ### 🎬 Taller Multimedia & Edición (Media Studio)

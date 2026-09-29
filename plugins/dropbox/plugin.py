@@ -13,7 +13,7 @@ import threading
 import urllib.parse
 from typing import Dict, Any, Optional, Tuple, List
 import requests
-from flask import Blueprint, jsonify, request, render_template, redirect, url_for, session
+from flask import Blueprint, jsonify, request, render_template, redirect, url_for, session, has_request_context
 
 from core.state import JOBS, JOBS_LOCK
 from core.utils import load_downloads_meta, save_downloads_meta
@@ -238,19 +238,19 @@ class Plugin:
 
         return True, updated_token.get("access_token"), None
 
-    def _get_request_username(self) -> str:
-        """Determina de forma estricta el usuario autenticado en la sesión actual."""
+    def _get_request_username(self) -> Optional[str]:
+        """Determina de forma estricta el usuario autenticado en la sesión actual. Retorna None si no está autenticado."""
         try:
             from flask import has_request_context
             if not has_request_context():
-                return "admin"
+                return None
             user = getattr(request, "current_user", {}) or {}
             u = user.get("username") or getattr(request, "current_username", None)
             if not u:
-                u = session.get("username", "admin")
-            return (u or "admin").strip().lower()
+                u = session.get("username")
+            return u.strip().lower() if u else None
         except Exception:
-            return "admin"
+            return None
 
     def _get_redirect_uri(self) -> str:
         """Determina la URL de redirección canónica para OAuth2 de Dropbox."""
@@ -264,7 +264,7 @@ class Plugin:
 
     def get_download_cloud_option(self, username: str = None) -> Dict[str, Any]:
         """Informa a dHtools y al Bot de Telegram el estado y disponibilidad de Dropbox."""
-        target_user = (username or self._get_request_username()).strip().lower()
+        target_user = (username or self._get_request_username() or "admin").strip().lower()
         cfg = self.get_user_config(target_user)
         token = self.get_user_token(target_user)
 
@@ -297,31 +297,51 @@ class Plugin:
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Sube una descarga a la cuenta de Dropbox del usuario.
-        Aplica modo Safe Offload si está activo.
+        Aplica modo Safe Offload si está activo y valida propiedad del trabajo.
         """
         target_user = (username or "admin").strip().lower()
         cfg = self.get_user_config(target_user)
 
-        # 1. Obtener token válido
-        ok, access_token, err = self.get_valid_token_for_user(target_user)
-        if not ok or not access_token:
-            return False, {"error": err or "No hay sesión activa con Dropbox."}
-
-        # 2. Localizar el archivo en disco
+        # 1. Localizar el archivo en disco y verificar propiedad (Prevención IDOR)
         file_path = None
         file_name = None
+        target_owner = None
 
         with JOBS_LOCK:
             job = JOBS.get(job_id)
-            if job and job.get("filepath") and os.path.exists(job["filepath"]):
-                file_path = job["filepath"]
-                file_name = job.get("filename") or os.path.basename(file_path)
+            if job:
+                file_path = job.get("filepath")
+                file_name = job.get("filename")
+                target_owner = job.get("owner")
 
-        if not file_path:
-            meta = load_downloads_meta()
-            if job_id in meta and meta[job_id].get("filepath") and os.path.exists(meta[job_id]["filepath"]):
-                file_path = meta[job_id]["filepath"]
-                file_name = meta[job_id].get("filename") or os.path.basename(file_path)
+        meta = load_downloads_meta()
+        if job_id in meta:
+            m_info = meta[job_id]
+            if not file_path:
+                file_path = m_info.get("filepath")
+            if not file_name:
+                file_name = m_info.get("filename")
+            target_owner = target_owner or m_info.get("username") or m_info.get("owner")
+
+        # Seguridad / IDOR Prevention: Solo el dueño o un administrador pueden gestionar el archivo
+        is_admin = (target_user == "admin")
+        if has_request_context():
+            try:
+                current_user = getattr(request, "current_user", {}) or {}
+                if not current_user and "role" in session:
+                    is_admin = is_admin or (session.get("role") == "admin")
+                else:
+                    is_admin = is_admin or (current_user.get("role") == "admin")
+            except Exception:
+                pass
+        if target_owner and not is_admin and target_owner.lower() != target_user:
+            logger.warning(f"[Security] Denegada subida en Dropbox: usuario '{target_user}' intentó acceder al archivo de '{target_owner}' (job {job_id})")
+            return False, {"error": "No tienes permiso para gestionar ni transferir este archivo ajeno.", "status_code": 403}
+
+        # 2. Obtener token válido
+        ok, access_token, err = self.get_valid_token_for_user(target_user)
+        if not ok or not access_token:
+            return False, {"error": err or "No hay sesión activa con Dropbox.", "status_code": 400}
 
         if not file_path and os.path.exists(DOWNLOAD_DIR):
             for f in os.listdir(DOWNLOAD_DIR):
@@ -333,7 +353,7 @@ class Plugin:
                         break
 
         if not file_path or not os.path.exists(file_path):
-            return False, {"error": f"No se encontró el archivo local para la descarga '{job_id}'."}
+            return False, {"error": f"No se encontró el archivo local para la descarga '{job_id}'.", "status_code": 404}
 
         # 3. Subir archivo a Dropbox
         folder_path = cfg.get("folder_path") or "/dHtools"
@@ -435,6 +455,12 @@ class Plugin:
         @bp.route("/settings")
         def view_settings():
             username = self._get_request_username()
+            if not username:
+                try:
+                    return redirect(url_for("auth_bp.login", next=request.full_path))
+                except Exception:
+                    return redirect(f"/login?next={urllib.parse.quote(request.full_path)}")
+
             cfg = self.get_user_config(username)
             token = self.get_user_token(username)
 
@@ -456,12 +482,18 @@ class Plugin:
 
             redirect_uri = self._get_redirect_uri()
 
+            # Sanitizar secretos antes de pasar a la plantilla para prevenir exposición en el DOM/HTML
+            template_cfg = json.loads(json.dumps(cfg))
+            if "oauth" in template_cfg and isinstance(template_cfg["oauth"], dict):
+                template_cfg["oauth"]["has_app_secret"] = bool(template_cfg["oauth"].get("app_secret"))
+                template_cfg["oauth"]["app_secret"] = ""
+
             return render_template(
                 "dropbox/settings.html",
                 plugin_id=self.plugin_id,
                 name=self.name,
                 version=self.version,
-                config=cfg,
+                config=template_cfg,
                 connected=connected,
                 account_info=account_info,
                 auth_error=auth_error,
@@ -472,6 +504,9 @@ class Plugin:
         @bp.route("/api/settings", methods=["POST"])
         def api_save_settings():
             username = self._get_request_username()
+            if not username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             data = request.get_json(silent=True) or request.form.to_dict()
 
             current_cfg = self.get_user_config(username)
@@ -494,6 +529,12 @@ class Plugin:
         @bp.route("/auth/login")
         def auth_login():
             username = self._get_request_username()
+            if not username:
+                try:
+                    return redirect(url_for("auth_bp.login", next=request.full_path))
+                except Exception:
+                    return redirect(f"/login?next={urllib.parse.quote(request.full_path)}")
+
             cfg = self.get_user_config(username)
             app_key = cfg.get("oauth", {}).get("app_key", "").strip()
 
@@ -509,6 +550,7 @@ class Plugin:
             }
             import base64
             state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
+            session["_dropbox_oauth_state"] = state
 
             auth_url = dropbox_client.get_authorization_url(
                 app_key=app_key,
@@ -530,12 +572,20 @@ class Plugin:
             if not code or not state_raw:
                 return redirect(f"/plugin/{self.plugin_id}/settings?error=missing_code_or_state")
 
+            current_user = self._get_request_username()
             import base64
             try:
                 state_data = json.loads(base64.urlsafe_b64decode(state_raw.encode()).decode())
-                username = state_data.get("u") or "admin"
+                state_user = state_data.get("u")
             except Exception:
-                username = self._get_request_username()
+                return redirect(f"/plugin/{self.plugin_id}/settings?error=invalid_state")
+
+            # Seguridad: el usuario autenticado debe coincidir con quien inició el flujo OAuth
+            if current_user and state_user and current_user != state_user:
+                logger.warning(f"[Security] Intento de suplantación OAuth en Dropbox: sesión={current_user}, state={state_user}")
+                return redirect(f"/plugin/{self.plugin_id}/settings?error=" + urllib.parse.quote("Violación de seguridad: El usuario autenticado no coincide con el origen de la autorización OAuth."))
+
+            username = current_user or state_user or "admin"
 
             cfg = self.get_user_config(username)
             app_key = cfg.get("oauth", {}).get("app_key", "").strip()
@@ -563,6 +613,9 @@ class Plugin:
         @bp.route("/api/disconnect", methods=["POST"])
         def api_disconnect():
             username = self._get_request_username()
+            if not username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             self.delete_user_token(username)
 
             cfg = self.get_user_config(username)
@@ -574,6 +627,9 @@ class Plugin:
         @bp.route("/api/test", methods=["POST"])
         def api_test_connection():
             username = self._get_request_username()
+            if not username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             ok, access_token, err = self.get_valid_token_for_user(username)
             if not ok or not access_token:
                 return jsonify({"success": False, "error": err or "No hay sesión activa."}), 400
@@ -591,6 +647,9 @@ class Plugin:
         @bp.route("/api/folders")
         def api_list_folders():
             username = self._get_request_username()
+            if not username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             ok, access_token, err = self.get_valid_token_for_user(username)
             if not ok or not access_token:
                 return jsonify({"success": False, "error": err or "No hay sesión activa."}), 400
@@ -605,10 +664,14 @@ class Plugin:
         @bp.route("/api/upload/<job_id>", methods=["POST"])
         def api_upload_job(job_id):
             username = self._get_request_username()
+            if not username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             ok, res = self.upload_job_for_user(job_id=job_id, username=username)
             if ok:
                 return jsonify({"success": True, "result": res})
-            return jsonify({"success": False, "error": res.get("error", "Error subiendo a Dropbox")}), 500
+            status_code = res.get("status_code", 400) if isinstance(res, dict) else 400
+            return jsonify({"success": False, "error": res.get("error", "Error subiendo a Dropbox") if isinstance(res, dict) else str(res)}), status_code
 
         # Registrar el blueprint en Flask
         app.register_blueprint(bp, url_prefix=f"/plugin/{self.plugin_id}")

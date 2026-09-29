@@ -529,7 +529,10 @@
 
         <div class="form-group">
           <label for="client_secret">Client Secret (Valor del Secreto de Cliente)</label>
-          <input type="password" name="client_secret" id="client_secret" class="form-control" value="{{ config.oauth.client_secret or '' }}" placeholder="Pegá el valor del secreto generado en Azure">
+          <input type="password" name="client_secret" id="client_secret" class="form-control" value="" placeholder="{% if config.oauth.has_client_secret or config.oauth.client_secret %}•••••••••••••••• (dejar en blanco para conservar){% else %}Pegá el valor del secreto generado en Azure{% endif %}">
+          <div class="form-hint" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+            Por seguridad, el Secreto de Cliente nunca se muestra en pantalla. Si ya fue guardado previamente, dejalo en blanco para mantenerlo.
+          </div>
         </div>
 
         <div class="form-group">

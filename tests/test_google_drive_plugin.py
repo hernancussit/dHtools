@@ -24,6 +24,9 @@ class TestGoogleDrivePlugin(unittest.TestCase):
         self.manager = PluginManager()
         self.manager.init_app(self.app)
         self.client = self.app.test_client()
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["role"] = "admin"
 
     def test_discovery_and_load(self):
         """Verifica que el plugin sea descubierto y cargado como oficial [EXPERIMENTAL]."""

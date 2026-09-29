@@ -213,23 +213,24 @@ class Plugin:
         """Compatibilidad con llamadas legacy: guarda la configuración de admin."""
         return self.save_user_config("admin", new_cfg)
 
-    def _get_request_username(self) -> str:
+    def _get_request_username(self) -> Optional[str]:
         """
         Obtiene el nombre de usuario autenticado de la solicitud actual de forma estricta.
         Bajo ninguna circunstancia se permite suplantar o acceder a credenciales de otro usuario,
         garantizando privacidad y aislamiento total entre cuentas (incluso para administradores).
+        Retorna None si la petición no está autenticada.
         """
         try:
             from flask import has_request_context
             if not has_request_context():
-                return "admin"
+                return None
             user = getattr(request, "current_user", {}) or {}
             username = user.get("username") or getattr(request, "current_username", None)
             if not username:
-                username = session.get("username", "admin")
-            return (username or "admin").strip().lower()
+                username = session.get("username")
+            return username.strip().lower() if username else None
         except Exception:
-            return "admin"
+            return None
 
     def _get_redirect_uri(self) -> str:
         """Determina la URI de redirección canónica para OAuth2."""
@@ -270,9 +271,15 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/settings", methods=["GET"])
         def view_settings():
+            target_username = self._get_request_username()
+            if not target_username:
+                try:
+                    return redirect(url_for("auth_bp.login", next=request.full_path))
+                except Exception:
+                    return redirect(f"/login?next={quote(request.full_path)}")
+
             current_user = getattr(request, "current_user", {}) or {}
             is_admin = (current_user.get("role") == "admin")
-            target_username = self._get_request_username()
             cfg = self.get_user_config(target_username)
             udir = self.get_user_dir(target_username)
 
@@ -292,10 +299,17 @@ class Plugin:
 
             redirect_uri = self._get_redirect_uri()
 
+            # Sanitizar secretos antes de pasar a la plantilla para prevenir exposición en HTML/DOM
+            safe_cfg = json.loads(json.dumps(cfg))
+            if "oauth" in safe_cfg and isinstance(safe_cfg["oauth"], dict):
+                safe_cfg["oauth"]["has_client_secret"] = bool(safe_cfg["oauth"].get("client_secret") or safe_cfg["oauth"].get("effective_client_secret"))
+                safe_cfg["oauth"]["client_secret"] = ""
+                safe_cfg["oauth"]["effective_client_secret"] = ""
+
             return render_template(
                 "settings.html",
                 plugin=self,
-                config=cfg,
+                config=safe_cfg,
                 target_username=target_username,
                 is_admin=is_admin,
                 dependencies_ok=deps_ok,
@@ -307,8 +321,11 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/api/save", methods=["POST"])
         def api_save():
-            data = request.get_json(force=True) or {}
             target_username = self._get_request_username()
+            if not target_username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
+            data = request.get_json(force=True) or {}
             cfg = self.get_user_config(target_username)
             udir = self.get_user_dir(target_username)
 
@@ -357,8 +374,11 @@ class Plugin:
 
         @bp.route(f"/plugin/{self.plugin_id}/api/test", methods=["POST"])
         def api_test():
-            req_data = request.get_json(force=True) or {}
             target_username = self._get_request_username()
+            if not target_username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
+            req_data = request.get_json(force=True) or {}
             cfg = self.get_user_config(target_username)
             udir = self.get_user_dir(target_username)
             
@@ -390,6 +410,12 @@ class Plugin:
         @bp.route(f"/plugin/{self.plugin_id}/oauth/start", methods=["GET"])
         def oauth_start():
             target_username = self._get_request_username()
+            if not target_username:
+                try:
+                    return redirect(url_for("auth_bp.login", next=request.full_path))
+                except Exception:
+                    return redirect(f"/login?next={quote(request.full_path)}")
+
             cfg = self.get_user_config(target_username)
             
             client_id = (cfg.get("oauth", {}).get("effective_client_id") or cfg.get("oauth", {}).get("client_id") or "").strip()
@@ -446,9 +472,10 @@ class Plugin:
                     logger.warning(f"No se pudo decodificar state de OAuth: {e}")
 
             # Seguridad: el usuario autenticado debe coincidir con quien inició el flujo
-            target_username = current_auth_user if (current_auth_user and current_auth_user != "admin") else state_user
-            if current_auth_user and current_auth_user != "admin" and state_user != current_auth_user:
+            if current_auth_user and state_user and state_user != current_auth_user:
                 return redirect(f"/plugin/{self.plugin_id}/settings?oauth_error=" + quote("Violación de seguridad: El usuario autenticado no coincide con el origen de la autorización OAuth."))
+
+            target_username = current_auth_user or state_user or "admin"
 
             cfg = self.get_user_config(target_username)
             client_id = (cfg.get("oauth", {}).get("effective_client_id") or cfg.get("oauth", {}).get("client_id") or "").strip()
@@ -535,6 +562,9 @@ class Plugin:
         @bp.route(f"/plugin/{self.plugin_id}/oauth/manual-token", methods=["POST"])
         def oauth_manual_token():
             target_username = self._get_request_username()
+            if not target_username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             data = request.get_json(force=True) or {}
             raw_token = (data.get("token_content") or "").strip()
             if not raw_token:
@@ -619,6 +649,9 @@ class Plugin:
         @bp.route(f"/plugin/{self.plugin_id}/oauth/revoke", methods=["POST"])
         def oauth_revoke():
             target_username = self._get_request_username()
+            if not target_username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             udir = self.get_user_dir(target_username)
             token_file_path = os.path.join(udir, "token.json")
             removed = False
@@ -649,6 +682,9 @@ class Plugin:
         @bp.route(f"/plugin/{self.plugin_id}/api/upload-job", methods=["POST"])
         def api_upload_job():
             current_username = self._get_request_username()
+            if not current_username:
+                return jsonify({"success": False, "error": "Autenticación requerida."}), 401
+
             current_user = getattr(request, "current_user", {}) or {}
             is_admin = (current_user.get("role") == "admin")
 

@@ -508,7 +508,10 @@
 
         <div class="form-group">
           <label for="app_secret">App Secret (Secreto de Aplicación)</label>
-          <input type="password" name="app_secret" id="app_secret" class="form-control" value="{{ config.oauth.app_secret or '' }}" placeholder="Pegá el App Secret generado en Dropbox">
+          <input type="password" name="app_secret" id="app_secret" class="form-control" value="" placeholder="{% if config.oauth.has_app_secret or config.oauth.app_secret %}•••••••••••••••• (dejar en blanco para conservar){% else %}Pegá el App Secret generado en Dropbox{% endif %}">
+          <div class="form-hint" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+            Por seguridad, el Secreto de Aplicación nunca se muestra en pantalla. Si ya fue guardado previamente, dejalo en blanco para mantenerlo.
+          </div>
         </div>
 
         <div class="form-group">

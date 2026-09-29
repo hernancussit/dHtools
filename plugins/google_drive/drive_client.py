@@ -46,20 +46,39 @@ def sanitize_folder_id(raw_id: str) -> str:
 
 
 def _resolve_path(path_str: str, base_dir: Optional[str] = None, fallback_dir: Optional[str] = None) -> str:
-    """Resuelve rutas relativas contra el directorio provisto con fallback opcional."""
+    """Resuelve rutas de archivos de credenciales garantizando que no escapen del directorio permitido."""
     if not path_str:
         return ""
+
+    path_str = str(path_str).strip()
+    abs_base = os.path.abspath(base_dir) if base_dir else None
+    abs_fb = os.path.abspath(fallback_dir) if fallback_dir else None
+
+    # Si es ruta absoluta, validar que resida dentro de base_dir o fallback_dir
     if os.path.isabs(path_str):
-        return path_str
-    if base_dir:
-        cand = os.path.join(base_dir, path_str)
-        if os.path.exists(cand) or not fallback_dir:
-            return cand
-    if fallback_dir:
-        cand = os.path.join(fallback_dir, path_str)
-        if os.path.exists(cand):
-            return cand
-    return os.path.join(base_dir, path_str) if base_dir else path_str
+        abs_target = os.path.abspath(path_str)
+        if abs_base and (abs_target == abs_base or abs_target.startswith(abs_base + os.sep)):
+            return abs_target
+        if abs_fb and (abs_target == abs_fb or abs_target.startswith(abs_fb + os.sep)):
+            return abs_target
+        # Ruta absoluta fuera de los directorios permitidos: rechazar
+        return ""
+
+    # Ruta relativa: resolver contra base_dir
+    if abs_base:
+        cand = os.path.abspath(os.path.join(abs_base, path_str))
+        if cand == abs_base or cand.startswith(abs_base + os.sep):
+            if os.path.exists(cand) or not abs_fb:
+                return cand
+
+    # Si no se encontró en base_dir o no hay base_dir, resolver contra fallback_dir
+    if abs_fb:
+        cand_fb = os.path.abspath(os.path.join(abs_fb, path_str))
+        if cand_fb == abs_fb or cand_fb.startswith(abs_fb + os.sep):
+            if os.path.exists(cand_fb):
+                return cand_fb
+
+    return ""
 
 
 def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None, fallback_dir: Optional[str] = None):
