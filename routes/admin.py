@@ -28,7 +28,7 @@ from core.utils import (
     test_residential_proxy_connection, sync_netscape_to_cobalt_json,
     get_cobalt_cookies_status
 )
-from core.downloader import restart_process_soon, sync_to_cloud, get_ytdlp_version
+from core.downloader import restart_process_soon, sync_to_cloud, get_ytdlp_version, COBALT_ERROR_TRANSLATIONS
 from routes.auth import (
     require_admin, load_users, save_users, hash_password
 )
@@ -1414,7 +1414,12 @@ def admin_diag_cascade_benchmark():
     # Tier 1: Cobalt API
     try:
         t0 = time.time()
-        cobalt_payload = {"url": test_url, "videoQuality": "360", "filenameStyle": "basic"}
+        cobalt_payload = {
+            "url": test_url,
+            "videoQuality": "720",
+            "filenameStyle": "pretty",
+            "downloadMode": "auto"
+        }
         cr = requests.post(
             COBALT_URL,
             json=cobalt_payload,
@@ -1434,13 +1439,45 @@ def admin_diag_cascade_benchmark():
                 "message": f"Cobalt respondió '{status}' en {elapsed}ms"
             })
         else:
+            err_code = "error.http"
+            err_detail = f"Cobalt respondió HTTP {cr.status_code}"
+            err_hint = ""
+            try:
+                cobalt_err_data = cr.json()
+                raw_err = cobalt_err_data.get("error")
+                if isinstance(raw_err, dict):
+                    err_code = raw_err.get("code", "error.unknown")
+                elif isinstance(raw_err, str):
+                    err_code = raw_err
+                elif cobalt_err_data.get("text"):
+                    err_code = cobalt_err_data.get("text")
+                else:
+                    err_code = f"HTTP {cr.status_code}"
+
+                err_detail = COBALT_ERROR_TRANSLATIONS.get(err_code, cobalt_err_data.get("text") or f"Cobalt reportó: {err_code}")
+
+                # Architectural context for the administrator
+                if "youtube.login" in err_code:
+                    err_hint = "YouTube exige cookies válidas para la dirección IP del contenedor de Cobalt. Para resolverlo, subí cookies.txt en el panel o recordá que dHtools deriva YouTube automáticamente a Tier 2 (yt-dlp + Deno/PO Token), reservando Cobalt para redes sociales."
+                elif "no_session_tokens" in err_code:
+                    err_hint = "Cobalt no pudo generar tokens de sesión para YouTube. dHtools conmuta a Tier 2 (yt-dlp) automáticamente."
+                elif "rate_limit" in err_code:
+                    err_hint = "Límite de peticiones de Cobalt alcanzado. Reintentá en unos momentos."
+                elif "link.invalid" in err_code:
+                    err_hint = "El formato de los parámetros no fue aceptado por la versión instalada de Cobalt."
+            except Exception:
+                err_detail = f"Cobalt respondió código HTTP {cr.status_code}"
+
             tiers.append({
                 "name": "Cobalt v11",
                 "tier": 1,
                 "success": False,
                 "latency_ms": elapsed,
                 "status": f"HTTP {cr.status_code}",
-                "message": f"Cobalt error HTTP {cr.status_code} en {elapsed}ms"
+                "error_code": err_code,
+                "error_detail": err_detail,
+                "hint": err_hint,
+                "message": f"Cobalt HTTP {cr.status_code} ({err_code}): {err_detail} ({elapsed}ms)"
             })
     except Exception as e:
         tiers.append({
@@ -1449,6 +1486,9 @@ def admin_diag_cascade_benchmark():
             "success": False,
             "latency_ms": 0,
             "status": "offline",
+            "error_code": "offline",
+            "error_detail": f"Contenedor no alcanzable: {str(e)[:80]}",
+            "hint": "Verificá que el contenedor de Cobalt esté encendido y que COBALT_URL apunte al puerto correcto (por defecto http://cobalt:9000).",
             "message": f"Cobalt no disponible: {str(e)[:80]}"
         })
 
@@ -1478,12 +1518,21 @@ def admin_diag_cascade_benchmark():
         })
     except Exception as e:
         elapsed = round((time.time() - t0) * 1000)
+        raw_err = str(e)
+        err_hint = ""
+        if "Sign in to confirm you’re not a bot" in raw_err:
+            err_detail = "YouTube bloqueó la petición anónima solicitando verificación antibot."
+            err_hint = "Subí o sincronizá cookies.txt en el panel de Administración para autenticar la sesión."
+        else:
+            err_detail = raw_err[:120]
         tiers.append({
             "name": "yt-dlp (Directo)",
             "tier": 2,
             "success": False,
             "latency_ms": elapsed,
-            "message": f"yt-dlp directo falló en {elapsed}ms: {str(e)[:80]}"
+            "error_detail": err_detail,
+            "hint": err_hint,
+            "message": f"yt-dlp directo falló en {elapsed}ms: {err_detail}"
         })
 
     # Tier 3: yt-dlp via Residential Proxy
@@ -1515,12 +1564,21 @@ def admin_diag_cascade_benchmark():
             })
         except Exception as e:
             elapsed_res = round((time.time() - t0) * 1000)
+            raw_err = str(e)
+            err_hint = ""
+            if "Sign in to confirm you’re not a bot" in raw_err:
+                err_detail = "YouTube requiere cookies.txt para la IP residencial en este video."
+                err_hint = "El túnel residencial funciona; YouTube solicita inicio de sesión para consultas directas."
+            else:
+                err_detail = raw_err[:120]
             tiers.append({
                 "name": "yt-dlp (Residencial)",
                 "tier": 3,
                 "success": False,
                 "latency_ms": elapsed_res,
-                "message": f"yt-dlp residencial falló en {elapsed_res}ms: {str(e)[:80]}"
+                "error_detail": err_detail,
+                "hint": err_hint,
+                "message": f"yt-dlp residencial falló en {elapsed_res}ms: {err_detail}"
             })
     else:
         tiers.append({

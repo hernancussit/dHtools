@@ -3987,6 +3987,14 @@ document.getElementById('btnDiagCascade')?.addEventListener('click', async funct
       const tierMsg = document.createElement('span');
       tierMsg.textContent = t.message;
       html += `<div style="color:var(--muted); font-size:0.8rem;">${tierMsg.textContent}</div>`;
+      if (t.error_detail) {
+        html += `<div style="margin-top:8px; font-size:0.78rem; background:rgba(239,68,68,0.08); border-left:3px solid var(--danger); padding:8px 10px; border-radius:4px; line-height:1.4;">`;
+        html += `<div style="font-weight:600; color:#f87171;">⚠️ Diagnóstico: ${escapeHtmlAdmin(t.error_detail)}${t.error_code ? ` <code style="font-size:0.72rem; color:var(--muted); background:var(--bg-input); padding:1px 5px; border-radius:3px;">${escapeHtmlAdmin(t.error_code)}</code>` : ''}</div>`;
+        if (t.hint) {
+          html += `<div style="margin-top:4px; font-size:0.74rem; color:var(--muted);"><span style="color:var(--accent-blue);">💡 Contexto del Sistema:</span> ${escapeHtmlAdmin(t.hint)}</div>`;
+        }
+        html += `</div>`;
+      }
       if (t.latency_ms > 0) {
         const maxBar = 10000;
         const pct = Math.min(100, (t.latency_ms / maxBar) * 100);

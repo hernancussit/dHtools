@@ -74,7 +74,12 @@ COBALT_ERROR_TRANSLATIONS = {
     "error.api.content.not_found": "El contenido no existe o la publicación fue eliminada de la plataforma.",
     "error.api.rate_limit": "Se alcanzó el límite de peticiones de la API de Cobalt. Reintentá en unos momentos.",
     "error.api.media.too_large": "El medio supera el tamaño máximo procesable por Cobalt.",
+    "error.api.media.empty": "Cobalt no pudo extraer ningún flujo de audio o video válido.",
     "error.api.link.invalid": "El enlace no es soportado o tiene un formato no reconocido por Cobalt.",
+    "error.api.link.unsupported": "La plataforma o tipo de enlace no está soportado por Cobalt.",
+    "error.api.auth.required": "La instancia de Cobalt requiere clave API o autenticación.",
+    "error.api.service.unavailable": "El servicio de procesamiento de Cobalt está temporalmente no disponible.",
+    "error.api.youtube.playback_ratelimit": "Límite temporal de reproducción de YouTube alcanzado en Cobalt.",
 }
 
 
