@@ -828,9 +828,20 @@ def get_user_storage_used(username: str) -> int:
     """Returns the total disk storage in bytes currently used by the specified user."""
     meta = load_downloads_meta()
     total = 0
+    existing_entries = None
+    if os.path.exists(DOWNLOAD_DIR):
+        try:
+            existing_entries = set(os.listdir(DOWNLOAD_DIR))
+        except OSError:
+            existing_entries = None
+
     for jid, info in meta.items():
         user = info.get("username") or info.get("owner")
         if user == username:
+            if existing_entries is not None:
+                has_file = any(e.startswith(jid) for e in existing_entries)
+                if not has_file and not info.get("cloud_offloaded"):
+                    continue
             total += int(info.get("size_bytes") or info.get("size", 0))
     return total
 

@@ -878,6 +878,10 @@ def api_studio_process():
     if not username:
         return jsonify({"error": "No autenticado"}), 401
 
+    quota_ok, quota_err = check_user_storage_quota(username)
+    if not quota_ok:
+        return jsonify({"error": quota_err}), 403
+
     import subprocess
     import shutil
 
@@ -985,6 +989,7 @@ def api_studio_process():
 
     uploaded_file = request.files.get("file")
     source_path = None
+    is_temp_upload = False
 
     if uploaded_file and uploaded_file.filename:
         raw_name = os.path.basename(uploaded_file.filename).strip()
@@ -994,6 +999,7 @@ def api_studio_process():
             return jsonify({"error": "Nombre de archivo no válido"}), 400
         source_path = safe_up_name
         uploaded_file.save(source_path)
+        is_temp_upload = True
     elif source_filename:
         target = safe_download_path(source_filename)
         if not target or not os.path.exists(target):
@@ -1151,5 +1157,11 @@ def api_studio_process():
         return jsonify({"error": "El procesamiento excedió el límite de tiempo de 5 minutos"}), 504
     except Exception as e:
         return jsonify({"error": f"Error inesperado: {str(e)}"}), 500
+    finally:
+        if is_temp_upload and source_path and os.path.exists(source_path):
+            try:
+                os.remove(source_path)
+            except Exception:
+                pass
 
 

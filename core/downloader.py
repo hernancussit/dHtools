@@ -166,6 +166,22 @@ def purge_downloads(force_all=False):
             except OSError:
                 pass
 
+        try:
+            from core.utils import load_downloads_meta, save_downloads_meta
+            meta = load_downloads_meta()
+            if meta:
+                existing_entries = set(os.listdir(DOWNLOAD_DIR)) if os.path.exists(DOWNLOAD_DIR) else set()
+                updated = False
+                for jid in list(meta.keys()):
+                    has_file = any(e.startswith(jid) for e in existing_entries)
+                    if not has_file and not meta[jid].get("cloud_offloaded"):
+                        meta.pop(jid, None)
+                        updated = True
+                if updated:
+                    save_downloads_meta(meta)
+        except Exception:
+            pass
+
     return {
         "cleaned_count": cleaned_count,
         "reclaimed_bytes": reclaimed_bytes,
@@ -221,6 +237,24 @@ def cleanup_loop():
                             shutil.rmtree(entry_path, ignore_errors=True)
                         else:
                             os.remove(entry_path)
+
+                # Reconcile downloads_meta.json with physical disk files
+                try:
+                    from core.utils import load_downloads_meta, save_downloads_meta
+                    meta = load_downloads_meta()
+                    if meta and os.path.exists(DOWNLOAD_DIR):
+                        existing_entries = set(os.listdir(DOWNLOAD_DIR))
+                        updated = False
+                        for jid in list(meta.keys()):
+                            has_file = any(e.startswith(jid) for e in existing_entries)
+                            is_cloud_offloaded = meta[jid].get("cloud_offloaded", False)
+                            if not has_file and not is_cloud_offloaded:
+                                meta.pop(jid, None)
+                                updated = True
+                        if updated:
+                            save_downloads_meta(meta)
+                except Exception:
+                    pass
         except Exception:
             pass
 

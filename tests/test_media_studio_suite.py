@@ -491,5 +491,39 @@ class TestMediaStudioSuite(unittest.TestCase):
         self.assertIn("excedió el límite de tiempo", res.get_json()["error"])
 
 
+    @patch("routes.api.check_user_storage_quota", return_value=(False, "Has alcanzado tu límite de cuota de almacenamiento (1.0 GB)."))
+    def test_quota_exceeded_blocks_studio_process(self, mock_quota):
+        """Valida que un usuario que excedió su cuota de almacenamiento no pueda procesar archivos (403)."""
+        self._login()
+        res = self.client.post("/api/studio/process", json={
+            "tool": "convert",
+            "source_filename": "video.mp4"
+        })
+        self.assertEqual(res.status_code, 403)
+        self.assertIn("Has alcanzado tu límite de cuota", res.get_json()["error"])
+
+    @patch("routes.api.subprocess.run")
+    @patch("routes.api.load_downloads_meta", return_value={})
+    @patch("core.utils.save_downloads_meta")
+    @patch("os.path.exists", return_value=True)
+    @patch("os.path.getsize", return_value=5000)
+    @patch("os.remove")
+    def test_uploaded_file_cleaned_up_after_processing(self, mock_remove, mock_size, mock_exists, mock_save, mock_meta, mock_run):
+        """Verifica que el archivo temporal subido por el usuario se elimine tras el procesamiento para no malgastar cuota."""
+        self._login()
+        mock_proc = MagicMock(returncode=0, stderr="")
+        mock_run.return_value = mock_proc
+
+        data = {
+            "tool": "convert",
+            "target_format": "mp3",
+            "file": (io.BytesIO(b"DUMMY_DATA"), "sample.wav")
+        }
+        res = self.client.post("/api/studio/process", data=data, content_type="multipart/form-data")
+        self.assertEqual(res.status_code, 200)
+        # os.remove debe haber sido invocado para eliminar el source_path temporal
+        self.assertTrue(mock_remove.called)
+
+
 if __name__ == "__main__":
     unittest.main()
