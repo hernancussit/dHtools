@@ -617,36 +617,66 @@
   /* RECENT DOWNLOADS TABLE & CARDS */
   .recent-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 14px;
     margin-top: 14px;
   }
   .recent-card {
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 12px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    transition: border-color 0.2s;
+    min-height: 125px;
+    min-width: 0;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
   .recent-card:hover {
     border-color: var(--border-highlight);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   }
   .recent-card-title {
-    font-size: 0.85rem;
+    font-size: 0.86rem;
     font-weight: 700;
     color: var(--text);
-    word-break: break-all;
+    overflow-wrap: break-word;
+    word-break: break-word;
     margin-bottom: 6px;
+    line-height: 1.35;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
   }
   .recent-card-meta {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--muted);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .recent-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .recent-card-actions .btn {
+    padding: 4px 8px;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    border-radius: 6px;
   }
 
   /* ACCORDION */
@@ -698,10 +728,11 @@
     border-radius: 12px;
     margin-bottom: 14px;
     overflow: hidden;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
   .folder-box:hover {
     border-color: var(--border-highlight);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   }
   .folder-header {
     background: linear-gradient(90deg, rgba(14, 165, 233, 0.08), rgba(236, 72, 153, 0.05));
@@ -710,6 +741,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     user-select: none;
     border-bottom: 1px solid transparent;
     transition: background 0.2s, border-color 0.2s;
@@ -723,7 +756,22 @@
     color: var(--text);
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .folder-header-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 340px;
+  }
+  .folder-header-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
   }
   .folder-body {
     padding: 12px 16px;
@@ -735,7 +783,7 @@
   }
   .folder-items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 10px;
     margin-top: 8px;
   }
@@ -743,10 +791,56 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 10px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .folder-file-card:hover {
+    border-color: var(--border-highlight);
+  }
+  .folder-file-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.35;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .folder-file-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .folder-file-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .folder-file-actions .btn {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    border-radius: 5px;
   }
 
   /* MODE TOGGLE (SINGLE URL / BATCH MODE) */
@@ -4146,10 +4240,13 @@ function getCloudUploadButtons(jobId, isFolderSub = false) {
     .filter(p => p.enabled)
     .map(p => {
       const pId = p.plugin_id || p.id;
-      const shortName = (p.name || 'Cloud').replace('Microsoft ', '').replace(' Cloud Sync', '');
+      const shortName = (p.name || 'Cloud')
+        .replace('Microsoft ', '')
+        .replace('Google ', '')
+        .replace(' Cloud Sync', '')
+        .trim();
       const btnText = isFolderSub ? `${p.icon || '☁️'}` : `${p.icon || '☁️'} ${shortName}`;
-      const padding = isFolderSub ? 'padding:2px 6px; font-size:0.72rem;' : '';
-      return `<button class="btn btn-secondary btn-sm" style="${padding}" onclick="uploadToCloudPlugin('${pId}', '${jobId}', this)" title="Subir a mi ${p.name}">${btnText}</button>`;
+      return `<button type="button" class="btn btn-secondary btn-sm" onclick="uploadToCloudPlugin('${pId}', '${jobId}', this)" title="Subir a mi ${p.name}">${btnText}</button>`;
     }).join('');
 }
 
@@ -4171,34 +4268,38 @@ function renderRecentDownloads(data) {
           <div class="folder-box" id="folder_${f.group_id}">
             <div class="folder-header" onclick="toggleFolder('${f.group_id}')">
               <div class="folder-header-title">
-                <span>📁</span>
-                <span>${f.folder_name}</span>
-                <span class="brand-badge" style="font-size:0.7rem; background:var(--accent);">${f.count} archivos</span>
-                <span class="brand-badge" style="font-size:0.7rem; background:rgba(255,255,255,0.08);">${f.total_formatted}</span>
+                <span style="flex-shrink:0;">📁</span>
+                <span class="folder-header-title-text" title="${f.folder_name}">${f.folder_name}</span>
+                <span class="brand-badge" style="font-size:0.7rem; background:var(--accent); flex-shrink:0;">${f.count} archivos</span>
+                <span class="brand-badge" style="font-size:0.7rem; background:rgba(255,255,255,0.08); flex-shrink:0;">${f.total_formatted}</span>
               </div>
-              <div style="display:flex; gap:6px; align-items:center;" onclick="event.stopPropagation();">
-                <a href="/api/my-downloads/folder-zip/${f.group_id}" class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:3px 8px;" title="Descargar todo en ZIP">📦 Bajar ZIP</a>
-                <button class="btn btn-danger btn-sm" style="font-size:0.75rem; padding:3px 8px;" onclick="deleteFolderDownloads('${f.group_id}')" title="Eliminar toda la carpeta">🗑️</button>
-                <span id="folderIcon_${f.group_id}" style="font-size:0.8rem; color:var(--muted); margin-left:6px; cursor:pointer;" onclick="toggleFolder('${f.group_id}')">▼</span>
+              <div class="folder-header-actions" onclick="event.stopPropagation();">
+                <a href="/api/my-downloads/folder-zip/${f.group_id}" class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:4px 9px;" title="Descargar todo en ZIP">📦 Bajar ZIP</a>
+                <button type="button" class="btn btn-danger btn-sm" style="font-size:0.75rem; padding:4px 9px;" onclick="deleteFolderDownloads('${f.group_id}')" title="Eliminar toda la carpeta">🗑️</button>
+                <span id="folderIcon_${f.group_id}" style="font-size:0.8rem; color:var(--muted); margin-left:4px; cursor:pointer;" onclick="toggleFolder('${f.group_id}')">▼</span>
               </div>
             </div>
             <div class="folder-body" id="folderBody_${f.group_id}">
               <div class="folder-items-grid">
                 ${f.items.map(sub => `
                   <div class="folder-file-card">
-                    <div style="font-size:0.82rem; font-weight:600; word-break:break-all;" title="${sub.filename}">
-                      📄 ${sub.filename}
-                      ${sub.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem; padding:1px 5px; border-radius:4px; margin-left:4px;">☁️ En la nube</span>` : ''}
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.75rem; color:var(--muted); flex-wrap:wrap; gap:4px;">
-                      <span>${sub.size_formatted} ${sub.mtime ? `<span style="margin-left:6px; font-size:0.72rem; color:var(--muted);" title="Hora de descarga">🕒 ${new Date(sub.mtime * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>` : ''}</span>
-                      <div style="display:flex; gap:4px; align-items:center;">
-                        ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;">⬇️</a>`}
-                        ${(!sub.offloaded) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToMediaStudio('${encodeURIComponent(sub.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬</button>` : ''}
-                        ${(!sub.offloaded) ? getCloudUploadButtons(sub.job_id, true) : ''}
-                        ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
-                        <button class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.72rem;" onclick="deleteUserDownload('${sub.job_id}')">🗑️</button>
+                    <div>
+                      <div class="folder-file-title" title="${sub.filename}">
+                        <span style="flex-shrink:0;">📄</span>
+                        <span style="overflow-wrap:anywhere; word-break:break-word; flex:1;">${sub.filename}</span>
+                        ${sub.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.65rem; padding:1px 5px; border-radius:4px; flex-shrink:0;">☁️ Nube</span>` : ''}
                       </div>
+                      <div class="folder-file-meta">
+                        <span>${sub.size_formatted}</span>
+                        ${sub.mtime ? `<span title="Hora de descarga">🕒 ${new Date(sub.mtime * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>` : ''}
+                      </div>
+                    </div>
+                    <div class="folder-file-actions">
+                      ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8; padding:2px 4px;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" title="Descargar archivo">⬇️</a>`}
+                      ${(!sub.offloaded) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToMediaStudio('${encodeURIComponent(sub.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬</button>` : ''}
+                      ${(!sub.offloaded) ? getCloudUploadButtons(sub.job_id, true) : ''}
+                      ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
+                      <button type="button" class="btn btn-danger btn-sm" onclick="deleteUserDownload('${sub.job_id}')" title="Eliminar archivo">🗑️</button>
                     </div>
                   </div>
                 `).join('')}
@@ -4225,8 +4326,9 @@ function renderRecentDownloads(data) {
         <div class="recent-card">
           <div>
             <div class="recent-card-title" title="${item.filename}">
-              📄 ${item.filename}
-              ${item.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem; padding:1px 5px; border-radius:4px; margin-left:6px;">☁️ En la nube</span>` : ''}
+              <span style="flex-shrink:0;">📄</span>
+              <span style="overflow-wrap:anywhere; word-break:break-word; flex:1;">${item.filename}</span>
+              ${item.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem; padding:1px 5px; border-radius:4px; flex-shrink:0;">☁️ En la nube</span>` : ''}
             </div>
             <div class="recent-card-meta">
               <span>${item.size_formatted}</span>
@@ -4234,12 +4336,12 @@ function renderRecentDownloads(data) {
               ${item.mtime ? `<span title="Fecha y hora de descarga">🕒 ${new Date(item.mtime * 1000).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}</span>` : ''}
             </div>
           </div>
-          <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:10px; align-items:center;">
-            ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:4px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar">⬇️ Bajar</a>`}
-            ${(!item.offloaded) ? `<button class="btn btn-secondary btn-sm" onclick="sendToMediaStudio('${encodeURIComponent(item.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬 Estudio</button>` : ''}
+          <div class="recent-card-actions">
+            ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:3px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar archivo a tu dispositivo">⬇️ Bajar</a>`}
+            ${(!item.offloaded) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToMediaStudio('${encodeURIComponent(item.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬 Estudio</button>` : ''}
             ${(!item.offloaded) ? getCloudUploadButtons(item.job_id, false) : ''}
-            ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
-            <button class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo">🗑️</button>
+            ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteUserDownload('${item.job_id}')" title="Eliminar archivo permanentemente">🗑️</button>
           </div>
         </div>
       `).join('');
