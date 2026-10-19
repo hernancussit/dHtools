@@ -20,10 +20,48 @@ from core.utils import (
 from core.downloader import (
     get_ytdlp_version, run_pip_update, restart_process_soon,
     extract_with_fallback, normalize_url, detect_platform, is_playlist_url,
-    get_deezer_info, get_spotify_info, strip_playlist_from_url, is_pure_playlist_url
+    get_deezer_info, get_spotify_info, strip_playlist_from_url, is_pure_playlist_url,
+    search_media
 )
 
 api_bp = Blueprint("api_bp", __name__)
+
+# ==================== BUSCADOR MULTIMEDIA INTEGRADO (ROADMAP v2.0.0) ====================
+
+@api_bp.route("/api/search", methods=["GET"])
+def api_media_search():
+    user = getattr(request, "current_user", {}) or {}
+    username = user.get("username")
+    from flask import session
+    if not username and not session.get("username"):
+        return jsonify({"error": "No autenticado"}), 401
+
+    query = (request.args.get("q") or "").strip()
+    if not query:
+        return jsonify({"error": "Debe especificar un término de búsqueda (parámetro 'q')"}), 400
+
+    if len(query) > 256:
+        return jsonify({"error": "El término de búsqueda es demasiado extenso (máx. 256 caracteres)"}), 400
+
+    platform = (request.args.get("platform") or "all").lower().strip()
+    try:
+        limit = int(request.args.get("limit", 10))
+    except (ValueError, TypeError):
+        limit = 10
+    limit = max(1, min(limit, 25))
+
+    try:
+        results = search_media(query, platform=platform, limit=limit)
+        return jsonify({
+            "success": True,
+            "query": query,
+            "platform": platform,
+            "count": len(results),
+            "results": results
+        })
+    except Exception as e:
+        return jsonify({"error": f"Fallo al buscar multimedia: {str(e)}"}), 500
+
 
 @api_bp.route("/api/user/quota")
 def user_quota():

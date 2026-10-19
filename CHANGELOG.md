@@ -4,6 +4,27 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.0.0-dev] - 2026-10-19
+
+### 🔍 Buscador Multimedia Integrado
+- **Motor de Búsqueda Multiplataforma (`core/downloader.py`):**
+  - Implementación de `search_media(query, platform, limit)` con soporte multi-fuente:
+    - **YouTube (`yt_dlp` con `extract_flat=True`):** Búsqueda ultrarrápida sin pre-descargas de medios, extrayendo títulos, duraciones formateadas, vistas (K/M/B), miniaturas y canales.
+    - **Deezer (API Oficial):** Extracción de pistas de estudio con carátulas de alta resolución, información de álbum/artista y URLs de muestra de audio MP3 de 30 segundos.
+    - **SoundCloud (`yt_dlp` con `scsearch`):** Búsqueda de pistas independientes y remixes.
+    - Modo `all` con intercalado equilibrado entre resultados de video y pistas de estudio.
+- **Endpoint REST Seguro (`routes/api.py`):**
+  - `GET /api/search` con autenticación obligatoria, validación de longitud de consulta (hasta 256 caracteres), clamp de límite (1 a 25) y respuesta estructurada JSON.
+- **Experiencia de Usuario en Frontend (`templates/index.html`):**
+  - Pestaña dedicada `🔍 Buscador Multimedia` en la barra de subnavegación de descargas y acceso rápido desde el Modo Rápido.
+  - Barra de búsqueda con autodisparo al pulsar `Enter`, botón para limpiar y sugerencias populares en un clic (*Coldplay, Dua Lipa, Bizarrap, Lo-Fi, Rock Clásico*).
+  - Filtro por plataforma con chips interactivos (*Todos, YouTube, Deezer, SoundCloud*).
+  - Tarjetas de resultados con distintivos visuales por plataforma, metadatos enriquecidos y duración.
+  - Reproductor flotante de muestra de audio para preescucha de canciones de Deezer sin salir de la página.
+  - Acciones rápidas en 1 clic: descargar directamente como MP4 o MP3, o transferir la URL al Modo Avanzado para personalizaciones específicas.
+- **Suite de Pruebas Automatizadas (`tests/test_search_api.py`):**
+  - 11 pruebas unitarias e integradas certificando autenticación, validación de parámetros, extractores individuales de YouTube/Deezer/SoundCloud, enrutador multi-fuente y contratos de error HTTP 400/401/500.
+
 ## [1.6.1] - 2026-09-29
 
 ### 🎬 Estudio Multimedia & Gobernanza de Almacenamiento

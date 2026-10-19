@@ -54,8 +54,12 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 ---
 
 ## 🎯 Versión `v2.0.0` — Experiencia de Usuario, Búsqueda, Scheduler & Aceleración GPU
-- [ ] **Buscador Multimedia Integrado:**
+- [x] **Buscador Multimedia Integrado:**
   - Búsqueda directa de videos y canciones dentro de la interfaz sin necesidad de abrir plataformas externas para copiar enlaces.
+  - Multiplataforma: soporte nativo simultáneo para YouTube (`ytsearch`), Deezer (API oficial con previews de audio de 30s en alta calidad) y SoundCloud (`scsearch`).
+  - Filtros por plataforma (`all`, `youtube`, `deezer`, `soundcloud`) e intercalado balanceado de resultados.
+  - Descargas directas en 1 clic (Video MP4 / Audio MP3) o precarga directa en Modo Avanzado.
+  - Reproductor mini de preescucha integrado para previsualizar samples de audio antes de descargar.
 - [ ] **Reproductor Web Integrado con Cola de Reproducción:**
   - Reproductor nativo de audio y video para previsualizar y reproducir archivos multimedia directamente desde la sección "Mis Descargas".
 - [ ] **Descargas Programadas (Task Scheduler / Cron):**

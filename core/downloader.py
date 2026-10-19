@@ -622,6 +622,182 @@ def get_spotify_info(url: str):
     return None
 
 
+# ==================== BUSCADOR MULTIMEDIA INTEGRADO (v2.0.0) ====================
+
+def format_views(views) -> str | None:
+    if not views:
+        return None
+    try:
+        v = int(views)
+        if v >= 1_000_000_000:
+            return f"{v / 1_000_000_000:.1f}B vistas"
+        if v >= 1_000_000:
+            return f"{v / 1_000_000:.1f}M vistas"
+        if v >= 1_000:
+            return f"{v / 1_000:.1f}K vistas"
+        return f"{v} vistas"
+    except Exception:
+        return None
+
+
+def search_youtube(query: str, limit: int = 10) -> list[dict]:
+    """Busca videos en YouTube utilizando yt-dlp con extracción plana rápida de metadatos."""
+    query = (query or "").strip()
+    if not query:
+        return []
+    limit = max(1, min(int(limit), 25))
+    ydl_opts = {
+        "quiet": True,
+        "skip_download": True,
+        "extract_flat": True,
+        "socket_timeout": 10,
+        "ignoreerrors": True,
+        **cookies_opts(for_url="https://www.youtube.com"),
+    }
+    results = []
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            res = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
+            entries = res.get("entries", []) if res else []
+            for e in entries:
+                if not e:
+                    continue
+                vid_id = e.get("id") or ""
+                vid_url = e.get("url") or (f"https://www.youtube.com/watch?v={vid_id}" if vid_id else "")
+                if not vid_url:
+                    continue
+                thumbs = e.get("thumbnails") or []
+                thumb = thumbs[-1]["url"] if thumbs else (f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg" if vid_id else None)
+                dur = e.get("duration")
+                views = e.get("view_count")
+                results.append({
+                    "id": vid_id,
+                    "title": e.get("title") or "Sin título",
+                    "url": vid_url,
+                    "uploader": e.get("uploader") or e.get("channel") or "YouTube",
+                    "duration_seconds": dur,
+                    "duration_formatted": format_seconds(dur) if dur else None,
+                    "thumbnail": thumb,
+                    "views": views,
+                    "views_formatted": format_views(views),
+                    "platform": "youtube",
+                })
+    except Exception as err:
+        print(f"[Search] Error buscando en YouTube: {err}")
+    return results
+
+
+def search_deezer(query: str, limit: int = 10) -> list[dict]:
+    """Busca canciones oficiales de estudio en la API pública de Deezer con carátula y preview de 30s."""
+    query = (query or "").strip()
+    if not query:
+        return []
+    limit = max(1, min(int(limit), 25))
+    results = []
+    try:
+        import urllib.parse
+        encoded = urllib.parse.quote(query)
+        url = f"https://api.deezer.com/search?q={encoded}&limit={limit}"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        tracks = data.get("data", [])
+        for t in tracks:
+            if not t:
+                continue
+            track_id = str(t.get("id", ""))
+            artist = t.get("artist", {}).get("name", "Artista")
+            title = t.get("title", "Canción")
+            album_title = t.get("album", {}).get("title", "")
+            cover = t.get("album", {}).get("cover_medium") or t.get("album", {}).get("cover_big")
+            dur = t.get("duration")
+            results.append({
+                "id": track_id,
+                "title": f"{artist} - {title}",
+                "track_title": title,
+                "artist": artist,
+                "album": album_title,
+                "url": t.get("link") or f"https://www.deezer.com/track/{track_id}",
+                "uploader": artist,
+                "duration_seconds": dur,
+                "duration_formatted": format_seconds(dur) if dur else None,
+                "thumbnail": cover,
+                "preview_url": t.get("preview"),
+                "platform": "deezer",
+            })
+    except Exception as err:
+        print(f"[Search] Error buscando en Deezer: {err}")
+    return results
+
+
+def search_soundcloud(query: str, limit: int = 10) -> list[dict]:
+    """Busca canciones y mezclas en SoundCloud mediante yt-dlp."""
+    query = (query or "").strip()
+    if not query:
+        return []
+    limit = max(1, min(int(limit), 25))
+    ydl_opts = {
+        "quiet": True,
+        "skip_download": True,
+        "extract_flat": True,
+        "socket_timeout": 10,
+        "ignoreerrors": True,
+    }
+    results = []
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            res = ydl.extract_info(f"scsearch{limit}:{query}", download=False)
+            entries = res.get("entries", []) if res else []
+            for e in entries:
+                if not e:
+                    continue
+                sc_url = e.get("url") or ""
+                if not sc_url:
+                    continue
+                thumbs = e.get("thumbnails") or []
+                thumb = thumbs[-1]["url"] if thumbs else None
+                dur = e.get("duration")
+                results.append({
+                    "id": str(e.get("id") or ""),
+                    "title": e.get("title") or "Pista de SoundCloud",
+                    "url": sc_url,
+                    "uploader": e.get("uploader") or "SoundCloud",
+                    "duration_seconds": dur,
+                    "duration_formatted": format_seconds(dur) if dur else None,
+                    "thumbnail": thumb,
+                    "platform": "soundcloud",
+                })
+    except Exception as err:
+        print(f"[Search] Error buscando en SoundCloud: {err}")
+    return results
+
+
+def search_media(query: str, platform: str = "all", limit: int = 10) -> list[dict]:
+    """Enrutador de búsqueda multicanal para YouTube, Deezer y SoundCloud."""
+    platform = (platform or "all").lower().strip()
+    limit = max(1, min(int(limit), 25))
+
+    if platform == "youtube":
+        return search_youtube(query, limit)
+    elif platform == "deezer":
+        return search_deezer(query, limit)
+    elif platform == "soundcloud":
+        return search_soundcloud(query, limit)
+    elif platform in ("all", "todo"):
+        half = max(2, limit // 2)
+        yt_results = search_youtube(query, half)
+        dz_results = search_deezer(query, half)
+        combined = []
+        max_len = max(len(yt_results), len(dz_results))
+        for i in range(max_len):
+            if i < len(yt_results):
+                combined.append(yt_results[i])
+            if i < len(dz_results):
+                combined.append(dz_results[i])
+        return combined[:limit]
+    else:
+        return search_youtube(query, limit)
+
+
 def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = "", music_meta: dict = None, owner: str = "admin", user_cloud_sync: dict = None, folder_name: str = None, group_id: str = None):
     job_dir = os.path.join(DOWNLOAD_DIR, job_id)
 

@@ -349,6 +349,101 @@
     background: rgba(56, 189, 248, 0.09);
   }
 
+  /* MEDIA SEARCH CARDS & BADGES (v2.0) */
+  .search-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--card-shadow);
+  }
+  .search-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-highlight);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .search-thumb-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #090d16;
+    overflow: hidden;
+  }
+  .search-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .search-card:hover .search-thumb-img {
+    transform: scale(1.04);
+  }
+  .search-badge-dur {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.82);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+  .search-badge-platform {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .search-badge-yt { background: rgba(239, 68, 68, 0.95); color: #fff; }
+  .search-badge-dz { background: rgba(168, 85, 247, 0.95); color: #fff; }
+  .search-badge-sc { background: rgba(249, 115, 22, 0.95); color: #fff; }
+  .search-body {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+  }
+  .search-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .search-meta {
+    font-size: 0.74rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .search-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
   /* INPUTS & BUTTONS */
   label {
     display: block;
@@ -1479,6 +1574,9 @@
         <button type="button" class="subnav-btn active" id="btnDlSubQuick" onclick="switchDlSubView('quick')">
           <span>⚡ Modo Rápido (1 Clic)</span>
         </button>
+        <button type="button" class="subnav-btn" id="btnDlSubSearch" onclick="switchDlSubView('search')">
+          <span>🔍 Buscador Multimedia</span>
+        </button>
         <button type="button" class="subnav-btn" id="btnDlSubAdv" onclick="switchDlSubView('adv')">
           <span>🎛️ Modo Avanzado</span>
         </button>
@@ -1502,6 +1600,7 @@
             <div class="mode-toggle-group">
               <button type="button" class="mode-toggle-btn active" id="btnQuickModeSingle">🔗 Enlace Único</button>
               <button type="button" class="mode-toggle-btn" id="btnQuickModeBatch">📋 Descarga en Lote</button>
+              <button type="button" class="mode-toggle-btn" onclick="switchDlSubView('search')" title="Buscar video o canción por nombre">🔍 Buscar por Nombre</button>
             </div>
           </div>
 
@@ -1616,6 +1715,79 @@
         </div>
       </div>
     </div> <!-- close dlSubViewQuick -->
+
+    <!-- SUBVIEW 1.5: BUSCADOR MULTIMEDIA INTEGRADO (ROADMAP v2.0.0) -->
+    <div id="dlSubViewSearch" class="dl-subview" style="display:none;">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <span>🔍 Buscador Multimedia Integrado</span>
+            <span style="font-size:0.78rem; font-weight:normal; color:var(--muted); margin-left:6px;">Buscá videos, música y podcasts sin salir de dHtools</span>
+          </div>
+          <span class="brand-badge" style="background:rgba(56,189,248,0.15); color:var(--accent-blue); font-size:0.72rem;">✨ v2.0 Live Search</span>
+        </div>
+
+        <!-- Search Input Bar -->
+        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:240px; position:relative;">
+            <input type="text" id="mediaSearchInput" placeholder="Ej: nombre de canción, artista, video, podcast o canal..." autocomplete="off" style="width:100%; padding:10px 38px 10px 14px; font-size:0.9rem; border-radius:8px;" onkeydown="if(event.key==='Enter') executeMediaSearch();">
+            <button type="button" id="btnClearMediaSearch" onclick="clearMediaSearch()" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); font-size:0.9rem; cursor:pointer; display:none;" title="Limpiar búsqueda">✕</button>
+          </div>
+          <button type="button" class="btn btn-primary" id="btnExecuteMediaSearch" onclick="executeMediaSearch()" style="padding:10px 18px; font-weight:700;">
+            <span>🔍 Buscar</span>
+          </button>
+        </div>
+
+        <!-- Platform Filter Tabs / Pills -->
+        <div style="display:flex; align-items:center; gap:8px; margin-top:14px; flex-wrap:wrap;">
+          <span style="font-size:0.75rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Plataforma:</span>
+          <button type="button" class="mode-toggle-btn search-filter-btn active" data-platform="all" onclick="selectSearchPlatform('all', this)">🌐 Todos</button>
+          <button type="button" class="mode-toggle-btn search-filter-btn" data-platform="youtube" onclick="selectSearchPlatform('youtube', this)">🔴 YouTube</button>
+          <button type="button" class="mode-toggle-btn search-filter-btn" data-platform="deezer" onclick="selectSearchPlatform('deezer', this)">🎵 Deezer (Hi-Fi)</button>
+          <button type="button" class="mode-toggle-btn search-filter-btn" data-platform="soundcloud" onclick="selectSearchPlatform('soundcloud', this)">☁️ SoundCloud</button>
+        </div>
+
+        <!-- Quick Trending Suggestions -->
+        <div id="searchTrendingChips" style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.72rem; color:var(--muted);">Sugerencias rápidas:</span>
+          <button type="button" class="brand-badge" style="cursor:pointer; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:0.7rem;" onclick="quickSearchTag('Coldplay Viva la Vida')">🎵 Coldplay</button>
+          <button type="button" class="brand-badge" style="cursor:pointer; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:0.7rem;" onclick="quickSearchTag('Dua Lipa Houdini')">✨ Dua Lipa</button>
+          <button type="button" class="brand-badge" style="cursor:pointer; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:0.7rem;" onclick="quickSearchTag('Bizarrap Music Sessions')">🔥 Bizarrap</button>
+          <button type="button" class="brand-badge" style="cursor:pointer; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:0.7rem;" onclick="quickSearchTag('Lofi hip hop beats to relax')">🎧 Lo-Fi Beats</button>
+          <button type="button" class="brand-badge" style="cursor:pointer; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:0.7rem;" onclick="quickSearchTag('Queen Bohemian Rhapsody')">🎸 Rock Clásico</button>
+        </div>
+      </div>
+
+      <!-- Live Search Indicator / Spinner -->
+      <div id="searchLoadingBox" style="display:none; text-align:center; padding:35px 20px; background:var(--bg-card); border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+        <div style="font-size:2.2rem; animation:spin 1s linear infinite; display:inline-block;">⏳</div>
+        <div style="margin-top:10px; font-weight:700; color:var(--text); font-size:0.95rem;">Buscando multimedia...</div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">Consultando APIs y extrayendo metadatos en alta resolución...</div>
+      </div>
+
+      <!-- Mini Preview Audio Player (for Deezer tracks) -->
+      <div id="searchAudioPreviewBar" style="display:none; margin-bottom:14px; background:#0b1120; border:1px solid var(--accent-blue); border-radius:10px; padding:10px 14px; align-items:center; gap:12px; box-shadow:0 0 15px rgba(56,189,248,0.2);">
+        <span style="font-size:1.3rem;">🎧</span>
+        <div style="flex:1; min-width:140px; overflow:hidden;">
+          <div style="font-size:0.82rem; font-weight:700; color:var(--text); text-overflow:ellipsis; white-space:nowrap; overflow:hidden;" id="searchAudioPreviewTitle">Reproduciendo muestra</div>
+          <div style="font-size:0.7rem; color:var(--accent-blue);" id="searchAudioPreviewMeta">Muestra oficial de 30 segundos</div>
+        </div>
+        <audio id="searchAudioPreviewElement" controls style="height:32px; max-width:240px;"></audio>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="stopSearchAudioPreview()" style="font-size:0.72rem; padding:4px 8px;">✕</button>
+      </div>
+
+      <!-- Results Grid -->
+      <div id="searchResultsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;"></div>
+
+      <!-- Empty / Initial Placeholder State -->
+      <div id="searchEmptyState" style="text-align:center; padding:50px 20px; background:var(--bg-card); border-radius:12px; border:1px dashed var(--border); color:var(--muted);">
+        <div style="font-size:2.8rem; margin-bottom:8px;">🔍</div>
+        <strong style="color:var(--text); font-size:1rem;">Ingresa un término arriba para comenzar a buscar</strong>
+        <p style="font-size:0.82rem; margin-top:6px; max-width:440px; margin-left:auto; margin-right:auto;">
+          Puedes buscar cualquier video de YouTube, canciones oficiales de Deezer o pistas de SoundCloud y descargarlas en 1 clic.
+        </p>
+      </div>
+    </div>
 
     <!-- SUBVIEW 2: MODO AVANZADO (ADVANCED) -->
     <div id="dlSubViewAdv" class="dl-subview" style="display:none;">
@@ -2706,6 +2878,7 @@ function showToast(msg, type = 'info', timeout = 4000) {
 function switchDlSubView(subview) {
   const views = {
     'quick': { pane: 'dlSubViewQuick', btn: 'btnDlSubQuick' },
+    'search': { pane: 'dlSubViewSearch', btn: 'btnDlSubSearch' },
     'adv': { pane: 'dlSubViewAdv', btn: 'btnDlSubAdv' },
     'queue': { pane: 'dlSubViewQueue', btn: 'btnDlSubQueue' }
   };
@@ -2727,6 +2900,9 @@ function switchTab(target) {
   if (target === 'tab-quick') {
     target = 'tab-downloads';
     switchDlSubView('quick');
+  } else if (target === 'tab-search') {
+    target = 'tab-downloads';
+    switchDlSubView('search');
   } else if (target === 'tab-adv') {
     target = 'tab-downloads';
     switchDlSubView('adv');
@@ -5424,6 +5600,209 @@ async function settingsChangePassword() {
       btn.textContent = 'Actualizar Contraseña';
     }
   }
+// ==================== BUSCADOR MULTIMEDIA INTEGRADO (ROADMAP v2.0.0) ====================
+let currentSearchPlatform = 'all';
+let currentSearchQuery = '';
+
+function selectSearchPlatform(platform, btn) {
+  currentSearchPlatform = platform;
+  document.querySelectorAll('.search-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const inp = document.getElementById('mediaSearchInput');
+  if (inp && inp.value.trim()) {
+    executeMediaSearch();
+  }
+}
+
+function clearMediaSearch() {
+  const inp = document.getElementById('mediaSearchInput');
+  if (inp) inp.value = '';
+  const clearBtn = document.getElementById('btnClearMediaSearch');
+  if (clearBtn) clearBtn.style.display = 'none';
+  const grid = document.getElementById('searchResultsGrid');
+  if (grid) grid.innerHTML = '';
+  const emptyState = document.getElementById('searchEmptyState');
+  if (emptyState) {
+    emptyState.innerHTML = `
+      <div style="font-size:2.8rem; margin-bottom:8px;">🔍</div>
+      <strong style="color:var(--text); font-size:1rem;">Ingresa un término arriba para comenzar a buscar</strong>
+      <p style="font-size:0.82rem; margin-top:6px; max-width:440px; margin-left:auto; margin-right:auto;">
+        Puedes buscar cualquier video de YouTube, canciones oficiales de Deezer o pistas de SoundCloud y descargarlas en 1 clic.
+      </p>
+    `;
+    emptyState.style.display = 'block';
+  }
+  const trending = document.getElementById('searchTrendingChips');
+  if (trending) trending.style.display = 'flex';
+  stopSearchAudioPreview();
+}
+
+function quickSearchTag(tag) {
+  const inp = document.getElementById('mediaSearchInput');
+  if (inp) {
+    inp.value = tag;
+    executeMediaSearch();
+  }
+}
+
+async function executeMediaSearch() {
+  const inp = document.getElementById('mediaSearchInput');
+  const query = (inp ? inp.value : '').trim();
+  if (!query) {
+    showToast('Ingresa un término para buscar', 'error');
+    return;
+  }
+
+  currentSearchQuery = query;
+  const clearBtn = document.getElementById('btnClearMediaSearch');
+  if (clearBtn) clearBtn.style.display = 'block';
+
+  const grid = document.getElementById('searchResultsGrid');
+  const emptyState = document.getElementById('searchEmptyState');
+  const loadingBox = document.getElementById('searchLoadingBox');
+  const trending = document.getElementById('searchTrendingChips');
+
+  if (trending) trending.style.display = 'none';
+  if (emptyState) emptyState.style.display = 'none';
+  if (loadingBox) loadingBox.style.display = 'block';
+  if (grid) grid.innerHTML = '';
+
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&platform=${currentSearchPlatform}&limit=12`);
+    const data = await res.json();
+    if (loadingBox) loadingBox.style.display = 'none';
+
+    if (!res.ok || data.error) {
+      showToast(data.error || 'Error al buscar multimedia', 'error');
+      if (emptyState) {
+        emptyState.innerHTML = `<div style="font-size:2.2rem; margin-bottom:8px;">⚠️</div><strong style="color:var(--text);">${data.error || 'Error en la búsqueda'}</strong>`;
+        emptyState.style.display = 'block';
+      }
+      return;
+    }
+
+    const items = data.results || [];
+    if (items.length === 0) {
+      if (emptyState) {
+        emptyState.innerHTML = `
+          <div style="font-size:2.4rem; margin-bottom:8px;">🔎</div>
+          <strong style="color:var(--text);">No se encontraron resultados para "${query}"</strong>
+          <p style="font-size:0.8rem; margin-top:4px;">Prueba con otros términos o cambia la plataforma (YouTube, Deezer o Todos).</p>
+        `;
+        emptyState.style.display = 'block';
+      }
+      return;
+    }
+
+    renderSearchResults(items);
+  } catch (err) {
+    if (loadingBox) loadingBox.style.display = 'none';
+    showToast('Fallo de conexión al buscar', 'error');
+    if (emptyState) emptyState.style.display = 'block';
+  }
+}
+
+function renderSearchResults(items) {
+  const grid = document.getElementById('searchResultsGrid');
+  if (!grid) return;
+
+  grid.innerHTML = items.map(item => {
+    const platform = item.platform || 'youtube';
+    const isYt = platform === 'youtube';
+    const isDz = platform === 'deezer';
+    const badgeClass = isYt ? 'search-badge-yt' : (isDz ? 'search-badge-dz' : 'search-badge-sc');
+    const badgeText = isYt ? '🔴 YouTube' : (isDz ? '🎵 Deezer' : '☁️ SoundCloud');
+
+    const thumb = item.thumbnail || '/static/icons/brand_horizontal.png';
+    const duration = item.duration_formatted ? `<span class="search-badge-dur">⏱️ ${item.duration_formatted}</span>` : '';
+    const views = item.views_formatted ? `<span>• ${item.views_formatted}</span>` : '';
+    const artist = item.artist || item.uploader || 'Desconocido';
+
+    const safeUrl = (item.url || '').replace(/'/g, "\\'");
+    const safeTitle = (item.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+    // Preview button for Deezer tracks
+    const previewBtn = item.preview_url 
+      ? `<button type="button" class="btn btn-secondary btn-sm" onclick="playSearchAudioPreview('${item.preview_url}', '${safeTitle}', '${artist}')" style="font-size:0.72rem; padding:4px 8px;" title="Escuchar muestra de 30s">🎧 Muestra</button>`
+      : '';
+
+    return `
+      <div class="search-card">
+        <div class="search-thumb-wrap">
+          <img src="${thumb}" alt="${safeTitle}" class="search-thumb-img" loading="lazy" onerror="this.src='/static/icons/icon-512.png';">
+          <span class="search-badge-platform ${badgeClass}">${badgeText}</span>
+          ${duration}
+        </div>
+        <div class="search-body">
+          <div class="search-title" title="${safeTitle}">${item.title}</div>
+          <div class="search-meta">
+            <span>👤 ${artist}</span>
+            ${views}
+          </div>
+          <div class="search-actions">
+            ${isYt ? `<button type="button" class="btn btn-primary btn-sm" onclick="quickDownloadFromSearch('${safeUrl}', '720p', 'video')" style="font-size:0.75rem; padding:5px 9px;">🎬 Video</button>` : ''}
+            <button type="button" class="btn btn-secondary btn-sm" onclick="quickDownloadFromSearch('${safeUrl}', 'best', 'audio')" style="font-size:0.75rem; padding:5px 9px; ${!isYt ? 'background:linear-gradient(135deg, rgba(168,85,247,0.3), rgba(56,189,248,0.3)); border-color:var(--accent-blue);' : ''}">🎵 Audio</button>
+            ${previewBtn}
+            <button type="button" class="btn btn-secondary btn-sm" onclick="customizeFromSearch('${safeUrl}')" style="font-size:0.72rem; padding:5px 8px; margin-left:auto;" title="Personalizar opciones en Modo Avanzado">⚙️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function playSearchAudioPreview(url, title, artist) {
+  const bar = document.getElementById('searchAudioPreviewBar');
+  const titleEl = document.getElementById('searchAudioPreviewTitle');
+  const metaEl = document.getElementById('searchAudioPreviewMeta');
+  const player = document.getElementById('searchAudioPreviewElement');
+
+  if (bar && player) {
+    if (titleEl) titleEl.textContent = title;
+    if (metaEl) metaEl.textContent = `${artist} • Muestra de 30s`;
+    player.src = url;
+    bar.style.display = 'flex';
+    player.play();
+  }
+}
+
+function stopSearchAudioPreview() {
+  const bar = document.getElementById('searchAudioPreviewBar');
+  const player = document.getElementById('searchAudioPreviewElement');
+  if (player) {
+    player.pause();
+    player.src = '';
+  }
+  if (bar) bar.style.display = 'none';
+}
+
+async function quickDownloadFromSearch(url, quality, formatType) {
+  showToast('Encolando descarga directa...', 'info', 2000);
+  try {
+    const data = await safeApiPost('/api/download', {
+      url: url,
+      quality: quality,
+      format_type: formatType,
+      engine: 'auto',
+      playlist: false
+    });
+    showToast('¡Descarga agregada a la cola en 2º plano!', 'success');
+    if (typeof fetchQueueState === 'function') fetchQueueState();
+    startProgressBanner('Iniciando descarga...');
+    pollSingleJob(data.job_id);
+  } catch (e) {
+    showToast(e.message || 'Error al iniciar descarga', 'error');
+  }
+}
+
+function customizeFromSearch(url) {
+  switchDlSubView('adv');
+  const advInput = document.getElementById('advUrlInput');
+  if (advInput) {
+    advInput.value = url;
+    document.getElementById('btnInspectAdv')?.click();
+  }
+  showToast('URL cargada en Modo Avanzado', 'info', 2000);
 }
 
 // Load on start
