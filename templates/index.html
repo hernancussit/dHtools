@@ -1227,7 +1227,7 @@
 
     /* OFF-CANVAS MOBILE DRAWER & BACKDROP */
     .mobile-drawer-backdrop {
-      display: block !important;
+      display: none !important;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.68);
@@ -1239,6 +1239,7 @@
       transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .mobile-drawer-backdrop.open {
+      display: block !important;
       opacity: 1;
       pointer-events: auto;
     }
@@ -1732,7 +1733,7 @@
     border: 1px solid rgba(56, 189, 248, 0.3);
     border-radius: 14px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
-    display: flex;
+    display: none;
     flex-direction: column;
     z-index: 860;
     overflow: hidden;
@@ -1825,11 +1826,14 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 950;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     padding: 16px;
     animation: fadeIn 0.2s ease-out;
+  }
+  .video-modal-backdrop.open {
+    display: flex !important;
   }
   .video-modal-card {
     background: #090e1a;
@@ -3072,7 +3076,7 @@
 </div>
 
 <!-- OFF-CANVAS MOBILE DRAWER & BACKDROP -->
-<div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop"></div>
+<div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" style="display:none;"></div>
 <aside class="mobile-drawer" id="mobileDrawer">
   <div class="mobile-drawer-header">
     <div style="display:flex; align-items:center; gap:10px;">
@@ -3576,6 +3580,7 @@ const mobileDrawer = document.getElementById('mobileDrawer');
 const mobileDrawerBackdrop = document.getElementById('mobileDrawerBackdrop');
 
 function openMobileDrawer() {
+  if (mobileDrawerBackdrop) mobileDrawerBackdrop.style.display = 'block';
   mobileDrawer?.classList.add('open');
   mobileDrawerBackdrop?.classList.add('open');
 }
@@ -3583,6 +3588,13 @@ function openMobileDrawer() {
 function closeMobileDrawer() {
   mobileDrawer?.classList.remove('open');
   mobileDrawerBackdrop?.classList.remove('open');
+  if (mobileDrawerBackdrop) {
+    setTimeout(() => {
+      if (!mobileDrawerBackdrop.classList.contains('open')) {
+        mobileDrawerBackdrop.style.display = 'none';
+      }
+    }, 250);
+  }
 }
 
 document.getElementById('btnToggleMobileDrawer')?.addEventListener('click', openMobileDrawer);
@@ -6260,6 +6272,8 @@ async function settingsChangePassword() {
       btn.textContent = 'Actualizar Contraseña';
     }
   }
+}
+
 // ==================== BUSCADOR MULTIMEDIA INTEGRADO (ROADMAP v2.0.0) ====================
 let currentSearchPlatform = 'all';
 let currentSearchQuery = '';
@@ -7109,17 +7123,19 @@ window.dHPlayer = {
 };
 
 // Auto-initialize on ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => window.dHPlayer?.init());
-} else {
-  window.dHPlayer?.init();
+function bootApp() {
+  try { window.dHPlayer?.init(); } catch (e) { console.error('dHPlayer init error:', e); }
+  try { if (typeof fetchQueueState === 'function') fetchQueueState(); } catch (e) {}
+  try { if (typeof loadRecentDownloads === 'function') loadRecentDownloads(); } catch (e) {}
+  try { if (typeof loadUserQuota === 'function') loadUserQuota(); } catch (e) {}
+  try { if (typeof loadTelegramStatus === 'function') loadTelegramStatus(); } catch (e) {}
 }
 
-// Load on start
-fetchQueueState();
-loadRecentDownloads();
-loadUserQuota();
-loadTelegramStatus();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
 
 </script>
 </body>
