@@ -131,6 +131,20 @@ def admin_services_status():
     })
 
 
+@admin_bp.route("/api/admin/free-ram", methods=["POST"])
+@require_admin
+def admin_free_ram():
+    """Optimiza la memoria RAM ejecutando recolección de basura forzada y poda de cachés volátiles."""
+    from core.utils import optimize_memory
+    res = optimize_memory()
+    return jsonify({
+        "success": True,
+        "message": f"Memoria RAM optimizada con éxito.",
+        "details": res,
+        "ram": res.get("ram", {})
+    })
+
+
 @admin_bp.route("/api/admin/check-deno")
 @require_admin
 def admin_check_deno():

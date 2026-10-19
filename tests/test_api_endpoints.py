@@ -308,7 +308,22 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertIn("Deezer", platforms)
         self.assertIn("YouTube", platforms)
 
+    def test_admin_free_ram_endpoint(self):
+        """Verifica que /api/admin/free-ram optimice memoria y retorne estadísticas de RAM."""
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        res = self.client.post("/api/admin/free-ram")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("details", data)
+        self.assertIn("ram", data)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

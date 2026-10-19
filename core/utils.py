@@ -705,6 +705,72 @@ def get_ram_status():
     }
 
 
+def optimize_memory() -> dict:
+    """Ejecuta recolección de basura forzada y poda de cachés volátiles en RAM."""
+    import gc
+    from core.state import (
+        JOBS, JOBS_LOCK, BATCH_JOBS, BATCH_LOCK,
+        TELEGRAM_MEDIA_CACHE, TELEGRAM_MEDIA_CACHE_LOCK,
+        ACTIVE_SESSIONS, ACTIVE_SESSIONS_LOCK
+    )
+
+    # 1. Podar JOBS completados/erróneos retenidos en RAM (máximo 25 más recientes)
+    pruned_jobs = 0
+    with JOBS_LOCK:
+        finished = [
+            (jid, j.get("finished_at", 0))
+            for jid, j in JOBS.items()
+            if j.get("status") in ("finished", "error", "cancelled")
+        ]
+        if len(finished) > 25:
+            finished.sort(key=lambda x: x[1])
+            for jid, _ in finished[:-25]:
+                JOBS.pop(jid, None)
+                pruned_jobs += 1
+
+    # 2. Podar lotes masivos completados
+    pruned_batches = 0
+    with BATCH_LOCK:
+        if len(BATCH_JOBS) > 20:
+            b_items = sorted(BATCH_JOBS.items(), key=lambda x: x[1].get("created_at", 0))
+            for bid, _ in b_items[:-20]:
+                BATCH_JOBS.pop(bid, None)
+                pruned_batches += 1
+
+    # 3. Podar pre-caché de Telegram (expirados > 1h o max 30)
+    pruned_tg = 0
+    now = time.time()
+    with TELEGRAM_MEDIA_CACHE_LOCK:
+        expired_keys = [k for k, v in TELEGRAM_MEDIA_CACHE.items() if (now - v.get("created_at", now)) > 3600]
+        for k in expired_keys:
+            TELEGRAM_MEDIA_CACHE.pop(k, None)
+            pruned_tg += 1
+        if len(TELEGRAM_MEDIA_CACHE) > 30:
+            tg_sorted = sorted(TELEGRAM_MEDIA_CACHE.keys(), key=lambda k: TELEGRAM_MEDIA_CACHE[k].get("created_at", 0))
+            for k in tg_sorted[:-30]:
+                TELEGRAM_MEDIA_CACHE.pop(k, None)
+                pruned_tg += 1
+
+    # 4. Limpiar sesiones expiradas (> 24h)
+    with ACTIVE_SESSIONS_LOCK:
+        stale_sess = [sid for sid, s in ACTIVE_SESSIONS.items() if (now - s.get("last_seen", now)) > 86400]
+        for sid in stale_sess:
+            ACTIVE_SESSIONS.pop(sid, None)
+
+    # 5. Ejecutar recolección de basura forzada (todas las generaciones)
+    gc.collect(0)
+    gc.collect(1)
+    gc.collect(2)
+
+    return {
+        "success": True,
+        "pruned_jobs": pruned_jobs,
+        "pruned_batches": pruned_batches,
+        "pruned_tg": pruned_tg,
+        "ram": get_ram_status()
+    }
+
+
 def format_bytes(bytes_val: int) -> str:
     if bytes_val is None:
         return "0 B"

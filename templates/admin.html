@@ -817,7 +817,10 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Consumo de Memoria RAM (Proyecto & VPS Total)</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div class="card-title" style="margin:0;">Consumo de Memoria RAM (Proyecto & VPS Total)</div>
+          <button id="btnFreeRamNow" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:3px 8px;" title="Ejecuta recolección de basura forzada y purga cachés en memoria">🧹 Optimizar Memoria RAM</button>
+        </div>
         <div style="font-size:0.9rem; margin-bottom:8px;" id="ramUsageLabel">Consultando memoria RAM...</div>
         <div class="progress-bar-wrap" style="display:flex; background:#0b1220; overflow:hidden;">
           <div id="ramProjectBar" style="height:100%; width:0%; background:var(--accent-blue); transition:width 0.3s;" title="Proyecto"></div>
@@ -2170,6 +2173,29 @@ document.getElementById('btnPurgeNow').addEventListener('click', async () => {
     loadServicesStatus();
   } catch (e) {
     showToast('Error al purgar descargas: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnFreeRamNow')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btnFreeRamNow');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Optimizando...';
+  }
+  try {
+    const res = await fetch('/api/admin/free-ram', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al optimizar RAM');
+    const details = data.details || {};
+    showToast(`Memoria optimizada: ${details.pruned_jobs || 0} jobs y ${details.pruned_tg || 0} cachés purgados.`, 'success');
+    loadServicesStatus();
+  } catch (e) {
+    showToast('Error al optimizar RAM: ' + e.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🧹 Optimizar Memoria RAM';
+    }
   }
 });
 

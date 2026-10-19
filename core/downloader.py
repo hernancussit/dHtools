@@ -260,6 +260,13 @@ def cleanup_loop():
                             save_downloads_meta(meta)
                 except Exception:
                     pass
+
+            # 3. In-memory RAM optimization and garbage collection
+            try:
+                from core.utils import optimize_memory
+                optimize_memory()
+            except Exception:
+                pass
         except Exception:
             pass
 
