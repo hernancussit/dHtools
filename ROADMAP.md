@@ -59,7 +59,7 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - Multiplataforma: soporte nativo simultáneo para YouTube (`ytsearch`), Deezer (API oficial con previews de audio de 30s en alta calidad) y SoundCloud (`scsearch`).
   - Filtros por plataforma (`all`, `youtube`, `deezer`, `soundcloud`) e intercalado balanceado de resultados.
   - Descargas directas en 1 clic (Video MP4 / Audio MP3) o precarga directa en Modo Avanzado.
-  - Reproductor mini de preescucha integrado para previsualizar samples de audio antes de descargar.
+  - Modal y reproductor interactivo de previsualización multimedia: inspección de videos (YouTube) y canciones (Deezer/SoundCloud) antes de descargar, con soporte para adelantar/retroceder temporalmente (scrubber continuo + botones ±5s), pantalla completa y descarga directa desde el propio visor.
 - [x] **Reproductor Web Integrado con Cola de Reproducción:**
   - Reproductor nativo persistente para audio y video directamente desde la sección "Mis Archivos" (Mis Descargas) y Estudio Multimedia.
   - Barra flotante cyberpunk de reproducción continua (mini-player) acoplada dinámicamente en desktop y sobre la barra de navegación móvil.

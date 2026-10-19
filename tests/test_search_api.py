@@ -179,6 +179,24 @@ class TestSearchApi(unittest.TestCase):
         data = res.get_json()
         self.assertIn("Fallo al buscar multimedia", data["error"])
 
+    # ==================== 5. COMPONENTES UI DE PREVISUALIZACIÓN INTERACTIVA ====================
+    def test_search_preview_modal_present_in_ui(self):
+        self._login()
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+        html = res.get_data(as_text=True)
+        # Modal y contenedores del reproductor interactivo
+        self.assertIn('id="searchPreviewModal"', html)
+        self.assertIn('id="previewPlayerContainer"', html)
+        self.assertIn('id="previewPlatformBadge"', html)
+        self.assertIn('id="previewActionsBar"', html)
+        # Funciones de control interactivo (adelantar/retroceder y reproducción)
+        self.assertIn('openSearchPreview', html)
+        self.assertIn('closeSearchPreview', html)
+        self.assertIn('skipPreviewAudio', html)
+        self.assertIn('seekPreviewAudio', html)
+
 
 if __name__ == "__main__":
     unittest.main()
+

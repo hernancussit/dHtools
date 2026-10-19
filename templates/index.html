@@ -371,6 +371,7 @@
     aspect-ratio: 16 / 9;
     background: #090d16;
     overflow: hidden;
+    cursor: pointer;
   }
   .search-thumb-img {
     width: 100%;
@@ -380,6 +381,40 @@
   }
   .search-card:hover .search-thumb-img {
     transform: scale(1.04);
+  }
+  .search-thumb-play-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+  .search-card:hover .search-thumb-play-overlay {
+    opacity: 1;
+  }
+  .search-thumb-play-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.95);
+    color: #0b1120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.5);
+    transform: scale(0.88);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .search-thumb-wrap:hover .search-thumb-play-btn {
+    transform: scale(1.05);
+    background: #fff;
   }
   .search-badge-dur {
     position: absolute;
@@ -392,6 +427,7 @@
     padding: 2px 6px;
     border-radius: 4px;
     backdrop-filter: blur(4px);
+    z-index: 6;
   }
   .search-badge-platform {
     position: absolute;
@@ -404,6 +440,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    z-index: 6;
   }
   .search-badge-yt { background: rgba(239, 68, 68, 0.95); color: #fff; }
   .search-badge-dz { background: rgba(168, 85, 247, 0.95); color: #fff; }
@@ -442,6 +479,220 @@
     margin-top: auto;
     padding-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* ==================== SEARCH PREVIEW MODAL (ROADMAP v2.0.0) ==================== */
+  .search-preview-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 960;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .search-preview-backdrop.open {
+    display: flex !important;
+  }
+  .search-preview-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 780px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    animation: slideUpFade 0.22s ease-out;
+  }
+  [data-theme="oled"] .search-preview-card {
+    background: #04070d;
+    border-color: #222;
+  }
+  .search-preview-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .search-preview-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .search-preview-meta {
+    font-size: 0.74rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .search-preview-body {
+    padding: 16px;
+    background: #050811;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+  }
+  .preview-video-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .preview-video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .preview-sc-wrapper {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 166px;
+    background: #111;
+  }
+  .preview-sc-wrapper iframe {
+    width: 100%;
+    height: 166px;
+    border: none;
+  }
+  .preview-audio-card {
+    display: flex;
+    gap: 18px;
+    width: 100%;
+    align-items: center;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  @media (max-width: 600px) {
+    .preview-audio-card {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+  .preview-audio-cover {
+    width: 110px;
+    height: 110px;
+    border-radius: 10px;
+    object-fit: cover;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    border: 1px solid var(--border);
+  }
+  .preview-audio-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .preview-audio-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-audio-artist {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .preview-audio-tag {
+    font-size: 0.72rem;
+    color: var(--accent-blue);
+    font-weight: 600;
+  }
+  .preview-scrubber-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    width: 100%;
+  }
+  .preview-time {
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--muted);
+    min-width: 36px;
+  }
+  .preview-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .preview-audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .preview-btn-play {
+    font-size: 0.82rem;
+    padding: 6px 14px;
+    font-weight: 700;
+  }
+  .preview-btn-jump {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+  }
+  .preview-vol-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .preview-vol-slider {
+    width: 60px;
+    height: 4px;
+    accent-color: var(--accent);
+  }
+  .search-preview-footer {
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .search-preview-hint {
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+  .search-preview-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   /* INPUTS & BUTTONS */
@@ -3446,6 +3697,35 @@
   </div>
 </div>
 
+<!-- ==================== MODAL DE PREVISUALIZACIÓN MULTIMEDIA (ROADMAP v2.0.0) ==================== -->
+<div id="searchPreviewModal" class="search-preview-backdrop" style="display:none;" onclick="if(event.target===this) closeSearchPreview()">
+  <div class="search-preview-card">
+    <div class="search-preview-header">
+      <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+        <span id="previewPlatformBadge" class="search-badge-platform search-badge-yt" style="position:static; padding:3px 8px;">🔴 YouTube</span>
+        <div style="min-width:0; flex:1;">
+          <div id="previewTitle" class="search-preview-title">Título del contenido</div>
+          <div id="previewMeta" class="search-preview-meta">Artista / Canal • 00:00</div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeSearchPreview()" style="font-size:0.9rem; padding:4px 10px;" title="Cerrar vista previa (Esc)">✕</button>
+    </div>
+
+    <div class="search-preview-body" id="previewPlayerContainer">
+      <!-- Player mounted dynamically: YouTube iframe, SoundCloud widget, or Deezer HTML5 audio scrubber -->
+    </div>
+
+    <div class="search-preview-footer">
+      <div class="search-preview-hint">
+        <span>💡 Podés adelantar o retroceder para revisar partes del contenido antes de descargar.</span>
+      </div>
+      <div class="search-preview-actions" id="previewActionsBar">
+        <!-- Direct download & options buttons -->
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 window.TELEGRAM_BOT_ENABLED = {{ 'true' if telegram_enabled else 'false' }};
 window.GOOGLE_DRIVE_ENABLED = {{ 'true' if google_drive_enabled else 'false' }};
@@ -6377,10 +6657,11 @@ async function executeMediaSearch() {
 }
 
 function renderSearchResults(items) {
+  window.currentSearchResults = items || [];
   const grid = document.getElementById('searchResultsGrid');
   if (!grid) return;
 
-  grid.innerHTML = items.map(item => {
+  grid.innerHTML = items.map((item, idx) => {
     const platform = item.platform || 'youtube';
     const isYt = platform === 'youtube';
     const isDz = platform === 'deezer';
@@ -6395,34 +6676,232 @@ function renderSearchResults(items) {
     const safeUrl = (item.url || '').replace(/'/g, "\\'");
     const safeTitle = (item.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
-    // Preview button for Deezer tracks
-    const previewBtn = item.preview_url 
-      ? `<button type="button" class="btn btn-secondary btn-sm" onclick="playSearchAudioPreview('${item.preview_url}', '${safeTitle}', '${artist}')" style="font-size:0.72rem; padding:4px 8px;" title="Escuchar muestra de 30s">🎧 Muestra</button>`
-      : '';
-
     return `
       <div class="search-card">
-        <div class="search-thumb-wrap">
+        <div class="search-thumb-wrap" onclick="openSearchPreview(${idx})" title="Hacer clic para ver/escuchar muestra interactiva">
           <img src="${thumb}" alt="${safeTitle}" class="search-thumb-img" loading="lazy" onerror="this.src='/static/icons/icon-512.png';">
+          <div class="search-thumb-play-overlay">
+            <span class="search-thumb-play-btn" title="Ver / Escuchar previa">▶</span>
+          </div>
           <span class="search-badge-platform ${badgeClass}">${badgeText}</span>
           ${duration}
         </div>
         <div class="search-body">
-          <div class="search-title" title="${safeTitle}">${item.title}</div>
+          <div class="search-title" title="${safeTitle}" onclick="openSearchPreview(${idx})" style="cursor:pointer;">${item.title}</div>
           <div class="search-meta">
             <span>👤 ${artist}</span>
             ${views}
           </div>
           <div class="search-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openSearchPreview(${idx})" style="font-size:0.75rem; padding:5px 9px;" title="Ver o escuchar muestra antes de descargar">👁️ Previa</button>
             ${isYt ? `<button type="button" class="btn btn-primary btn-sm" onclick="quickDownloadFromSearch('${safeUrl}', '720p', 'video')" style="font-size:0.75rem; padding:5px 9px;">🎬 Video</button>` : ''}
             <button type="button" class="btn btn-secondary btn-sm" onclick="quickDownloadFromSearch('${safeUrl}', 'best', 'audio')" style="font-size:0.75rem; padding:5px 9px; ${!isYt ? 'background:linear-gradient(135deg, rgba(168,85,247,0.3), rgba(56,189,248,0.3)); border-color:var(--accent-blue);' : ''}">🎵 Audio</button>
-            ${previewBtn}
             <button type="button" class="btn btn-secondary btn-sm" onclick="customizeFromSearch('${safeUrl}')" style="font-size:0.72rem; padding:5px 8px; margin-left:auto;" title="Personalizar opciones en Modo Avanzado">⚙️</button>
           </div>
         </div>
       </div>
     `;
   }).join('');
+}
+
+// ==================== INTERACTIVE SEARCH PREVIEW ENGINE ====================
+let currentPreviewIndex = -1;
+
+function openSearchPreview(idx) {
+  if (!window.currentSearchResults || !window.currentSearchResults[idx]) return;
+  const item = window.currentSearchResults[idx];
+  currentPreviewIndex = idx;
+
+  const modal = document.getElementById('searchPreviewModal');
+  const badgeEl = document.getElementById('previewPlatformBadge');
+  const titleEl = document.getElementById('previewTitle');
+  const metaEl = document.getElementById('previewMeta');
+  const container = document.getElementById('previewPlayerContainer');
+  const actionsEl = document.getElementById('previewActionsBar');
+
+  if (!modal || !container) return;
+
+  const platform = item.platform || 'youtube';
+  const isYt = platform === 'youtube';
+  const isDz = platform === 'deezer';
+  const isSc = platform === 'soundcloud';
+
+  // Update header badge
+  if (badgeEl) {
+    badgeEl.className = `search-badge-platform ${isYt ? 'search-badge-yt' : (isDz ? 'search-badge-dz' : 'search-badge-sc')}`;
+    badgeEl.textContent = isYt ? '🔴 YouTube' : (isDz ? '🎵 Deezer' : '☁️ SoundCloud');
+  }
+
+  // Update title & metadata
+  if (titleEl) {
+    titleEl.textContent = item.title;
+    titleEl.title = item.title;
+  }
+  if (metaEl) {
+    const artist = item.artist || item.uploader || 'Artista';
+    const dur = item.duration_formatted ? ` • ⏱️ ${item.duration_formatted}` : '';
+    const views = item.views_formatted ? ` • ${item.views_formatted}` : '';
+    metaEl.textContent = `${artist}${dur}${views}`;
+  }
+
+  const safeUrl = (item.url || '').replace(/'/g, "\\'");
+  const safeTitle = (item.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+  // Render platform specific player
+  if (isYt) {
+    container.innerHTML = `
+      <div class="preview-video-wrapper">
+        <iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.id)}?autoplay=1&rel=0&modestbranding=1" 
+                title="${safeTitle}" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+        </iframe>
+      </div>
+    `;
+  } else if (isSc) {
+    container.innerHTML = `
+      <div class="preview-sc-wrapper">
+        <iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay"
+                src="https://w.soundcloud.com/player/?url=${encodeURIComponent(item.url)}&color=%23f97316&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
+        </iframe>
+      </div>
+    `;
+  } else if (isDz && item.preview_url) {
+    container.innerHTML = `
+      <div class="preview-audio-card">
+        <div class="preview-audio-cover-box">
+          <img src="${item.thumbnail || '/static/icons/brand_horizontal.png'}" class="preview-audio-cover" alt="Carátula" onerror="this.src='/static/icons/icon-512.png';">
+        </div>
+        <div class="preview-audio-details">
+          <div class="preview-audio-title" title="${safeTitle}">${item.title}</div>
+          <div class="preview-audio-artist">👤 ${item.artist || item.uploader} ${item.album ? '• 💿 ' + item.album : ''}</div>
+          <div class="preview-audio-tag">🎧 Muestra de audio oficial (30 segundos en alta calidad)</div>
+
+          <audio id="previewAudioElement" src="${item.preview_url}" preload="auto"></audio>
+
+          <div class="preview-scrubber-box">
+            <span class="preview-time" id="previewAudioCurrentTime">00:00</span>
+            <input type="range" class="preview-slider" id="previewAudioSlider" min="0" max="100" value="0" step="0.1" oninput="seekPreviewAudio(this.value)" title="Línea de tiempo (arrastrar o hacer clic para adelantar)">
+            <span class="preview-time" id="previewAudioDuration">00:30</span>
+          </div>
+
+          <div class="preview-audio-controls">
+            <button type="button" class="btn btn-secondary btn-sm preview-btn-jump" onclick="skipPreviewAudio(-5)" title="Retroceder 5 segundos">
+              ⏪ -5s
+            </button>
+            <button type="button" class="btn btn-primary preview-btn-play" id="btnPreviewAudioPlay" onclick="togglePreviewAudioPlay()" title="Reproducir / Pausar">
+              ⏸️ Pausar
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm preview-btn-jump" onclick="skipPreviewAudio(5)" title="Adelantar 5 segundos">
+              ⏩ +5s
+            </button>
+            <div class="preview-vol-wrap">
+              <span>🔊</span>
+              <input type="range" class="preview-vol-slider" min="0" max="1" step="0.05" value="1" oninput="setPreviewAudioVolume(this.value)" title="Control de volumen">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const audioEl = document.getElementById('previewAudioElement');
+    if (audioEl) {
+      audioEl.play().catch(() => {});
+      audioEl.addEventListener('timeupdate', updatePreviewAudioProgress);
+      audioEl.addEventListener('ended', () => {
+        const btn = document.getElementById('btnPreviewAudioPlay');
+        if (btn) btn.textContent = '▶️ Reproducir';
+      });
+    }
+  } else {
+    container.innerHTML = `
+      <div style="padding:32px 20px; text-align:center; color:var(--muted);">
+        <div style="font-size:2.2rem; margin-bottom:8px;">🎵</div>
+        <div style="font-weight:700; color:var(--text); font-size:0.95rem;">${item.title}</div>
+        <div style="font-size:0.8rem; margin-top:4px;">No hay muestra directa de streaming para este proveedor. Podés descargarlo directamente usando los botones de abajo.</div>
+      </div>
+    `;
+  }
+
+  // Footer direct download actions
+  if (actionsEl) {
+    actionsEl.innerHTML = `
+      ${isYt ? `<button type="button" class="btn btn-primary btn-sm" onclick="quickDownloadFromSearch('${safeUrl}', '720p', 'video'); closeSearchPreview();" style="font-size:0.8rem; padding:6px 12px;">🎬 Descargar Video (720p)</button>` : ''}
+      <button type="button" class="btn ${isYt ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="quickDownloadFromSearch('${safeUrl}', 'best', 'audio'); closeSearchPreview();" style="font-size:0.8rem; padding:6px 12px;">🎵 Descargar Audio (MP3)</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="customizeFromSearch('${safeUrl}'); closeSearchPreview();" style="font-size:0.8rem; padding:6px 10px;" title="Personalizar opciones en Modo Avanzado">⚙️ Modo Avanzado</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeSearchPreview()" style="font-size:0.8rem; padding:6px 12px; margin-left:auto;">Cerrar</button>
+    `;
+  }
+
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+}
+
+function closeSearchPreview() {
+  const modal = document.getElementById('searchPreviewModal');
+  const container = document.getElementById('previewPlayerContainer');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+  }
+  if (container) {
+    container.innerHTML = '';
+  }
+  currentPreviewIndex = -1;
+}
+
+function togglePreviewAudioPlay() {
+  const audioEl = document.getElementById('previewAudioElement');
+  const btn = document.getElementById('btnPreviewAudioPlay');
+  if (!audioEl || !btn) return;
+  if (audioEl.paused) {
+    audioEl.play();
+    btn.textContent = '⏸️ Pausar';
+  } else {
+    audioEl.pause();
+    btn.textContent = '▶️ Reproducir';
+  }
+}
+
+function skipPreviewAudio(seconds) {
+  const audioEl = document.getElementById('previewAudioElement');
+  if (!audioEl) return;
+  audioEl.currentTime = Math.max(0, Math.min(audioEl.duration || 30, audioEl.currentTime + seconds));
+  updatePreviewAudioProgress();
+}
+
+function seekPreviewAudio(pct) {
+  const audioEl = document.getElementById('previewAudioElement');
+  if (!audioEl || !audioEl.duration) return;
+  audioEl.currentTime = (pct / 100) * audioEl.duration;
+  updatePreviewAudioProgress();
+}
+
+function setPreviewAudioVolume(vol) {
+  const audioEl = document.getElementById('previewAudioElement');
+  if (audioEl) audioEl.volume = parseFloat(vol);
+}
+
+function updatePreviewAudioProgress() {
+  const audioEl = document.getElementById('previewAudioElement');
+  const slider = document.getElementById('previewAudioSlider');
+  const currTimeEl = document.getElementById('previewAudioCurrentTime');
+  const durTimeEl = document.getElementById('previewAudioDuration');
+
+  if (!audioEl) return;
+  const curr = audioEl.currentTime || 0;
+  const dur = audioEl.duration || 30;
+
+  if (slider) slider.value = (dur > 0) ? (curr / dur) * 100 : 0;
+  if (currTimeEl) currTimeEl.textContent = formatPreviewTime(curr);
+  if (durTimeEl && !isNaN(dur) && dur > 0) durTimeEl.textContent = formatPreviewTime(dur);
+}
+
+function formatPreviewTime(seconds) {
+  const s = Math.floor(seconds || 0);
+  const m = Math.floor(s / 60);
+  const remS = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}`;
 }
 
 function playSearchAudioPreview(url, title, artist) {
@@ -6449,6 +6928,15 @@ function stopSearchAudioPreview() {
   }
   if (bar) bar.style.display = 'none';
 }
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('searchPreviewModal');
+    if (modal && modal.style.display !== 'none') {
+      closeSearchPreview();
+    }
+  }
+});
 
 async function quickDownloadFromSearch(url, quality, formatType) {
   showToast('Encolando descarga directa...', 'info', 2000);

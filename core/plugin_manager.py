@@ -228,9 +228,9 @@ class PluginManager:
             return [
                 {
                     "id": pid,
-                    "name": self._plugins[pid].get("name", pid),
-                    "version": self._plugins[pid].get("version", "1.0"),
-                    "icon": self._plugins[pid].get("icon", "🧩"),
+                    "name": self._plugins.get(pid, {}).get("name", pid),
+                    "version": self._plugins.get(pid, {}).get("version", "1.0"),
+                    "icon": self._plugins.get(pid, {}).get("icon", "🧩"),
                     "has_ui": hasattr(self._instances.get(pid), "get_ui_nav_item"),
                     "nav_item": getattr(self._instances.get(pid), "get_ui_nav_item")() if hasattr(self._instances.get(pid), "get_ui_nav_item") else None
                 }

@@ -22,8 +22,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
   - Tarjetas de resultados con distintivos visuales por plataforma, metadatos enriquecidos y duración.
   - Reproductor flotante de muestra de audio para preescucha de canciones de Deezer sin salir de la página.
   - Acciones rápidas en 1 clic: descargar directamente como MP4 o MP3, o transferir la URL al Modo Avanzado para personalizaciones específicas.
+  - **Previsualización Interactiva Multimedia (`#searchPreviewModal`):**
+    - Modal desacoplado para inspeccionar, ver y escuchar contenidos antes de descargarlos.
+    - Soporte multiplataforma: reproductor de video de YouTube con línea de tiempo y salto nativo, widget interactivo de SoundCloud con forma de onda, y reproductor de estudio para Deezer con carátula y control de volumen.
+    - Navegación temporal precisa: barra deslizadora (*scrubber*) continua y botones de salto rápido `⏪ -5s` y `⏩ +5s` para adelantar o retroceder según la necesidad del usuario.
+    - Acciones de descarga inmediata en el propio modal (`🎬 Video`, `🎵 Audio`, `⚙️ Modo Avanzado`) para no perder el contexto de búsqueda.
+    - Interacción ágil desde la cuadrícula: superposición táctil con icono de reproducción (`▶`) sobre la miniatura y botón `👁️ Previa` en cada tarjeta.
+    - Control accesible: atajo de teclado `Escape` y clic en fondo para detener y cerrar de forma instantánea.
 - **Suite de Pruebas Automatizadas (`tests/test_search_api.py`):**
-  - 11 pruebas unitarias e integradas certificando autenticación, validación de parámetros, extractores individuales de YouTube/Deezer/SoundCloud, enrutador multi-fuente y contratos de error HTTP 400/401/500.
+  - 12 pruebas unitarias e integradas certificando autenticación, validación de parámetros, extractores individuales de YouTube/Deezer/SoundCloud, enrutador multi-fuente, contratos de error HTTP y componentes del modal de previsualización interactiva.
 
 ### 🎧 Reproductor Web Integrado con Cola de Reproducción (Audio & Video)
 - **Barra de Reproducción Flotante Cyberpunk (`#dHWebPlayerBar`):**
