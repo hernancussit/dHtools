@@ -195,6 +195,9 @@ def recent_downloads():
                 if not show_all and item_owner != username and not (is_admin and item_owner in ("admin", username)):
                     continue
 
+                ext = os.path.splitext(clean_name)[1].lower().lstrip(".")
+                is_video = ext in ("mp4", "webm", "mkv", "avi", "mov", "flv", "m4v")
+                is_audio = ext in ("mp3", "m4a", "aac", "opus", "ogg", "flac", "wav", "wma")
                 item_obj = {
                     "job_id": matched_jid,
                     "filename": clean_name,
@@ -204,6 +207,11 @@ def recent_downloads():
                     "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime)),
                     "owner": item_owner,
                     "download_url": f"/api/files/{matched_jid}",
+                    "stream_url": f"/api/files/{matched_jid}?stream=1",
+                    "extension": ext,
+                    "is_video": is_video,
+                    "is_audio": is_audio,
+                    "is_playable": (is_video or is_audio),
                 }
 
                 if folder_name and group_id:
@@ -237,17 +245,24 @@ def recent_downloads():
                 continue
             sz = info.get("size_bytes", 0)
             offload_mtime = info.get("created_at", time.time())
+            off_name = info.get("filename", "archivo")
+            off_ext = os.path.splitext(off_name)[1].lower().lstrip(".")
             offload_obj = {
                 "job_id": jid,
-                "filename": info.get("filename", "archivo"),
+                "filename": off_name,
                 "size_bytes": sz,
                 "size_formatted": format_bytes(sz),
                 "mtime": offload_mtime,
                 "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(offload_mtime)) if offload_mtime else "",
                 "owner": item_owner,
                 "download_url": None,
+                "stream_url": None,
                 "offloaded": True,
                 "cloud_destinations": info.get("cloud_destinations", []),
+                "extension": off_ext,
+                "is_video": off_ext in ("mp4", "webm", "mkv", "avi", "mov", "flv", "m4v"),
+                "is_audio": off_ext in ("mp3", "m4a", "aac", "opus", "ogg", "flac", "wav", "wma"),
+                "is_playable": False,
             }
             folder_name = info.get("folder_name")
             group_id = info.get("group_id")
@@ -271,6 +286,7 @@ def recent_downloads():
     for f in folder_list:
         f["total_formatted"] = format_bytes(f["total_bytes"])
         f["count"] = len(f["items"])
+        f["playable_count"] = sum(1 for it in f["items"] if it.get("is_playable"))
         f["items"].sort(key=lambda x: x["mtime"], reverse=False)
     folder_list.sort(key=lambda x: x["mtime"], reverse=True)
 

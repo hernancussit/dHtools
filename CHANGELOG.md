@@ -25,6 +25,33 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 - **Suite de Pruebas Automatizadas (`tests/test_search_api.py`):**
   - 11 pruebas unitarias e integradas certificando autenticación, validación de parámetros, extractores individuales de YouTube/Deezer/SoundCloud, enrutador multi-fuente y contratos de error HTTP 400/401/500.
 
+### 🎧 Reproductor Web Integrado con Cola de Reproducción (Audio & Video)
+- **Barra de Reproducción Flotante Cyberpunk (`#dHWebPlayerBar`):**
+  - Barra persistente tipo mini-player con estética glassmorphic dark (`backdrop-filter: blur(20px)`), acoplada en la parte inferior en desktop y flotando de forma inteligente sobre la barra de navegación móvil permanente sin obstruir acciones.
+  - Visualizador animado de ecualizador de 4 bandas por CSS (`@keyframes eqWave`) que se sincroniza dinámicamente con los estados de reproducción y pausa.
+  - Scrubber interactivo milimétrico con gradiente de progreso en tiempo real y contador de tiempo actual / duración.
+  - Controles completos de reproducción: Play / Pausa (`Espacio`), Anterior (`⏮️`), Siguiente (`⏭️`), Modo Aleatorio (`🔀`), Repetición cíclica (`🔁 Todas` / `🔂 Una` / `Off`) y control de volumen con silenciado en un clic (`M`).
+- **Cajón Deslizable de Cola de Reproducción (*Queue Drawer*, `#dHQueueDrawer`):**
+  - Panel flotante interactivo con animación `slideUpFade` que despliega la lista activa de reproducción.
+  - Indicador de pista activa con resplandor neón e icono de ecualizador en vivo.
+  - Acciones rápidas por pista: salto directo al hacer clic, reordenamiento en cola (`⬆️` / `⬇️`) y eliminación individual (`✕`).
+  - Herramientas masivas de lista: mezcla aleatoria de pistas restantes (`🔀 Mezclar`) y vaciado de cola (`🗑️ Vaciar`).
+- **Visor Modal & Picture-in-Picture para Video (`#dHVideoModal`):**
+  - Modal flotante desacoplado con elemento `<video>` nativo HTML5 para archivos de video (`MP4`, `WebM`, `MKV`, etc.).
+  - Soporte nativo para Picture-in-Picture (`document.pictureInPictureElement`) y pantalla completa, permitiendo continuar navegando por la webapp mientras se reproduce el video.
+- **Acciones Cruzadas en "Mis Archivos" y Estudio Multimedia:**
+  - Botones de 1 clic `▶️ Reproducir` y `➕ A la Cola` integrados en cada tarjeta de archivo y dentro de carpetas.
+  - Botón masivo `▶️ Reproducir Todo` en los encabezados de carpetas/colecciones para encolar playlists completas instantáneamente.
+  - Enlaces de reproducción inmediata en el banner de resultados del Estudio Multimedia tras finalizar conversiones, normalizaciones o recortes.
+- **Soporte de Streaming HTTP 206 Partial Content (`routes/api.py` & `routes/ui.py`):**
+  - Habilitación de `conditional=True` en `send_file` para `/api/files/<job_id>?stream=1`, soportando solicitudes de rango por bytes (`Range: bytes=...`) y saltos de reproducción instantáneos sin re-descargar el archivo completo.
+  - Enriquecimiento de metadatos en `/api/recent-downloads`: inclusión de `stream_url`, `is_video`, `is_audio`, `is_playable`, `extension` y `playable_count` por carpeta.
+- **Integración con MediaSession API y Atajos de Teclado:**
+  - Control de reproducción desde la pantalla de bloqueo y teclas multimedia del teclado/sistema operativo (`navigator.mediaSession`).
+  - Atajos globales de teclado (`Espacio` para play/pause, `Flechas Izq/Der` para saltos de 5s, `Flechas Arriba/Abajo` para volumen, `M` para silenciar).
+- **Suite de Pruebas Automatizadas (`tests/test_web_player.py`):**
+  - 6 nuevas pruebas certificando entrega inline con `stream=1`, descarga con `attachment`, respuestas 206 Partial Content ante Range headers, metadatos enriquecidos, cálculo de `playable_count` y denegación de streaming 403 entre usuarios distintos.
+
 ## [1.6.1] - 2026-09-29
 
 ### 🎬 Estudio Multimedia & Gobernanza de Almacenamiento

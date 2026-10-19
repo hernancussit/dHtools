@@ -60,8 +60,14 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - Filtros por plataforma (`all`, `youtube`, `deezer`, `soundcloud`) e intercalado balanceado de resultados.
   - Descargas directas en 1 clic (Video MP4 / Audio MP3) o precarga directa en Modo Avanzado.
   - Reproductor mini de preescucha integrado para previsualizar samples de audio antes de descargar.
-- [ ] **Reproductor Web Integrado con Cola de Reproducción:**
-  - Reproductor nativo de audio y video para previsualizar y reproducir archivos multimedia directamente desde la sección "Mis Descargas".
+- [x] **Reproductor Web Integrado con Cola de Reproducción:**
+  - Reproductor nativo persistente para audio y video directamente desde la sección "Mis Archivos" (Mis Descargas) y Estudio Multimedia.
+  - Barra flotante cyberpunk de reproducción continua (mini-player) acoplada dinámicamente en desktop y sobre la barra de navegación móvil.
+  - Ecualizador visual interactivo animado, scrubber de línea de tiempo milimétrico y control de volumen con persistencia en `localStorage`.
+  - Ventana modal y visor desacoplado para reproducción de video con soporte de Picture-in-Picture (PiP) y pantalla completa.
+  - Cajón deslizable de cola de reproducción (*Queue Drawer*) con reordenamiento de pistas (⬆️ / ⬇️), eliminación individual, mezcla aleatoria (`🔀 Mezclar`) y vaciado en 1 clic.
+  - Reproducción continua por lotes: botón `▶️ Reproducir Todo` en colecciones/carpetas para encolar playlists completas.
+  - Integración con la API MediaSession del navegador para control desde pantalla de bloqueo y teclas multimedia del teclado/sistema operativo.
 - [ ] **Descargas Programadas (Task Scheduler / Cron):**
   - Programación de descargas masivas o playlists extensas en horarios nocturnos de bajo consumo de red.
 - [ ] **Notificaciones Web Push Nativas:**

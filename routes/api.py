@@ -689,7 +689,7 @@ def files(job_id):
         safe_path = safe_download_path(job["filepath"])
         if safe_path and os.path.isfile(safe_path):
             dl_name = job.get("filename") or os.path.basename(safe_path)
-            return send_file(safe_path, as_attachment=as_attachment, download_name=dl_name)
+            return send_file(safe_path, as_attachment=as_attachment, download_name=dl_name, conditional=True)
 
     # If this is a group/playlist or batch job, search for the pre-generated zip first!
     if os.path.exists(DOWNLOAD_DIR):
@@ -699,7 +699,7 @@ def files(job_id):
                 safe_path = safe_download_path(entry)
                 if safe_path and os.path.isfile(safe_path):
                     disp_name = entry[len(job_id):].lstrip("_-") or entry
-                    return send_file(safe_path, as_attachment=as_attachment, download_name=disp_name)
+                    return send_file(safe_path, as_attachment=as_attachment, download_name=disp_name, conditional=True)
 
         # 2. Priority 2: Look for any single file starting with job_id
         for entry in os.listdir(DOWNLOAD_DIR):
@@ -707,7 +707,7 @@ def files(job_id):
                 safe_path = safe_download_path(entry)
                 if safe_path and os.path.isfile(safe_path):
                     disp_name = entry[len(job_id):].lstrip("_-") or entry
-                    return send_file(safe_path, as_attachment=as_attachment, download_name=disp_name)
+                    return send_file(safe_path, as_attachment=as_attachment, download_name=disp_name, conditional=True)
 
     abort(404)
 

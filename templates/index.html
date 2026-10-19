@@ -1362,6 +1362,515 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* ==================== WEB PLAYER INTEGRADO (v2.0.0) ==================== */
+  body.has-active-player {
+    padding-bottom: 76px !important;
+  }
+  @media (max-width: 900px) {
+    body.has-active-player {
+      padding-bottom: calc(134px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+
+  .web-player-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: rgba(13, 19, 33, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(56, 189, 248, 0.25);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    z-index: 850;
+    gap: 16px;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-theme="oled"] .web-player-bar {
+    background: rgba(4, 7, 13, 0.98);
+    border-top-color: #222;
+  }
+  [data-theme="emerald"] .web-player-bar {
+    background: rgba(3, 30, 24, 0.96);
+    border-top-color: rgba(16, 185, 129, 0.3);
+  }
+  [data-theme="light"] .web-player-bar {
+    background: rgba(255, 255, 255, 0.96);
+    border-top-color: #cbd5e1;
+    box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.08);
+  }
+
+  @media (max-width: 900px) {
+    .web-player-bar {
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+      height: 64px;
+      padding: 0 10px;
+      gap: 8px;
+    }
+  }
+
+  /* TRACK INFO SECTION */
+  .wp-track-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 200px;
+    max-width: 30%;
+    flex-shrink: 0;
+  }
+  .wp-art-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.25));
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    position: relative;
+    flex-shrink: 0;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .wp-eq-bars {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 16px;
+    padding: 2px 3px;
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 4px;
+  }
+  .wp-bar {
+    width: 2.5px;
+    background: #38bdf8;
+    border-radius: 1.5px;
+    animation: eqWave 0.85s ease-in-out infinite;
+  }
+  .wp-bar:nth-child(1) { animation-delay: 0.1s; height: 5px; }
+  .wp-bar:nth-child(2) { animation-delay: 0.35s; height: 11px; }
+  .wp-bar:nth-child(3) { animation-delay: 0.2s; height: 14px; }
+  .wp-bar:nth-child(4) { animation-delay: 0.45s; height: 7px; }
+  .wp-paused .wp-bar {
+    animation-play-state: paused;
+    height: 3px !important;
+  }
+
+  @keyframes eqWave {
+    0%, 100% { height: 3px; }
+    50% { height: 13px; }
+  }
+
+  .wp-info-box {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .wp-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wp-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .wp-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+  }
+
+  /* CONTROLS SECTION */
+  .wp-controls-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    max-width: 540px;
+  }
+  .wp-buttons-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .wp-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 1.05rem;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+    user-select: none;
+  }
+  .wp-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(1.08);
+  }
+  .wp-btn:active {
+    transform: scale(0.95);
+  }
+  .wp-btn-subtle {
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .wp-btn-subtle.active {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.15);
+  }
+  .wp-btn-play {
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.15rem;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+  }
+  .wp-btn-play:hover {
+    background: var(--accent-hover);
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+  }
+
+  .wp-scrubber-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .wp-time {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: center;
+  }
+  .wp-slider-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+  .wp-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .wp-slider:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  .wp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    box-shadow: 0 0 8px #38bdf8;
+    transition: transform 0.15s ease;
+  }
+  .wp-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.3);
+  }
+  .wp-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    box-shadow: 0 0 8px #38bdf8;
+  }
+
+  /* TOOLS SECTION (RIGHT) */
+  .wp-tools-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 180px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+  .wp-volume-box {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .wp-vol-slider {
+    width: 72px;
+    height: 4px;
+  }
+  .wp-btn-video-toggle {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    font-size: 0.76rem;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 4px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .wp-btn-video-toggle:hover {
+    background: rgba(168, 85, 247, 0.35);
+    color: #fff;
+  }
+  .wp-btn-queue {
+    font-size: 0.82rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 10px;
+    gap: 6px;
+    color: var(--text);
+  }
+  .wp-btn-queue:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .wp-queue-badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 10px;
+  }
+
+  /* RESPONSIVE MOBILE TWEAKS */
+  @media (max-width: 900px) {
+    .wp-track-section {
+      max-width: 45%;
+      min-width: 110px;
+      gap: 8px;
+    }
+    .wp-art-box {
+      width: 36px;
+      height: 36px;
+      font-size: 1.05rem;
+    }
+    .wp-tools-section {
+      min-width: auto;
+      gap: 6px;
+    }
+    .wp-volume-box {
+      display: none;
+    }
+    .wp-scrubber-row {
+      display: none;
+    }
+    .wp-buttons-row {
+      gap: 8px;
+    }
+    .wp-btn-subtle {
+      display: none;
+    }
+    .wp-btn-play {
+      width: 34px;
+      height: 34px;
+      font-size: 1rem;
+    }
+    .web-player-bar::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: var(--wp-mobile-progress, 0%);
+      background: linear-gradient(90deg, #38bdf8, #a855f7);
+      transition: width 0.25s linear;
+    }
+  }
+
+  /* ==================== QUEUE DRAWER ==================== */
+  .queue-drawer {
+    position: fixed;
+    bottom: 74px;
+    right: 18px;
+    width: 420px;
+    max-width: calc(100vw - 36px);
+    max-height: 480px;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    z-index: 860;
+    overflow: hidden;
+    animation: slideUpFade 0.22s ease-out;
+  }
+  @media (max-width: 900px) {
+    .queue-drawer {
+      bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+      right: 8px;
+      left: 8px;
+      width: auto;
+      max-height: 60vh;
+    }
+  }
+
+  .queue-drawer-header {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .queue-drawer-list {
+    padding: 8px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 400px;
+  }
+  .queue-drawer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 8px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .queue-drawer-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(56, 189, 248, 0.2);
+  }
+  .queue-drawer-item.active {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+  .queue-drawer-item-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .queue-drawer-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.6;
+  }
+  .queue-drawer-item:hover .queue-drawer-item-actions {
+    opacity: 1;
+  }
+
+  @keyframes slideUpFade {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ==================== VIDEO MODAL VIEWPORT ==================== */
+  .video-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 950;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .video-modal-card {
+    background: #090e1a;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 860px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .video-modal-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .video-modal-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 65%;
+  }
+  .video-modal-body {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-height: 70vh;
+  }
+  .video-modal-body video {
+    width: 100%;
+    max-height: 70vh;
+    outline: none;
+  }
 </style>
 </head>
 <body>
@@ -2318,8 +2827,10 @@
               <strong style="color:var(--success); font-size:0.92rem;">✅ ¡Procesamiento completado con éxito!</strong>
               <div id="studioResultMeta" style="font-size:0.78rem; color:var(--text); margin-top:3px;">Archivo listo</div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <a id="btnStudioDownloadResult" href="#" class="btn btn-primary btn-sm" style="font-size:0.78rem;">⬇️ Descargar</a>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button type="button" id="btnStudioPlayResult" class="btn btn-primary btn-sm" style="font-size:0.78rem; display:none;" title="Reproducir resultado en el reproductor">▶️ Reproducir</button>
+              <button type="button" id="btnStudioQueueResult" class="btn btn-secondary btn-sm" style="font-size:0.78rem; display:none;" title="Añadir resultado a la cola">➕ A la Cola</button>
+              <a id="btnStudioDownloadResult" href="#" class="btn btn-secondary btn-sm" style="font-size:0.78rem;">⬇️ Descargar</a>
               <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-history')" style="font-size:0.78rem;">📂 Ver en Mis Archivos</button>
             </div>
           </div>
@@ -2811,6 +3322,122 @@
       <button type="button" id="btnUnlinkTelegram" class="btn btn-danger btn-sm" style="width:100%;">
         🔌 Desvincular Cuenta de Telegram
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== REPRODUCTOR WEB INTEGRADO (v2.0.0) ==================== -->
+<!-- Audio Player Engine -->
+<audio id="globalAudioPlayer" preload="auto" style="display:none;"></audio>
+
+<!-- Floating Cyberpunk Bottom Player Bar -->
+<div id="dHWebPlayerBar" class="web-player-bar" style="display:none;" aria-label="Reproductor Multimedia Integrado">
+  <!-- Track Info & Visualizer -->
+  <div class="wp-track-section">
+    <div class="wp-art-box" id="wpArtBox" onclick="window.dHPlayer?.onArtClick()" title="Ver video o ecualizador">
+      <span id="wpTypeIcon">🎵</span>
+      <div class="wp-eq-bars wp-paused" id="wpEqBars">
+        <span class="wp-bar"></span>
+        <span class="wp-bar"></span>
+        <span class="wp-bar"></span>
+        <span class="wp-bar"></span>
+      </div>
+    </div>
+    <div class="wp-info-box">
+      <div class="wp-title" id="wpTrackTitle" title="Sin reproducción activa">Pista multimedia</div>
+      <div class="wp-meta" id="wpTrackMeta">
+        <span id="wpBadgeFormat" class="wp-badge">AUDIO</span>
+        <span id="wpTrackPos" style="color:var(--muted); font-size:0.7rem;">0 / 0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Player Controls & Scrubber -->
+  <div class="wp-controls-section">
+    <div class="wp-buttons-row">
+      <button type="button" class="wp-btn wp-btn-subtle" id="wpBtnShuffle" onclick="window.dHPlayer?.toggleShuffle()" title="Modo aleatorio (🔀)">
+        🔀
+      </button>
+      <button type="button" class="wp-btn" id="wpBtnPrev" onclick="window.dHPlayer?.prev()" title="Pista anterior (⏮️)">
+        ⏮️
+      </button>
+      <button type="button" class="wp-btn wp-btn-play" id="wpBtnPlay" onclick="window.dHPlayer?.togglePlay()" title="Reproducir / Pausar (Espacio)">
+        ▶️
+      </button>
+      <button type="button" class="wp-btn" id="wpBtnNext" onclick="window.dHPlayer?.next()" title="Pista siguiente (⏭️)">
+        ⏭️
+      </button>
+      <button type="button" class="wp-btn wp-btn-subtle" id="wpBtnRepeat" onclick="window.dHPlayer?.toggleRepeat()" title="Modo de repetición (🔁)">
+        🔁
+      </button>
+    </div>
+
+    <div class="wp-scrubber-row">
+      <span class="wp-time" id="wpTimeCurrent">00:00</span>
+      <div class="wp-slider-wrap">
+        <input type="range" class="wp-slider" id="wpSeekSlider" min="0" max="100" value="0" step="0.1" oninput="window.dHPlayer?.onSeekInput(this.value)" onchange="window.dHPlayer?.onSeekChange(this.value)" title="Línea de tiempo">
+      </div>
+      <span class="wp-time" id="wpTimeDuration">00:00</span>
+    </div>
+  </div>
+
+  <!-- Tools, Volume & Queue Drawer -->
+  <div class="wp-tools-section">
+    <button type="button" class="wp-btn wp-btn-video-toggle" id="wpBtnVideoModal" onclick="window.dHPlayer?.toggleVideoModal()" title="Abrir ventana de video (📺)" style="display:none;">
+      📺 Video
+    </button>
+
+    <div class="wp-volume-box">
+      <button type="button" class="wp-btn wp-btn-subtle" id="wpBtnMute" onclick="window.dHPlayer?.toggleMute()" title="Silenciar / Activar sonido (M)">
+        🔊
+      </button>
+      <input type="range" class="wp-slider wp-vol-slider" id="wpVolumeSlider" min="0" max="1" step="0.05" value="1" oninput="window.dHPlayer?.setVolume(this.value)" title="Control de volumen">
+    </div>
+
+    <button type="button" class="wp-btn wp-btn-queue" id="wpBtnQueueToggle" onclick="window.dHPlayer?.toggleQueueDrawer()" title="Abrir cola de reproducción (📑)">
+      📑 <span id="wpQueueBadge" class="wp-queue-badge">0</span>
+    </button>
+
+    <button type="button" class="wp-btn wp-btn-subtle" onclick="window.dHPlayer?.closePlayer()" title="Cerrar reproductor (✕)">
+      ✕
+    </button>
+  </div>
+</div>
+
+<!-- Sliding Queue Drawer -->
+<div id="dHQueueDrawer" class="queue-drawer" style="display:none;">
+  <div class="queue-drawer-header">
+    <div>
+      <div style="font-weight:700; font-size:0.92rem; color:var(--text); display:flex; align-items:center; gap:6px;">
+        <span>📑 Cola de Reproducción</span>
+        <span id="queueDrawerCount" class="badge" style="background:var(--accent); font-size:0.7rem;">0 pistas</span>
+      </div>
+      <div id="queueDrawerSummary" style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Playlist continua interactiva</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.dHPlayer?.shuffleQueue()" style="font-size:0.72rem; padding:4px 8px;" title="Mezclar canciones de la cola">🔀 Mezclar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.dHPlayer?.clearQueue()" style="font-size:0.72rem; padding:4px 8px;" title="Vaciar toda la cola">🗑️ Vaciar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.dHPlayer?.toggleQueueDrawer()" style="font-size:0.8rem; padding:4px 8px;" title="Cerrar ventana">✕</button>
+    </div>
+  </div>
+  <div class="queue-drawer-list" id="queueDrawerList">
+    <!-- Generated dynamically by window.dHPlayer.renderQueue() -->
+  </div>
+</div>
+
+<!-- Floating Video Viewport Modal -->
+<div id="dHVideoModal" class="video-modal-backdrop" style="display:none;" onclick="if(event.target===this) window.dHPlayer?.closeVideoModal()">
+  <div class="video-modal-card">
+    <div class="video-modal-header">
+      <div class="video-modal-title" id="videoModalTitle">Reproduciendo Video</div>
+      <div class="video-modal-actions" style="display:flex; gap:6px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="window.dHPlayer?.togglePiP()" style="font-size:0.75rem; padding:3px 8px;" title="Ventana flotante Picture-in-Picture">🖼️ PiP</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="window.dHPlayer?.toggleFullScreen()" style="font-size:0.75rem; padding:3px 8px;" title="Pantalla completa">⛶ Fullscreen</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="window.dHPlayer?.closeVideoModal()" style="font-size:0.75rem; padding:3px 8px;" title="Minimizar a la barra de reproducción">▼ Minimizar</button>
+      </div>
+    </div>
+    <div class="video-modal-body">
+      <video id="globalVideoPlayer" playsinline preload="auto" controls></video>
     </div>
   </div>
 </div>
@@ -4426,6 +5053,16 @@ function getCloudUploadButtons(jobId, isFolderSub = false) {
     }).join('');
 }
 
+function isVideoFile(filename) {
+  return /\.(mp4|webm|mkv|avi|mov|flv|m4v)$/i.test(filename || '');
+}
+function isAudioFile(filename) {
+  return /\.(mp3|m4a|aac|opus|ogg|flac|wav|wma)$/i.test(filename || '');
+}
+function isPlayableFile(filename) {
+  return isAudioFile(filename) || isVideoFile(filename);
+}
+
 function renderRecentDownloads(data) {
   const foldersContainer = document.getElementById('foldersContainer');
   const grid = document.getElementById('recentDownloadsGrid');
@@ -4450,6 +5087,7 @@ function renderRecentDownloads(data) {
                 <span class="brand-badge" style="font-size:0.7rem; background:rgba(255,255,255,0.08); flex-shrink:0;">${f.total_formatted}</span>
               </div>
               <div class="folder-header-actions" onclick="event.stopPropagation();">
+                ${(f.playable_count > 0 || (f.items && f.items.some(it => isPlayableFile(it.filename)))) ? `<button type="button" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:4px 9px;" onclick="window.dHPlayer?.playFolder('${f.group_id}')" title="Reproducir toda la carpeta en el reproductor">▶️ Reproducir Todo (${f.playable_count || f.items.length})</button>` : ''}
                 <a href="/api/my-downloads/folder-zip/${f.group_id}" class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:4px 9px;" title="Descargar todo en ZIP">📦 Bajar ZIP</a>
                 <button type="button" class="btn btn-danger btn-sm" style="font-size:0.75rem; padding:4px 9px;" onclick="deleteFolderDownloads('${f.group_id}')" title="Eliminar toda la carpeta">🗑️</button>
                 <span id="folderIcon_${f.group_id}" style="font-size:0.8rem; color:var(--muted); margin-left:4px; cursor:pointer;" onclick="toggleFolder('${f.group_id}')">▼</span>
@@ -4472,6 +5110,10 @@ function renderRecentDownloads(data) {
                     </div>
                     <div class="folder-file-actions">
                       ${sub.offloaded ? `<span style="font-size:0.72rem; color:#38bdf8; padding:2px 4px;">☁️ Offloaded</span>` : `<a href="${sub.download_url}" class="btn btn-secondary btn-sm" title="Descargar archivo">⬇️</a>`}
+                      ${(!sub.offloaded && (sub.is_playable || isPlayableFile(sub.filename))) ? `
+                        <button type="button" class="btn btn-primary btn-sm" style="font-size:0.72rem; padding:3px 7px;" onclick="window.dHPlayer?.playNow('${sub.job_id}', '${encodeURIComponent(sub.filename)}', '${sub.download_url}', ${Boolean(sub.is_video || isVideoFile(sub.filename))})" title="Reproducir ahora">▶️</button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 7px;" onclick="window.dHPlayer?.enqueue('${sub.job_id}', '${encodeURIComponent(sub.filename)}', '${sub.download_url}', ${Boolean(sub.is_video || isVideoFile(sub.filename))})" title="Añadir a la cola">➕ Cola</button>
+                      ` : ''}
                       ${(!sub.offloaded) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToMediaStudio('${encodeURIComponent(sub.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬</button>` : ''}
                       ${(!sub.offloaded) ? getCloudUploadButtons(sub.job_id, true) : ''}
                       ${(!sub.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToTelegram('${sub.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️</button>` : ''}
@@ -4514,6 +5156,10 @@ function renderRecentDownloads(data) {
           </div>
           <div class="recent-card-actions">
             ${item.offloaded ? `<span style="font-size:0.75rem; color:#38bdf8; padding:3px 8px; background:rgba(56,189,248,0.1); border-radius:6px;">☁️ Transferido a la nube</span>` : `<a href="${item.download_url}" class="btn btn-secondary btn-sm" title="Descargar archivo a tu dispositivo">⬇️ Bajar</a>`}
+            ${(!item.offloaded && (item.is_playable || isPlayableFile(item.filename))) ? `
+              <button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:4px 9px;" onclick="window.dHPlayer?.playNow('${item.job_id}', '${encodeURIComponent(item.filename)}', '${item.download_url}', ${Boolean(item.is_video || isVideoFile(item.filename))})" title="Reproducir ahora en el reproductor">▶️ Reproducir</button>
+              <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:4px 9px;" onclick="window.dHPlayer?.enqueue('${item.job_id}', '${encodeURIComponent(item.filename)}', '${item.download_url}', ${Boolean(item.is_video || isVideoFile(item.filename))})" title="Añadir a la cola de reproducción">➕ A la Cola</button>
+            ` : ''}
             ${(!item.offloaded) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToMediaStudio('${encodeURIComponent(item.filename)}')" title="Abrir y editar en Estudio Multimedia">🎬 Estudio</button>` : ''}
             ${(!item.offloaded) ? getCloudUploadButtons(item.job_id, false) : ''}
             ${(!item.offloaded && window.TELEGRAM_BOT_ENABLED) ? `<button type="button" class="btn btn-secondary btn-sm" onclick="sendToTelegram('${item.job_id}', this)" title="Enviar este archivo a mi Telegram">✈️ Telegram</button>` : ''}
@@ -5526,6 +6172,20 @@ async function runStudioProcess() {
         resultMeta.textContent = `Archivo: ${data.filename} (${data.size_formatted})`;
         downloadBtn.href = data.download_url;
         downloadBtn.textContent = '⬇️ Descargar ' + data.filename;
+        const playBtn = document.getElementById('btnStudioPlayResult');
+        const queueBtn = document.getElementById('btnStudioQueueResult');
+        if (playBtn) {
+          playBtn.style.display = 'inline-flex';
+          playBtn.onclick = () => {
+            window.dHPlayer?.playNow(data.job_id, encodeURIComponent(data.filename), data.download_url, Boolean(isVideoFile(data.filename)));
+          };
+        }
+        if (queueBtn) {
+          queueBtn.style.display = 'inline-flex';
+          queueBtn.onclick = () => {
+            window.dHPlayer?.enqueue(data.job_id, encodeURIComponent(data.filename), data.download_url, Boolean(isVideoFile(data.filename)));
+          };
+        }
         resultBanner.style.display = 'block';
       }
       showToast(data.message || 'Procesamiento completado con éxito', 'success');
@@ -5803,6 +6463,656 @@ function customizeFromSearch(url) {
     document.getElementById('btnInspectAdv')?.click();
   }
   showToast('URL cargada en Modo Avanzado', 'info', 2000);
+}
+
+// ==================== REPRODUCTOR WEB INTEGRADO & COLA DE REPRODUCCIÓN (v2.0.0) ====================
+window.dHPlayer = {
+  queue: [],
+  currentIndex: -1,
+  isPlaying: false,
+  isShuffle: false,
+  repeatMode: 'off',
+  volume: 1.0,
+  isMuted: false,
+  isQueueOpen: false,
+  isVideoModalOpen: false,
+  activeElement: null,
+
+  init() {
+    this.audioEl = document.getElementById('globalAudioPlayer');
+    this.videoEl = document.getElementById('globalVideoPlayer');
+    this.barEl = document.getElementById('dHWebPlayerBar');
+    this.drawerEl = document.getElementById('dHQueueDrawer');
+    this.videoModalEl = document.getElementById('dHVideoModal');
+
+    // Restore preferences from localStorage
+    try {
+      const savedVol = localStorage.getItem('dhtools_player_volume');
+      if (savedVol !== null) this.volume = parseFloat(savedVol);
+      const savedMute = localStorage.getItem('dhtools_player_muted');
+      if (savedMute !== null) this.isMuted = (savedMute === 'true');
+      const savedRepeat = localStorage.getItem('dhtools_player_repeat');
+      if (savedRepeat) this.repeatMode = savedRepeat;
+      const savedShuffle = localStorage.getItem('dhtools_player_shuffle');
+      if (savedShuffle !== null) this.isShuffle = (savedShuffle === 'true');
+    } catch (e) {}
+
+    this.updateControlsUI();
+    this.setVolume(this.volume, false);
+    if (this.isMuted) this.toggleMute(true);
+
+    // Bind events to both audio and video elements
+    [this.audioEl, this.videoEl].forEach(el => {
+      if (!el) return;
+      el.addEventListener('timeupdate', () => this.onTimeUpdate());
+      el.addEventListener('ended', () => this.onTrackEnded());
+      el.addEventListener('play', () => this.onPlayState(true));
+      el.addEventListener('pause', () => this.onPlayState(false));
+      el.addEventListener('error', (e) => this.onError(e));
+      el.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
+    });
+
+    // Global keyboard shortcuts (when not focused on form inputs)
+    window.addEventListener('keydown', (e) => {
+      const tag = (document.activeElement?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (!this.barEl || this.barEl.style.display === 'none') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this.togglePlay();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        this.seekRelative(-5);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        this.seekRelative(5);
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        this.setVolume(Math.min(1, this.volume + 0.05));
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        this.setVolume(Math.max(0, this.volume - 0.05));
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        this.toggleMute();
+      }
+    });
+
+    this.setupMediaSession();
+  },
+
+  setupMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.setActionHandler('play', () => this.play());
+      navigator.mediaSession.setActionHandler('pause', () => this.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
+      navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined && this.activeElement) {
+          this.activeElement.currentTime = details.seekTime;
+        }
+      });
+    } catch (e) {}
+  },
+
+  enqueue(jobId, encFilename, dlUrl, isVideo = false, autoPlay = false) {
+    const filename = decodeURIComponent(encFilename);
+    const streamUrl = dlUrl ? (dlUrl + (dlUrl.includes('?') ? '&stream=1' : '?stream=1')) : `/api/files/${jobId}?stream=1`;
+    const ext = filename.split('.').pop().toLowerCase();
+
+    const track = {
+      jobId,
+      filename,
+      streamUrl,
+      downloadUrl: dlUrl || `/api/files/${jobId}`,
+      isVideo: Boolean(isVideo || isVideoFile(filename)),
+      extension: ext
+    };
+
+    const existingIdx = this.queue.findIndex(t => t.jobId === jobId || t.filename === filename);
+    if (existingIdx !== -1) {
+      if (autoPlay) {
+        this.playIndex(existingIdx);
+      } else {
+        showToast(`"${filename}" ya está en la cola`, 'info', 2000);
+      }
+      return;
+    }
+
+    this.queue.push(track);
+    this.renderQueue();
+
+    if (autoPlay || this.currentIndex === -1 || this.queue.length === 1) {
+      this.playIndex(this.queue.length - 1);
+    } else {
+      showToast(`Añadido a la cola: "${filename}"`, 'info', 2500);
+    }
+  },
+
+  playNow(jobId, encFilename, dlUrl, isVideo = false) {
+    this.enqueue(jobId, encFilename, dlUrl, isVideo, true);
+  },
+
+  playFolder(groupId) {
+    if (!userDownloadsRaw || !userDownloadsRaw.folders) return;
+    const folder = userDownloadsRaw.folders.find(f => f.group_id === groupId);
+    if (!folder || !folder.items || !folder.items.length) {
+      showToast('No hay archivos en esta carpeta', 'error');
+      return;
+    }
+
+    const playable = folder.items.filter(it => !it.offloaded && (it.is_playable || isPlayableFile(it.filename)));
+    if (!playable.length) {
+      showToast('No se encontraron pistas reproducibles en esta carpeta', 'info');
+      return;
+    }
+
+    const startIdx = this.queue.length;
+    playable.forEach(it => {
+      const ext = it.filename.split('.').pop().toLowerCase();
+      this.queue.push({
+        jobId: it.job_id,
+        filename: it.filename,
+        streamUrl: it.stream_url || `${it.download_url}?stream=1`,
+        downloadUrl: it.download_url,
+        isVideo: Boolean(it.is_video || isVideoFile(it.filename)),
+        extension: ext
+      });
+    });
+
+    this.renderQueue();
+    this.playIndex(startIdx);
+    showToast(`Reproduciendo colección: ${playable.length} pistas encoladas`, 'success', 3000);
+  },
+
+  playIndex(index) {
+    if (index < 0 || index >= this.queue.length) return;
+    this.currentIndex = index;
+    const track = this.queue[index];
+
+    if (this.barEl) this.barEl.style.display = 'flex';
+    document.body.classList.add('has-active-player');
+
+    if (this.activeElement) {
+      this.activeElement.pause();
+    }
+
+    const videoBtn = document.getElementById('wpBtnVideoModal');
+    if (track.isVideo) {
+      this.activeElement = this.videoEl;
+      if (this.audioEl) { this.audioEl.src = ''; }
+      if (videoBtn) videoBtn.style.display = 'inline-flex';
+    } else {
+      this.activeElement = this.audioEl;
+      if (this.videoEl) { this.videoEl.src = ''; }
+      if (videoBtn) videoBtn.style.display = 'none';
+      this.closeVideoModal();
+    }
+
+    if (this.activeElement) {
+      this.activeElement.src = track.streamUrl;
+      this.activeElement.volume = this.isMuted ? 0 : this.volume;
+      this.activeElement.play().catch(e => {
+        console.warn('Autoplay error:', e);
+      });
+    }
+
+    this.updateTrackInfoUI(track);
+    this.renderQueue();
+
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.filename,
+          artist: 'dHtools Media',
+          album: 'Mis Descargas',
+          artwork: [
+            { src: '/static/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/static/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+          ]
+        });
+      } catch (e) {}
+    }
+  },
+
+  updateTrackInfoUI(track) {
+    const titleEl = document.getElementById('wpTrackTitle');
+    const badgeEl = document.getElementById('wpBadgeFormat');
+    const posEl = document.getElementById('wpTrackPos');
+    const typeIconEl = document.getElementById('wpTypeIcon');
+    const modalTitleEl = document.getElementById('videoModalTitle');
+
+    if (titleEl) {
+      titleEl.textContent = track.filename;
+      titleEl.title = track.filename;
+    }
+    if (badgeEl) badgeEl.textContent = (track.extension || (track.isVideo ? 'VIDEO' : 'AUDIO')).toUpperCase();
+    if (posEl) posEl.textContent = `${this.currentIndex + 1} / ${this.queue.length}`;
+    if (typeIconEl) typeIconEl.textContent = track.isVideo ? '🎬' : '🎵';
+    if (modalTitleEl) modalTitleEl.textContent = track.filename;
+  },
+
+  togglePlay() {
+    if (!this.activeElement) {
+      if (this.queue.length > 0) this.playIndex(0);
+      return;
+    }
+    if (this.activeElement.paused) {
+      this.activeElement.play();
+    } else {
+      this.activeElement.pause();
+    }
+  },
+
+  play() {
+    if (this.activeElement && this.activeElement.paused) {
+      this.activeElement.play();
+    }
+  },
+
+  pause() {
+    if (this.activeElement && !this.activeElement.paused) {
+      this.activeElement.pause();
+    }
+  },
+
+  next() {
+    if (!this.queue.length) return;
+
+    if (this.repeatMode === 'one' && this.currentIndex !== -1) {
+      if (this.activeElement) {
+        this.activeElement.currentTime = 0;
+        this.activeElement.play();
+      }
+      return;
+    }
+
+    if (this.isShuffle && this.queue.length > 1) {
+      let nextIdx;
+      do {
+        nextIdx = Math.floor(Math.random() * this.queue.length);
+      } while (nextIdx === this.currentIndex && this.queue.length > 1);
+      this.playIndex(nextIdx);
+      return;
+    }
+
+    if (this.currentIndex + 1 < this.queue.length) {
+      this.playIndex(this.currentIndex + 1);
+    } else if (this.repeatMode === 'all') {
+      this.playIndex(0);
+    } else {
+      this.isPlaying = false;
+      this.onPlayState(false);
+      showToast('Fin de la cola de reproducción', 'info', 2000);
+    }
+  },
+
+  prev() {
+    if (!this.queue.length) return;
+    if (this.activeElement && this.activeElement.currentTime > 3) {
+      this.activeElement.currentTime = 0;
+      return;
+    }
+    if (this.currentIndex > 0) {
+      this.playIndex(this.currentIndex - 1);
+    } else if (this.repeatMode === 'all') {
+      this.playIndex(this.queue.length - 1);
+    } else {
+      if (this.activeElement) this.activeElement.currentTime = 0;
+    }
+  },
+
+  seekRelative(seconds) {
+    if (!this.activeElement || !this.activeElement.duration) return;
+    this.activeElement.currentTime = Math.max(0, Math.min(this.activeElement.duration, this.activeElement.currentTime + seconds));
+  },
+
+  onSeekInput(pct) {
+    if (!this.activeElement || !this.activeElement.duration) return;
+    const curTimeEl = document.getElementById('wpTimeCurrent');
+    const targetSec = (pct / 100) * this.activeElement.duration;
+    if (curTimeEl) curTimeEl.textContent = formatSeconds(targetSec);
+  },
+
+  onSeekChange(pct) {
+    if (!this.activeElement || !this.activeElement.duration) return;
+    this.activeElement.currentTime = (pct / 100) * this.activeElement.duration;
+  },
+
+  onTimeUpdate() {
+    if (!this.activeElement || !this.activeElement.duration) return;
+    const cur = this.activeElement.currentTime;
+    const dur = this.activeElement.duration;
+    const pct = (cur / dur) * 100;
+
+    const curTimeEl = document.getElementById('wpTimeCurrent');
+    const durTimeEl = document.getElementById('wpTimeDuration');
+    const sliderEl = document.getElementById('wpSeekSlider');
+
+    if (curTimeEl) curTimeEl.textContent = formatSeconds(cur);
+    if (durTimeEl) durTimeEl.textContent = formatSeconds(dur);
+    if (sliderEl && document.activeElement !== sliderEl) {
+      sliderEl.value = pct;
+    }
+
+    if (this.barEl) {
+      this.barEl.style.setProperty('--wp-mobile-progress', `${pct}%`);
+    }
+  },
+
+  onMetadataLoaded() {
+    if (!this.activeElement) return;
+    const durTimeEl = document.getElementById('wpTimeDuration');
+    if (durTimeEl) durTimeEl.textContent = formatSeconds(this.activeElement.duration);
+  },
+
+  onPlayState(playing) {
+    this.isPlaying = playing;
+    const playBtn = document.getElementById('wpBtnPlay');
+    const eqBars = document.getElementById('wpEqBars');
+
+    if (playBtn) {
+      playBtn.innerHTML = playing ? '⏸️' : '▶️';
+      playBtn.title = playing ? 'Pausar (Espacio)' : 'Reproducir (Espacio)';
+    }
+    if (eqBars) {
+      if (playing) {
+        eqBars.classList.remove('wp-paused');
+      } else {
+        eqBars.classList.add('wp-paused');
+      }
+    }
+  },
+
+  onTrackEnded() {
+    this.next();
+  },
+
+  onError(e) {
+    console.error('Player error:', e);
+    showToast('Error al transmitir la pista actual', 'error');
+  },
+
+  setVolume(val, save = true) {
+    this.volume = Math.max(0, Math.min(1, parseFloat(val)));
+    const slider = document.getElementById('wpVolumeSlider');
+    const muteBtn = document.getElementById('wpBtnMute');
+
+    if (slider) slider.value = this.volume;
+    if (this.activeElement) {
+      this.activeElement.volume = this.isMuted ? 0 : this.volume;
+    }
+
+    if (muteBtn) {
+      if (this.isMuted || this.volume === 0) {
+        muteBtn.textContent = '🔇';
+      } else if (this.volume < 0.5) {
+        muteBtn.textContent = '🔉';
+      } else {
+        muteBtn.textContent = '🔊';
+      }
+    }
+
+    if (save) {
+      try { localStorage.setItem('dhtools_player_volume', this.volume); } catch (e) {}
+    }
+  },
+
+  toggleMute(forceMute = null) {
+    this.isMuted = (forceMute !== null) ? forceMute : !this.isMuted;
+    if (this.activeElement) {
+      this.activeElement.volume = this.isMuted ? 0 : this.volume;
+    }
+    const muteBtn = document.getElementById('wpBtnMute');
+    if (muteBtn) {
+      muteBtn.textContent = this.isMuted ? '🔇' : (this.volume < 0.5 ? '🔉' : '🔊');
+    }
+    try { localStorage.setItem('dhtools_player_muted', this.isMuted); } catch (e) {}
+  },
+
+  toggleShuffle() {
+    this.isShuffle = !this.isShuffle;
+    const btn = document.getElementById('wpBtnShuffle');
+    if (btn) {
+      btn.classList.toggle('active', this.isShuffle);
+    }
+    showToast(this.isShuffle ? 'Modo aleatorio activado' : 'Modo aleatorio desactivado', 'info', 1500);
+    try { localStorage.setItem('dhtools_player_shuffle', this.isShuffle); } catch (e) {}
+  },
+
+  toggleRepeat() {
+    if (this.repeatMode === 'off') {
+      this.repeatMode = 'all';
+    } else if (this.repeatMode === 'all') {
+      this.repeatMode = 'one';
+    } else {
+      this.repeatMode = 'off';
+    }
+
+    const btn = document.getElementById('wpBtnRepeat');
+    if (btn) {
+      if (this.repeatMode === 'all') {
+        btn.textContent = '🔁';
+        btn.classList.add('active');
+        btn.title = 'Repetir toda la cola (🔁)';
+        showToast('Repetir toda la cola', 'info', 1500);
+      } else if (this.repeatMode === 'one') {
+        btn.textContent = '🔂';
+        btn.classList.add('active');
+        btn.title = 'Repetir pista actual (🔂)';
+        showToast('Repetir pista actual', 'info', 1500);
+      } else {
+        btn.textContent = '🔁';
+        btn.classList.remove('active');
+        btn.title = 'Sin repetición';
+        showToast('Repetición desactivada', 'info', 1500);
+      }
+    }
+    try { localStorage.setItem('dhtools_player_repeat', this.repeatMode); } catch (e) {}
+  },
+
+  updateControlsUI() {
+    const shuffleBtn = document.getElementById('wpBtnShuffle');
+    if (shuffleBtn) shuffleBtn.classList.toggle('active', this.isShuffle);
+
+    const repeatBtn = document.getElementById('wpBtnRepeat');
+    if (repeatBtn) {
+      if (this.repeatMode === 'all') {
+        repeatBtn.textContent = '🔁';
+        repeatBtn.classList.add('active');
+      } else if (this.repeatMode === 'one') {
+        repeatBtn.textContent = '🔂';
+        repeatBtn.classList.add('active');
+      } else {
+        repeatBtn.textContent = '🔁';
+        repeatBtn.classList.remove('active');
+      }
+    }
+  },
+
+  toggleQueueDrawer() {
+    this.isQueueOpen = !this.isQueueOpen;
+    if (this.drawerEl) {
+      this.drawerEl.style.display = this.isQueueOpen ? 'flex' : 'none';
+    }
+    if (this.isQueueOpen) this.renderQueue();
+  },
+
+  renderQueue() {
+    const listEl = document.getElementById('queueDrawerList');
+    const badgeEl = document.getElementById('wpQueueBadge');
+    const countEl = document.getElementById('queueDrawerCount');
+    const summaryEl = document.getElementById('queueDrawerSummary');
+
+    if (badgeEl) badgeEl.textContent = this.queue.length;
+    if (countEl) countEl.textContent = `${this.queue.length} pista${this.queue.length === 1 ? '' : 's'}`;
+    if (summaryEl) summaryEl.textContent = this.queue.length ? `Pista ${this.currentIndex + 1} de ${this.queue.length}` : 'La cola está vacía';
+
+    if (!listEl) return;
+    if (!this.queue.length) {
+      listEl.innerHTML = `
+        <div style="padding:28px 16px; text-align:center; color:var(--muted); font-size:0.85rem;">
+          <div style="font-size:1.6rem; margin-bottom:8px;">🎧</div>
+          No hay pistas en la cola de reproducción.<br>
+          <span style="font-size:0.75rem;">Podés añadir canciones o videos desde <b>Mis Archivos</b> con los botones ▶️ o ➕ Cola.</span>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = this.queue.map((track, idx) => {
+      const isActive = (idx === this.currentIndex);
+      return `
+        <div class="queue-drawer-item ${isActive ? 'active' : ''}" onclick="window.dHPlayer.playIndex(${idx})">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+            <span style="font-size:0.75rem; color:${isActive ? '#38bdf8' : 'var(--muted)'}; font-weight:700; width:18px; text-align:center;">
+              ${isActive ? '▶️' : (idx + 1)}
+            </span>
+            <span style="font-size:0.85rem;">${track.isVideo ? '🎬' : '🎵'}</span>
+            <span class="queue-drawer-item-title" title="${track.filename}">${track.filename}</span>
+            <span class="badge" style="font-size:0.62rem; padding:1px 4px; background:rgba(255,255,255,0.06); color:var(--muted);">
+              ${(track.extension || 'MEDIA').toUpperCase()}
+            </span>
+          </div>
+          <div class="queue-drawer-item-actions" onclick="event.stopPropagation();">
+            ${idx > 0 ? `<button type="button" class="btn btn-secondary btn-sm" style="font-size:0.65rem; padding:2px 5px;" onclick="window.dHPlayer.moveTrack(${idx}, -1)" title="Mover arriba">⬆️</button>` : ''}
+            ${idx < this.queue.length - 1 ? `<button type="button" class="btn btn-secondary btn-sm" style="font-size:0.65rem; padding:2px 5px;" onclick="window.dHPlayer.moveTrack(${idx}, 1)" title="Mover abajo">⬇️</button>` : ''}
+            <button type="button" class="btn btn-danger btn-sm" style="font-size:0.65rem; padding:2px 5px;" onclick="window.dHPlayer.removeIndex(${idx})" title="Quitar de la cola">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  moveTrack(idx, offset) {
+    const targetIdx = idx + offset;
+    if (targetIdx < 0 || targetIdx >= this.queue.length) return;
+
+    const [item] = this.queue.splice(idx, 1);
+    this.queue.splice(targetIdx, 0, item);
+
+    if (this.currentIndex === idx) {
+      this.currentIndex = targetIdx;
+    } else if (this.currentIndex === targetIdx) {
+      this.currentIndex = idx;
+    }
+
+    this.renderQueue();
+  },
+
+  removeIndex(idx) {
+    if (idx < 0 || idx >= this.queue.length) return;
+
+    const wasActive = (idx === this.currentIndex);
+    this.queue.splice(idx, 1);
+
+    if (wasActive) {
+      if (this.queue.length > 0) {
+        const nextIdx = Math.min(idx, this.queue.length - 1);
+        this.playIndex(nextIdx);
+      } else {
+        this.closePlayer();
+      }
+    } else if (idx < this.currentIndex) {
+      this.currentIndex--;
+    }
+
+    this.renderQueue();
+  },
+
+  clearQueue() {
+    if (!this.queue.length) return;
+    this.queue = [];
+    this.currentIndex = -1;
+    if (this.activeElement) {
+      this.activeElement.pause();
+      this.activeElement.src = '';
+    }
+    this.closePlayer();
+    showToast('Cola de reproducción vaciada', 'info', 1500);
+  },
+
+  shuffleQueue() {
+    if (this.queue.length <= 1) return;
+    const currentTrack = (this.currentIndex !== -1) ? this.queue[this.currentIndex] : null;
+    const remaining = this.queue.filter((_, i) => i !== this.currentIndex);
+
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+
+    if (currentTrack) {
+      this.queue = [currentTrack, ...remaining];
+      this.currentIndex = 0;
+    } else {
+      this.queue = remaining;
+    }
+
+    this.renderQueue();
+    showToast('Cola de reproducción mezclada', 'success', 1500);
+  },
+
+  onArtClick() {
+    if (this.currentIndex !== -1 && this.queue[this.currentIndex]?.isVideo) {
+      this.toggleVideoModal();
+    } else {
+      this.toggleQueueDrawer();
+    }
+  },
+
+  toggleVideoModal() {
+    if (!this.videoModalEl) return;
+    this.isVideoModalOpen = !this.isVideoModalOpen;
+    this.videoModalEl.style.display = this.isVideoModalOpen ? 'flex' : 'none';
+  },
+
+  closeVideoModal() {
+    if (!this.videoModalEl) return;
+    this.isVideoModalOpen = false;
+    this.videoModalEl.style.display = 'none';
+  },
+
+  togglePiP() {
+    if (!this.videoEl) return;
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture();
+    } else if (this.videoEl.requestPictureInPicture) {
+      this.videoEl.requestPictureInPicture().catch(e => console.warn('PiP error:', e));
+    }
+  },
+
+  toggleFullScreen() {
+    if (!this.videoEl) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (this.videoEl.requestFullscreen) {
+      this.videoEl.requestFullscreen();
+    }
+  },
+
+  closePlayer() {
+    if (this.activeElement) {
+      this.activeElement.pause();
+      this.activeElement.src = '';
+    }
+    this.isPlaying = false;
+    this.currentIndex = -1;
+    this.queue = [];
+    if (this.barEl) this.barEl.style.display = 'none';
+    if (this.drawerEl) this.drawerEl.style.display = 'none';
+    this.closeVideoModal();
+    document.body.classList.remove('has-active-player');
+  }
+};
+
+// Auto-initialize on ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => window.dHPlayer?.init());
+} else {
+  window.dHPlayer?.init();
 }
 
 // Load on start
