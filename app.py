@@ -65,6 +65,8 @@ def start_background_threads():
     global _threads_started
     with _threads_lock:
         if not _threads_started:
+            from core.utils import load_queue_state
+            load_queue_state()
             threading.Thread(target=background_queue_worker, daemon=True).start()
             threading.Thread(target=cleanup_loop, daemon=True).start()
             threading.Thread(target=auto_update_loop, daemon=True).start()

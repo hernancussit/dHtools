@@ -481,7 +481,6 @@ def playlist_status(group_id):
 
 @api_bp.route("/api/playlist-cancel/<group_id>", methods=["POST"])
 def playlist_cancel(group_id):
-    global QUEUE_LIST
     user = getattr(request, "current_user", {}) or {}
     username = user.get("username", "admin")
     is_admin = (user.get("role") == "admin")
@@ -498,7 +497,7 @@ def playlist_cancel(group_id):
                             j["logs"] = []
                         j["logs"].append({"time": time.strftime("%H:%M:%S"), "text": "[!] Cancelado por usuario."})
                         cancelled_count += 1
-            QUEUE_LIST = [jid for jid in QUEUE_LIST if JOBS.get(jid, {}).get("group_id") != group_id or JOBS.get(jid, {}).get("status") not in ("cancelled", "error")]
+            QUEUE_LIST[:] = [jid for jid in QUEUE_LIST if JOBS.get(jid, {}).get("group_id") != group_id or JOBS.get(jid, {}).get("status") not in ("cancelled", "error")]
     save_queue_state()
     return jsonify({"success": True, "cancelled_count": cancelled_count, "group_id": group_id})
 

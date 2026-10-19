@@ -62,6 +62,42 @@ def safe_download_path(filename_or_subpath: str) -> str:
     return None
 
 
+def ensure_ffmpeg_in_path() -> bool:
+    """Ensures ffmpeg and ffprobe are discoverable in PATH, especially on Windows environments."""
+    if shutil.which("ffmpeg") and shutil.which("ffprobe"):
+        return True
+
+    candidates = [
+        r"C:\ffmpeg\bin",
+        r"C:\Program Files\ffmpeg\bin",
+        r"C:\Program Files (x86)\ffmpeg\bin",
+        r"C:\Program Files (x86)\YouTube Playlist Downloader"
+    ]
+    local_app_data = os.environ.get("LOCALAPPDATA") or os.path.expandvars(r"%LOCALAPPDATA%")
+    if local_app_data and os.path.isdir(local_app_data):
+        winget_dir = os.path.join(local_app_data, "Microsoft", "WinGet", "Packages")
+        if os.path.exists(winget_dir):
+            try:
+                for root, dirs, files in os.walk(winget_dir):
+                    if "ffmpeg.exe" in files:
+                        candidates.insert(0, root)
+                        break
+            except Exception:
+                pass
+
+    for path in candidates:
+        if os.path.exists(path) and os.path.exists(os.path.join(path, "ffmpeg.exe")):
+            curr_path = os.environ.get("PATH", "")
+            if path not in curr_path:
+                os.environ["PATH"] = path + os.pathsep + curr_path
+            break
+    return bool(shutil.which("ffmpeg"))
+
+
+# Initialize FFmpeg discovery on load
+ensure_ffmpeg_in_path()
+
+
 def format_speed(bytes_per_sec):
 
     if not bytes_per_sec:
@@ -595,7 +631,6 @@ def save_queue_state():
 
 
 def load_queue_state():
-    global QUEUE_LIST
     if os.path.exists(QUEUE_STATE_FILE):
         try:
             with open(QUEUE_STATE_FILE, "r", encoding="utf-8") as f:
@@ -604,10 +639,11 @@ def load_queue_state():
                 with JOBS_LOCK:
                     for jid, data in saved_jobs.items():
                         if jid not in JOBS:
-                            data["status"] = "queued"
+                            if data.get("status") in ("downloading", "processing"):
+                                data["status"] = "queued"
                             JOBS[jid] = data
                 with QUEUE_LOCK:
-                    QUEUE_LIST = [jid for jid in state.get("queue", []) if jid in saved_jobs]
+                    QUEUE_LIST[:] = [jid for jid in state.get("queue", []) if jid in saved_jobs]
         except Exception:
             pass
 

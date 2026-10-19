@@ -335,12 +335,31 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
             proxy_url = p_cfg["url"]
 
     last_exc = None
+    attempt_num = 0
+    total_candidates = len(candidates)
     for clients, use_ck in candidates:
+        attempt_num += 1
         if job_id:
             with JOBS_LOCK:
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return None
+            client_name = clients[0] if clients else "default"
+            auth_str = "con cookies" if (use_ck and has_cookies) else "sin cookies"
+            if attempt_num == 1:
+                append_job_log(job_id, f"[*] Negociando transmisión ({client_name}, {auth_str})...")
+            else:
+                append_job_log(job_id, f"[*] Probando cliente alternativo [{attempt_num}/{total_candidates}]: {client_name} ({auth_str})...")
+
         opts = dict(ydl_opts_base)
+        if "socket_timeout" not in opts:
+            opts["socket_timeout"] = 15
+        if "retries" not in opts:
+            opts["retries"] = 3
+        if "fragment_retries" not in opts:
+            opts["fragment_retries"] = 5
+        if "extractor_retries" not in opts:
+            opts["extractor_retries"] = 3
+
         if proxy_url:
             opts["proxy"] = proxy_url
         if use_ck and has_cookies:
@@ -354,6 +373,8 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
                 res = ydl.extract_info(url, download=download)
                 if not res:
                     raise yt_dlp.utils.DownloadError("El cliente no pudo extraer el video o no devolvió datos.")
+                if job_id and not download:
+                    append_job_log(job_id, f"[+] Metadatos obtenidos exitosamente vía {client_name}.")
                 return res
         except (yt_dlp.utils.DownloadCancelled, yt_dlp.utils.MaxDownloadsReached):
             return None
@@ -387,6 +408,10 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
                 if job_id:
                     append_job_log(job_id, "[*] Reintentando inspección mediante Proxy de Respaldo...")
                 p_opts = dict(ydl_opts_base)
+                if "socket_timeout" not in p_opts:
+                    p_opts["socket_timeout"] = 15
+                if "retries" not in p_opts:
+                    p_opts["retries"] = 3
                 p_opts["proxy"] = res_cfg["url"]
                 if has_cookies:
                     p_opts["cookiefile"] = COOKIES_FILE
@@ -1141,6 +1166,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
 
     completed_ids = set()
     last_log_milestone = [-1]
+    last_log_time = [0.0]
+    first_chunk_logged = [False]
 
     def check_cancelled():
         with JOBS_LOCK:
@@ -1178,6 +1205,14 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 job["speed"] = format_speed(d.get("speed"))
                 job["eta_seconds"] = d.get("eta")
                 job["status"] = "downloading"
+                if not first_chunk_logged[0]:
+                    first_chunk_logged[0] = True
+                    if "logs" not in job:
+                        job["logs"] = []
+                    job["logs"].append({
+                        "time": time.strftime("%H:%M:%S"),
+                        "text": "[+] Conexión establecida con el servidor multimedia. Transfiriendo datos..."
+                    })
             elif d["status"] == "finished":
                 if video_id:
                     completed_ids.add(video_id)
@@ -1200,12 +1235,20 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                     pass
 
             # Periodic user-friendly console logging
-            milestone = job["percent"] // 20
-            if milestone > last_log_milestone[0] and job["percent"] > 0:
+            milestone = job["percent"] // 10
+            now = time.time()
+            if (milestone > last_log_milestone[0] and job["percent"] > 0) or (now - last_log_time[0] >= 5.0 and job["percent"] > 0):
                 last_log_milestone[0] = milestone
+                last_log_time[0] = now
                 if "logs" not in job:
                     job["logs"] = []
-                job["logs"].append({"time": time.strftime("%H:%M:%S"), "text": f"[+] Progreso: {job['percent']}% - Velocidad: {job.get('speed') or 'estable'}"})
+                speed_str = job.get("speed") or "estable"
+                from core.utils import format_seconds
+                eta_str = f" - Restante: {format_seconds(job.get('eta_seconds'))}" if job.get("eta_seconds") else ""
+                job["logs"].append({
+                    "time": time.strftime("%H:%M:%S"),
+                    "text": f"[+] Progreso: {job['percent']}% (Velocidad: {speed_str}{eta_str})"
+                })
                 if len(job["logs"]) > 150:
                     job["logs"] = job["logs"][-150:]
 
@@ -1222,6 +1265,10 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             "no_warnings": True,
             "noplaylist": not playlist_mode,
             "ignoreerrors": bool(playlist_mode),
+            "socket_timeout": 15,
+            "retries": 3,
+            "fragment_retries": 5,
+            "extractor_retries": 3,
             **cookies_opts(for_url=url),
             **player_client_opts(for_download=True),
         }
@@ -1589,10 +1636,21 @@ def background_queue_worker():
             with JOBS_LOCK:
                 j = JOBS.get(jid)
                 status = j.get("status") if j else None
+                started_at = j.get("started_at", 0) if j else 0
             if status == "queued":
                 job_id = jid
                 break
             elif status in ("finished", "error", "cancelled", None):
+                with QUEUE_LOCK:
+                    if jid in QUEUE_LIST:
+                        QUEUE_LIST.remove(jid)
+            elif status == "downloading" and started_at > 0 and (time.time() - started_at > 1200):
+                # Watchdog: Auto-recover job stuck in downloading for > 20 minutes
+                with JOBS_LOCK:
+                    if jid in JOBS:
+                        JOBS[jid]["status"] = "error"
+                        JOBS[jid]["error"] = "Tiempo de espera agotado: la descarga superó el límite de inactividad de 20 minutos."
+                        JOBS[jid]["finished_at"] = time.time()
                 with QUEUE_LOCK:
                     if jid in QUEUE_LIST:
                         QUEUE_LIST.remove(jid)
