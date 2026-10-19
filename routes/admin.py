@@ -212,6 +212,102 @@ def admin_test_deno():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@admin_bp.route("/api/admin/test-all-engines", methods=["POST"])
+@require_admin
+def admin_test_all_engines():
+    """Ejecuta una prueba de diagnóstico global de plataformas (YouTube, Deezer, SoundCloud, Cobalt, Deno)."""
+    results = []
+
+    # 1. Motor Deno JS
+    t0 = time.time()
+    try:
+        deno_path = shutil.which("deno") or "/usr/local/bin/deno"
+        res = subprocess.run([deno_path, "eval", "console.log('OK')"], capture_output=True, text=True, timeout=5)
+        dt = round(time.time() - t0, 2)
+        if res.returncode == 0:
+            results.append({"platform": "Deno JS", "status": "ok", "title": "Motor JavaScript evaluado correctamente", "time_seconds": dt})
+        else:
+            results.append({"platform": "Deno JS", "status": "error", "error": f"Fallo al ejecutar binario (código {res.returncode})", "time_seconds": dt})
+    except Exception as e:
+        results.append({"platform": "Deno JS", "status": "error", "error": str(e), "time_seconds": round(time.time() - t0, 2)})
+
+    # 2. Deezer (API Oficial)
+    t0 = time.time()
+    try:
+        r = requests.get("https://api.deezer.com/track/3135556", timeout=6)
+        dt = round(time.time() - t0, 2)
+        if r.status_code == 200:
+            data = r.json()
+            title = f"{data.get('title', 'Track')} - {data.get('artist', {}).get('name', 'Artista')}"
+            results.append({"platform": "Deezer", "status": "ok", "title": f"API activa: '{title}'", "time_seconds": dt})
+        else:
+            results.append({"platform": "Deezer", "status": "error", "error": f"HTTP {r.status_code}", "time_seconds": dt})
+    except Exception as e:
+        results.append({"platform": "Deezer", "status": "error", "error": str(e), "time_seconds": round(time.time() - t0, 2)})
+
+    # 3. Cobalt Backend
+    t0 = time.time()
+    try:
+        cr = requests.get(COBALT_URL, timeout=4)
+        dt = round(time.time() - t0, 2)
+        if cr.status_code < 500:
+            cver = ""
+            try:
+                cver = f"v{cr.json().get('version', '')}"
+            except Exception:
+                pass
+            results.append({"platform": "Cobalt", "status": "ok", "title": f"Instancia {cver or 'online'} respondiendo", "time_seconds": dt})
+        else:
+            results.append({"platform": "Cobalt", "status": "warning", "error": f"HTTP {cr.status_code}", "time_seconds": dt})
+    except Exception as e:
+        results.append({"platform": "Cobalt", "status": "warning", "error": f"No alcanzable ({e})", "time_seconds": round(time.time() - t0, 2)})
+
+    # 4. YouTube (yt-dlp con proxy y cookies si están configurados)
+    t0 = time.time()
+    try:
+        proxy_cfg = get_download_proxy_config()
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "socket_timeout": 12,
+        }
+        if proxy_cfg.get("enabled") and proxy_cfg.get("url"):
+            ydl_opts["proxy"] = proxy_cfg["url"]
+        if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
+            ydl_opts["cookiefile"] = COOKIES_FILE
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info("https://www.youtube.com/watch?v=aqz-KE-bpKQ", download=False)
+            dt = round(time.time() - t0, 2)
+            yt_title = info.get("title", "YouTube Video") if info else "Video accesible"
+            results.append({"platform": "YouTube", "status": "ok", "title": f"Extracción exitosa: '{yt_title[:35]}'", "time_seconds": dt})
+    except Exception as e:
+        dt = round(time.time() - t0, 2)
+        err_str = str(e)
+        if "Sign in to confirm you’re not a bot" in err_str:
+            err_summary = "Requiere cookies.txt en Admin o PO Token (detección antibot)"
+            status = "warning"
+        else:
+            err_summary = err_str[:90]
+            status = "error"
+        results.append({"platform": "YouTube", "status": status, "error": err_summary, "time_seconds": dt})
+
+    # 5. SoundCloud
+    t0 = time.time()
+    try:
+        sr = requests.get("https://soundcloud.com", timeout=5)
+        dt = round(time.time() - t0, 2)
+        if sr.status_code < 400:
+            results.append({"platform": "SoundCloud", "status": "ok", "title": "Portal y extractor accesibles", "time_seconds": dt})
+        else:
+            results.append({"platform": "SoundCloud", "status": "warning", "error": f"HTTP {sr.status_code}", "time_seconds": dt})
+    except Exception as e:
+        results.append({"platform": "SoundCloud", "status": "error", "error": str(e), "time_seconds": round(time.time() - t0, 2)})
+
+    return jsonify({"success": True, "results": results})
+
+
 def get_git_info() -> dict:
     """Extracts branch, commit, and tag info from git."""
     is_repo = False

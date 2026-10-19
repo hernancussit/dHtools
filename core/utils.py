@@ -252,6 +252,9 @@ def test_residential_proxy_connection(proxy_url: str) -> dict:
             "skip_download": True,
             "socket_timeout": 15,
         }
+        if os.path.isfile(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0:
+            yt_opts["cookiefile"] = COOKIES_FILE
+
         yt_ok = False
         yt_msg = "YouTube respondió correctamente."
         try:
@@ -261,7 +264,13 @@ def test_residential_proxy_connection(proxy_url: str) -> dict:
                     yt_ok = True
                     yt_msg = f"Canary OK: '{canary.get('title')[:30]}' accesible sin bloqueos."
         except Exception as yt_err:
-            yt_msg = f"Aviso YouTube: {str(yt_err)[:120]}"
+            raw_err = str(yt_err)
+            if "Sign in to confirm you’re not a bot" in raw_err:
+                yt_msg = "Túnel residencial activo. YouTube requiere cookies.txt (subir en Admin) o PO Token para extracción directa."
+            elif "HTTP Error 429" in raw_err:
+                yt_msg = "IP con rate limit temporal en YouTube (HTTP 429)."
+            else:
+                yt_msg = f"Aviso YouTube: {raw_err[:120]}"
 
         return {
             "success": True,

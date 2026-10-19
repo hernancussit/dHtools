@@ -2401,21 +2401,40 @@ document.getElementById('btnUpdateDeno')?.addEventListener('click', async () => 
 });
 
 
-document.getElementById('btnTestEngines').addEventListener('click', async () => {
+document.getElementById('btnTestEngines')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btnTestEngines');
   const box = document.getElementById('engineLogsBox');
-  box.style.display = 'block';
-  box.textContent = '[*] Iniciando prueba de diagnóstico global de plataformas...\n';
-  showToast('Ejecutando diagnóstico...', 'success');
+  if (box) {
+    box.style.display = 'block';
+    box.textContent = '[*] Iniciando prueba de diagnóstico global de plataformas...\n';
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Diagnosticando...';
+  }
+  showToast('Ejecutando diagnóstico...', 'info');
   try {
     const res = await fetch('/api/admin/test-all-engines', { method: 'POST' });
     const data = await res.json();
-    (data.results || []).forEach(r => {
-      box.textContent += `[${r.platform}] ${r.status.toUpperCase()}: ${r.title || r.error || 'OK'} (${r.time_seconds}s)\n`;
-    });
-    showToast('Diagnóstico completado.', 'success');
+    if (!res.ok) {
+      throw new Error(data.error || `Error del servidor (HTTP ${res.status})`);
+    }
+    if (box) {
+      (data.results || []).forEach(r => {
+        const icon = (r.status === 'ok') ? '✅' : (r.status === 'warning' ? '⚠️' : '❌');
+        box.textContent += `${icon} [${r.platform}] ${r.status.toUpperCase()}: ${r.title || r.error || 'OK'} (${r.time_seconds}s)\n`;
+      });
+      box.textContent += '[+] Diagnóstico global finalizado.\n';
+    }
+    showToast('Diagnóstico completado con éxito.', 'success');
   } catch (e) {
-    box.textContent += `[!] Error en diagnóstico: ${e.message}\n`;
+    if (box) box.textContent += `[!] Error en diagnóstico: ${e.message}\n`;
     showToast('Error en prueba: ' + e.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🧪 Ejecutar Test de Diagnóstico';
+    }
   }
 });
 

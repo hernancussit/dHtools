@@ -290,6 +290,25 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertTrue(data["download_url"].startswith("/api/files/"))
         self.assertTrue(mock_run.called)
 
+    def test_admin_test_all_engines_endpoint(self):
+        """Verifica que /api/admin/test-all-engines retorne status 200 y la lista estructurada de resultados."""
+        with self.client.session_transaction() as sess:
+            sess["username"] = "admin"
+            sess["user_id"] = "admin"
+            sess["role"] = "admin"
+
+        res = self.client.post("/api/admin/test-all-engines")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("results", data)
+        self.assertIsInstance(data["results"], list)
+        platforms = [item["platform"] for item in data["results"]]
+        self.assertIn("Deno JS", platforms)
+        self.assertIn("Deezer", platforms)
+        self.assertIn("YouTube", platforms)
+
 
 if __name__ == "__main__":
     unittest.main()
+
