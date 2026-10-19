@@ -69,9 +69,11 @@ Este documento centraliza la planificación de nuevas características, mejoras 
   - Reproducción continua por lotes: botón `▶️ Reproducir Todo` en colecciones/carpetas para encolar playlists completas.
   - Integración con la API MediaSession del navegador para control desde pantalla de bloqueo y teclas multimedia del teclado/sistema operativo.
 - [ ] **Descargas Programadas (Task Scheduler / Cron):**
-  - Programación de descargas masivas o playlists extensas en horarios nocturnos de bajo consumo de red.
-- [ ] **Notificaciones Web Push Nativas:**
-  - Alertas automáticas en navegador y móviles cuando las tareas en segundo plano finalicen.
+  - Programación de descargas masivas o playlists extensas en horarios de bajo consumo de red (despriorizado según preferencias).
+- [x] **Notificaciones Web Push Nativas (PWA / Service Worker):**
+  - Alertas automáticas en navegador y dispositivos móviles cuando finalizan descargas individuales, lotes masivos, listas de reproducción o trabajos del Estudio Multimedia.
+  - Centro de control de notificaciones en la pestaña **Ajustes**: indicador de estado de permisos en tiempo real, activación en 1 clic, botón de prueba instantánea y preferencias granulares (descargas, estudio, solo en segundo plano, alertas sonoras).
+  - Integración nativa con Service Worker (`static/sw.js`) con soporte de clics directos para enfocar la pestaña activa o navegar a la sección relevante.
 - [ ] **Aceleración por Hardware (GPU Encoding):**
   - Soporte opcional para codificación por GPU (NVIDIA NVENC, Intel QuickSync y VAAPI) dentro de Docker.
 

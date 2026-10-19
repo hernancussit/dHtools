@@ -169,9 +169,18 @@ def get_drive_service(config: Dict[str, Any], base_dir: Optional[str] = None, fa
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                with open(token_file, "w", encoding="utf-8") as f:
-                    f.write(creds.to_json())
+                try:
+                    creds.refresh(Request())
+                    with open(token_file, "w", encoding="utf-8") as f:
+                        f.write(creds.to_json())
+                except Exception as ref_err:
+                    err_text = str(ref_err)
+                    if "invalid_grant" in err_text:
+                        raise RuntimeError(
+                            "La sesión OAuth2 con Google Drive ha expirado o el permiso fue revocado por Google. "
+                            "Por favor reconecte su cuenta en /plugin/google_drive/settings"
+                        )
+                    raise RuntimeError(f"Error renovando credenciales OAuth2 con Google: {ref_err}")
             else:
                 raise RuntimeError(
                     "Credenciales OAuth2 no encontradas o expiradas. "
@@ -270,7 +279,10 @@ def upload_file_resumable(
     try:
         service = get_drive_service(config, base_dir, fallback_dir)
     except Exception as e:
-        return False, {"error": f"Error de autenticación con Google Drive: {e}"}
+        err_msg = str(e)
+        if "invalid_grant" in err_msg:
+            err_msg = "La sesión con Google Drive ha expirado o el permiso fue revocado por Google. Reconecta tu cuenta en Ajustes (/plugin/google_drive/settings)."
+        return False, {"error": f"Error de autenticación con Google Drive: {err_msg}"}
 
 
     from googleapiclient.http import MediaFileUpload

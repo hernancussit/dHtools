@@ -829,7 +829,7 @@ class Plugin:
             }
         else:
             err_msg = result.get("error", "Error desconocido de subida.")
-            self._append_job_log(job_id, f"[!] [GoogleDrive] Falló la subida manual: {err_msg}")
+            self._append_job_log(job_id, f"[!] [GoogleDrive] Falló la subida: {err_msg}")
             return False, {"success": False, "error": err_msg, "status_code": 400}
 
     def upload_file_for_user(self, filepath: str, username: str, target_filename: Optional[str] = None, progress_callback=None) -> Tuple[bool, Dict[str, Any]]:

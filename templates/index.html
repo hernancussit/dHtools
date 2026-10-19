@@ -3297,6 +3297,48 @@
           </div>
         </div>
         {% endif %}
+
+        <!-- 5. NOTIFICACIONES PUSH NATIVAS (ROADMAP v2.0.0) -->
+        <div style="margin-top:18px; background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="font-size:0.92rem; color:var(--text);">🔔 Notificaciones Push del Sistema</strong>
+                <span id="notifStatusBadge" class="brand-badge" style="font-size:0.7rem; background:rgba(56,189,248,0.15); color:var(--accent-blue);">Comprobando...</span>
+              </div>
+              <div style="font-size:0.76rem; color:var(--muted); margin-top:2px;">
+                Recibí alertas instantáneas en tu navegador o móvil cuando finalicen tus descargas o ediciones, incluso con la pestaña en segundo plano.
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnTestNotification" style="font-size:0.78rem;">
+                🧪 Probar Alerta
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnToggleNotifications" style="font-size:0.78rem;">
+                🔔 Habilitar Notificaciones
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; background:var(--bg-card); padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); font-size:0.8rem;">
+            <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; color:var(--text);">
+              <input type="checkbox" id="chkNotifDownloads" checked>
+              <span>📥 Notificar al finalizar descargas</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; color:var(--text);">
+              <input type="checkbox" id="chkNotifStudio" checked>
+              <span>🎬 Notificar al procesar en Estudio</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; color:var(--text);">
+              <input type="checkbox" id="chkNotifOnlyBackground" checked>
+              <span>👀 Solo si la pestaña está oculta</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; color:var(--text);">
+              <input type="checkbox" id="chkNotifSound" checked>
+              <span>🔊 Sonido / Vibración háptica</span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -3785,6 +3827,273 @@ function showToast(msg, type = 'info', timeout = 4000) {
   if (timeout) setTimeout(() => { t.style.display = 'none'; }, timeout);
 }
 
+// ==================== NATIVE WEB PUSH & NOTIFICATIONS (v2.0.0) ====================
+window.dHNotifications = {
+  config: {
+    enabled: true,
+    downloads: true,
+    studio: true,
+    onlyBackground: true,
+    sound: true
+  },
+  knownJobs: new Set(),
+  initializedKnownJobs: false,
+
+  init() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dhtools_notifications_config') || '{}');
+      this.config = Object.assign(this.config, saved);
+    } catch (e) {}
+
+    this.bindDOM();
+    this.updateUI();
+  },
+
+  bindDOM() {
+    const chkDown = document.getElementById('chkNotifDownloads');
+    const chkStudio = document.getElementById('chkNotifStudio');
+    const chkBg = document.getElementById('chkNotifOnlyBackground');
+    const chkSnd = document.getElementById('chkNotifSound');
+    const btnToggle = document.getElementById('btnToggleNotifications');
+    const btnTest = document.getElementById('btnTestNotification');
+
+    if (chkDown) {
+      chkDown.checked = !!this.config.downloads;
+      chkDown.addEventListener('change', () => this.saveSetting('downloads', chkDown.checked));
+    }
+    if (chkStudio) {
+      chkStudio.checked = !!this.config.studio;
+      chkStudio.addEventListener('change', () => this.saveSetting('studio', chkStudio.checked));
+    }
+    if (chkBg) {
+      chkBg.checked = !!this.config.onlyBackground;
+      chkBg.addEventListener('change', () => this.saveSetting('onlyBackground', chkBg.checked));
+    }
+    if (chkSnd) {
+      chkSnd.checked = !!this.config.sound;
+      chkSnd.addEventListener('change', () => this.saveSetting('sound', chkSnd.checked));
+    }
+
+    if (btnToggle) {
+      btnToggle.addEventListener('click', () => this.handleToggleClick());
+    }
+    if (btnTest) {
+      btnTest.addEventListener('click', () => this.sendTestNotification());
+    }
+  },
+
+  saveSetting(key, val) {
+    this.config[key] = val;
+    try {
+      localStorage.setItem('dhtools_notifications_config', JSON.stringify(this.config));
+    } catch (e) {}
+  },
+
+  async handleToggleClick() {
+    if (!('Notification' in window)) {
+      showToast('Tu navegador no soporta notificaciones nativas.', 'error');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      this.config.enabled = !this.config.enabled;
+      this.saveSetting('enabled', this.config.enabled);
+      this.updateUI();
+      showToast(this.config.enabled ? 'Notificaciones activadas' : 'Notificaciones pausadas', 'info');
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      showToast('Las notificaciones están bloqueadas en tu navegador. Habilítalas en los permisos de este sitio.', 'error', 4500);
+      return;
+    }
+
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        this.config.enabled = true;
+        this.saveSetting('enabled', true);
+        this.updateUI();
+        showToast('¡Notificaciones del sistema habilitadas con éxito!', 'success');
+        this.notify({
+          title: '🔔 dHtools Notificaciones',
+          body: '¡Todo listo! Te avisaremos cuando tus descargas y procesos finalicen.',
+          tag: 'welcome-notification',
+          force: true
+        });
+      } else {
+        this.updateUI();
+        showToast('Permiso de notificaciones no concedido', 'info');
+      }
+    } catch (e) {
+      showToast(e.message || 'Error al solicitar permisos', 'error');
+    }
+  },
+
+  updateUI() {
+    const badge = document.getElementById('notifStatusBadge');
+    const btnToggle = document.getElementById('btnToggleNotifications');
+
+    if (!('Notification' in window)) {
+      if (badge) {
+        badge.textContent = 'NO SOPORTADO';
+        badge.style.background = 'rgba(239,68,68,0.2)';
+        badge.style.color = '#f87171';
+      }
+      if (btnToggle) {
+        btnToggle.disabled = true;
+        btnToggle.textContent = '❌ No disponible';
+      }
+      return;
+    }
+
+    const perm = Notification.permission;
+    if (perm === 'granted') {
+      if (this.config.enabled) {
+        if (badge) {
+          badge.textContent = 'ACTIVAS';
+          badge.style.background = 'rgba(34,197,94,0.18)';
+          badge.style.color = '#4ade80';
+        }
+        if (btnToggle) {
+          btnToggle.innerHTML = '🔕 Desactivar';
+          btnToggle.className = 'btn btn-secondary btn-sm';
+        }
+      } else {
+        if (badge) {
+          badge.textContent = 'PAUSADAS';
+          badge.style.background = 'rgba(234,179,8,0.18)';
+          badge.style.color = '#fbbf24';
+        }
+        if (btnToggle) {
+          btnToggle.innerHTML = '🔔 Reanudar';
+          btnToggle.className = 'btn btn-primary btn-sm';
+        }
+      }
+    } else if (perm === 'denied') {
+      if (badge) {
+        badge.textContent = 'BLOQUEADAS';
+        badge.style.background = 'rgba(239,68,68,0.18)';
+        badge.style.color = '#f87171';
+      }
+      if (btnToggle) {
+        btnToggle.innerHTML = '🔒 Bloqueado por navegador';
+        btnToggle.className = 'btn btn-secondary btn-sm';
+      }
+    } else {
+      if (badge) {
+        badge.textContent = 'SIN PERMISOS';
+        badge.style.background = 'rgba(148,163,184,0.18)';
+        badge.style.color = 'var(--muted)';
+      }
+      if (btnToggle) {
+        btnToggle.innerHTML = '🔔 Habilitar Notificaciones';
+        btnToggle.className = 'btn btn-primary btn-sm';
+      }
+    }
+  },
+
+  sendTestNotification() {
+    if (!('Notification' in window)) {
+      showToast('Tu navegador no soporta la API de Notificaciones.', 'error');
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      this.handleToggleClick();
+      return;
+    }
+    this.notify({
+      title: '🧪 dHtools Prueba Exitosa',
+      body: 'El sistema de Notificaciones Push Nativas está funcionando correctamente.',
+      tag: 'test-' + Date.now(),
+      force: true
+    });
+    showToast('Alerta de prueba enviada al sistema', 'success');
+  },
+
+  notify({ title, body, icon, url = '/', tag, category = 'downloads', force = false }) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!this.config.enabled && !force) return;
+
+    if (!force) {
+      if (category === 'downloads' && !this.config.downloads) return;
+      if (category === 'studio' && !this.config.studio) return;
+      if (this.config.onlyBackground && !document.hidden) return;
+    }
+
+    const notifOptions = {
+      body: body || 'Proceso finalizado en dHtools',
+      icon: icon || '/static/icons/icon-192.png',
+      badge: '/static/icons/icon-192.png',
+      data: { url: url },
+      tag: tag || ('dhtools-' + Date.now()),
+      renotify: true,
+      actions: [
+        { action: 'open', title: '📂 Abrir' },
+        { action: 'close', title: '✕ Cerrar' }
+      ]
+    };
+
+    if (this.config.sound && 'vibrate' in navigator) {
+      notifOptions.vibrate = [120, 60, 120];
+    }
+
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready.then(reg => {
+        if (reg && reg.showNotification) {
+          reg.showNotification(title || 'dHtools', notifOptions).catch(() => {
+            try { new Notification(title || 'dHtools', notifOptions); } catch (e) {}
+          });
+        } else {
+          try { new Notification(title || 'dHtools', notifOptions); } catch (e) {}
+        }
+      }).catch(() => {
+        try { new Notification(title || 'dHtools', notifOptions); } catch (e) {}
+      });
+    } else {
+      try { new Notification(title || 'dHtools', notifOptions); } catch (e) {}
+    }
+  },
+
+  trackCompletedJobs(completedList) {
+    if (!Array.isArray(completedList)) return;
+    if (!this.initializedKnownJobs) {
+      completedList.forEach(item => {
+        const id = item.job_id || item.id;
+        if (id) this.knownJobs.add(id);
+      });
+      this.initializedKnownJobs = true;
+      return;
+    }
+
+    completedList.forEach(item => {
+      const id = item.job_id || item.id;
+      if (!id || this.knownJobs.has(id)) return;
+      this.knownJobs.add(id);
+
+      if (item.status === 'finished') {
+        const title = item.filename || item.video_title || item.title || 'Archivo multimedia';
+        this.notify({
+          title: '✅ Descarga completada',
+          body: title,
+          url: '/#tab-downloads',
+          tag: `download-${id}`,
+          category: 'downloads'
+        });
+      } else if (item.status === 'error') {
+        const title = item.filename || item.video_title || item.title || 'Descarga';
+        this.notify({
+          title: '❌ Error en descarga',
+          body: `${title}: ${item.error || 'Fallo de descarga'}`,
+          url: '/#tab-downloads',
+          tag: `download-err-${id}`,
+          category: 'downloads'
+        });
+      }
+    });
+  }
+};
+
 // Unified Navigation Tabs (Desktop Sidebar + Mobile Bottom Navigation)
 function switchDlSubView(subview) {
   const views = {
@@ -3954,6 +4263,9 @@ function loadUserCloudSettings() {
         if (chk) {
           if (chk.disabled) {
             chk.checked = false;
+            if (s.plugins && s.plugins[pid]) {
+              s.plugins[pid].enabled = false;
+            }
           } else {
             chk.checked = !!pData.enabled;
           }
@@ -3963,6 +4275,7 @@ function loadUserCloudSettings() {
           if (pData[fld] !== undefined) inp.value = pData[fld];
         });
       });
+      localStorage.setItem('user_cloud_sync', JSON.stringify(s));
     }
   } catch (e) {}
 }
@@ -4981,12 +5294,26 @@ function pollSingleJob(jobId, onFinish) {
           finishBtn.style.display = 'inline-flex';
           showToast('¡Descarga completada con éxito!', 'success');
         }
+        window.dHNotifications?.notify({
+          title: '✅ Descarga completada',
+          body: data.filename || data.current_title || 'Tu archivo está listo para ver o descargar.',
+          url: '/#tab-downloads',
+          tag: `download-${jobId}`,
+          category: 'downloads'
+        });
         loadRecentDownloads();
         fetchQueueState();
       } else if (data.status === 'error') {
         clearInterval(interval);
         if (onFinish) onFinish();
         showToast('Error en la descarga: ' + (data.error || 'Desconocido'), 'error');
+        window.dHNotifications?.notify({
+          title: '❌ Error en la descarga',
+          body: (data.current_title || 'Descarga') + ': ' + (data.error || 'Ocurrió un error inesperado'),
+          url: '/#tab-downloads',
+          tag: `download-err-${jobId}`,
+          category: 'downloads'
+        });
         fetchQueueState();
         
         // Render cascade breakdown if multiple engines were tried
@@ -5036,6 +5363,13 @@ function pollBatchJob(batchId, onFinish) {
         if (onFinish) onFinish();
         btnZip.href = `/api/batch-download-zip/${batchId}`;
         btnZip.style.display = 'inline-flex';
+        window.dHNotifications?.notify({
+          title: '📦 Lote de descargas completado',
+          body: `Se completaron ${data.completed_count || 0} de ${data.total_count || 0} descargas.`,
+          url: '/#tab-downloads',
+          tag: `batch-${batchId}`,
+          category: 'downloads'
+        });
         loadRecentDownloads();
         fetchQueueState();
       }
@@ -5123,6 +5457,13 @@ function pollPlaylistGroup(groupId, onFinish) {
         activePlaylistInterval = null;
         if (onFinish) onFinish();
         showToast(`¡Playlist '${data.folder_name}' completada con éxito!`, 'success');
+        window.dHNotifications?.notify({
+          title: '📁 Playlist finalizada',
+          body: `Playlist '${data.folder_name || 'Colección'}': ${data.completed_count || 0} pistas listas.`,
+          url: '/#tab-downloads',
+          tag: `playlist-${groupId}`,
+          category: 'downloads'
+        });
         loadRecentDownloads();
       }
     } catch (e) {
@@ -5139,6 +5480,9 @@ async function fetchQueueState() {
     const res = await fetch('/api/queue');
     const data = await res.json();
     renderQueueState(data);
+    if (data.completed && window.dHNotifications?.trackCompletedJobs) {
+      window.dHNotifications.trackCompletedJobs(data.completed);
+    }
   } catch (e) {}
 }
 
@@ -6481,6 +6825,13 @@ async function runStudioProcess() {
         resultBanner.style.display = 'block';
       }
       showToast(data.message || 'Procesamiento completado con éxito', 'success');
+      window.dHNotifications?.notify({
+        title: '🎬 Estudio Multimedia: Proceso listo',
+        body: `Archivo listo: ${data.filename} (${data.size_formatted || ''})`,
+        url: '/#tab-studio',
+        tag: `studio-${data.job_id || Date.now()}`,
+        category: 'studio'
+      });
       loadRecentDownloads();
       loadUserQuota();
       refreshStudioSourceFiles();
@@ -6490,6 +6841,13 @@ async function runStudioProcess() {
         consoleEl.textContent += `\n[Error] ❌ ${errMsg}`;
       }
       showToast(errMsg, 'error');
+      window.dHNotifications?.notify({
+        title: '⚠️ Estudio Multimedia: Error',
+        body: errMsg,
+        url: '/#tab-studio',
+        tag: `studio-err-${Date.now()}`,
+        category: 'studio'
+      });
     }
   } catch (e) {
     if (consoleEl) {
@@ -7144,11 +7502,19 @@ window.dHPlayer = {
     const videoBtn = document.getElementById('wpBtnVideoModal');
     if (track.isVideo) {
       this.activeElement = this.videoEl;
-      if (this.audioEl) { this.audioEl.src = ''; }
+      if (this.audioEl) {
+        this.audioEl.pause();
+        this.audioEl.removeAttribute('src');
+        this.audioEl.load();
+      }
       if (videoBtn) videoBtn.style.display = 'inline-flex';
     } else {
       this.activeElement = this.audioEl;
-      if (this.videoEl) { this.videoEl.src = ''; }
+      if (this.videoEl) {
+        this.videoEl.pause();
+        this.videoEl.removeAttribute('src');
+        this.videoEl.load();
+      }
       if (videoBtn) videoBtn.style.display = 'none';
       this.closeVideoModal();
     }
@@ -7333,7 +7699,15 @@ window.dHPlayer = {
   },
 
   onError(e) {
-    console.error('Player error:', e);
+    const el = e?.target;
+    // Ignorar eventos de error de elementos inactivos o si el src fue limpiado / no tiene src
+    if (!el || el !== this.activeElement) return;
+    const currentSrc = el.getAttribute('src');
+    if (!currentSrc || currentSrc === '' || currentSrc === window.location.href) return;
+    // Si no hay código de error real en el elemento HTML5
+    if (!el.error) return;
+
+    console.warn('dHPlayer error:', el.error);
     showToast('Error al transmitir la pista actual', 'error');
   },
 
@@ -7530,7 +7904,8 @@ window.dHPlayer = {
     this.currentIndex = -1;
     if (this.activeElement) {
       this.activeElement.pause();
-      this.activeElement.src = '';
+      this.activeElement.removeAttribute('src');
+      this.activeElement.load();
     }
     this.closePlayer();
     showToast('Cola de reproducción vaciada', 'info', 1500);
@@ -7598,7 +7973,8 @@ window.dHPlayer = {
   closePlayer() {
     if (this.activeElement) {
       this.activeElement.pause();
-      this.activeElement.src = '';
+      this.activeElement.removeAttribute('src');
+      this.activeElement.load();
     }
     this.isPlaying = false;
     this.currentIndex = -1;
@@ -7612,6 +7988,7 @@ window.dHPlayer = {
 
 // Auto-initialize on ready
 function bootApp() {
+  try { window.dHNotifications?.init(); } catch (e) { console.error('dHNotifications init error:', e); }
   try { window.dHPlayer?.init(); } catch (e) { console.error('dHPlayer init error:', e); }
   try { if (typeof fetchQueueState === 'function') fetchQueueState(); } catch (e) {}
   try { if (typeof loadRecentDownloads === 'function') loadRecentDownloads(); } catch (e) {}

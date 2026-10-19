@@ -28,6 +28,11 @@ class TestGoogleDrivePlugin(unittest.TestCase):
             sess["username"] = "admin"
             sess["role"] = "admin"
 
+    def tearDown(self):
+        instance = self.manager._instances.get("google_drive")
+        if instance:
+            instance.save_user_config("admin", {"enabled": False})
+
     def test_discovery_and_load(self):
         """Verifica que el plugin sea descubierto y cargado como oficial [EXPERIMENTAL]."""
         plugins = self.manager.get_all_plugins()
