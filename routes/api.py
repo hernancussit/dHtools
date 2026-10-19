@@ -987,7 +987,9 @@ def api_studio_process():
     source_path = None
 
     if uploaded_file and uploaded_file.filename:
-        safe_up_name = safe_download_path(uploaded_file.filename)
+        raw_name = os.path.basename(uploaded_file.filename).strip()
+        unique_upload_name = f"upload_{uuid.uuid4().hex[:8]}_{raw_name}"
+        safe_up_name = safe_download_path(unique_upload_name)
         if not safe_up_name:
             return jsonify({"error": "Nombre de archivo no válido"}), 400
         source_path = safe_up_name
@@ -1012,6 +1014,7 @@ def api_studio_process():
 
     base_name, orig_ext = os.path.splitext(os.path.basename(source_path))
     clean_base = re.sub(r'^[a-f0-9]{32}_?', '', base_name)
+    clean_base = re.sub(r'^upload_[a-f0-9]{8}_?', '', clean_base)
     if not clean_base:
         clean_base = "media"
 
@@ -1054,21 +1057,37 @@ def api_studio_process():
 
     elif tool == "compress":
         profile = data.get("profile", "whatsapp_16")
-        output_ext = "mp4"
-        if profile == "whatsapp_16":
-            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "slow", "-crf", "28", "-vf", "scale=-2:720", "-c:a", "aac", "-b:a", "96k"])
-        elif profile == "whatsapp_25":
-            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "26", "-vf", "scale=-2:1080", "-c:a", "aac", "-b:a", "128k"])
-        elif profile == "discord":
-            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "25", "-c:a", "aac", "-b:a", "128k"])
+        is_audio = orig_ext.lower() in (".mp3", ".wav", ".flac", ".m4a", ".ogg", ".opus", ".aac")
+        if is_audio:
+            output_ext = "mp3"
+            if profile == "whatsapp_16":
+                ffmpeg_args.extend(["-vn", "-c:a", "libmp3lame", "-b:a", "64k"])
+            elif profile == "whatsapp_25":
+                ffmpeg_args.extend(["-vn", "-c:a", "libmp3lame", "-b:a", "96k"])
+            elif profile == "discord":
+                ffmpeg_args.extend(["-vn", "-c:a", "libmp3lame", "-b:a", "128k"])
+            else:
+                ffmpeg_args.extend(["-vn", "-c:a", "libmp3lame", "-b:a", "128k"])
         else:
-            crf = str(data.get("crf", "24"))
-            ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", crf, "-c:a", "aac", "-b:a", "128k"])
+            output_ext = "mp4"
+            if profile == "whatsapp_16":
+                ffmpeg_args.extend(["-c:v", "libx264", "-preset", "slow", "-crf", "28", "-vf", "scale=-2:720", "-c:a", "aac", "-b:a", "96k"])
+            elif profile == "whatsapp_25":
+                ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "26", "-vf", "scale=-2:1080", "-c:a", "aac", "-b:a", "128k"])
+            elif profile == "discord":
+                ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", "25", "-c:a", "aac", "-b:a", "128k"])
+            else:
+                crf = str(data.get("crf", "24"))
+                ffmpeg_args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", crf, "-c:a", "aac", "-b:a", "128k"])
 
     elif tool == "trim":
         start_time = data.get("start_time", "").strip()
         end_time = data.get("end_time", "").strip()
-        extract_audio = bool(data.get("extract_audio", False))
+        raw_extract = data.get("extract_audio", False)
+        if isinstance(raw_extract, str):
+            extract_audio = raw_extract.strip().lower() in ("true", "1", "yes")
+        else:
+            extract_audio = bool(raw_extract)
 
         args = ["ffmpeg", "-y"]
         if start_time:
@@ -1086,6 +1105,8 @@ def api_studio_process():
 
     elif tool == "normalize":
         output_ext = "mp3" if orig_ext.lower() in (".mp3", ".wav", ".flac", ".m4a", ".ogg") else orig_ext.lstrip(".")
+        if not output_ext:
+            output_ext = "mp4"
         if output_ext == "mp3":
             ffmpeg_args.extend(["-af", "loudnorm=I=-14:TP=-1.5:LRA=11", "-c:a", "libmp3lame", "-b:a", "320k"])
         else:
@@ -1105,6 +1126,7 @@ def api_studio_process():
         file_size = os.path.getsize(out_path)
         from core.utils import save_downloads_meta
         meta = load_downloads_meta()
+        orig_source_label = source_filename or (uploaded_file.filename if uploaded_file else "")
         meta[new_jid] = {
             "job_id": new_jid,
             "filename": f"{clean_base}_{tool}.{output_ext}",
@@ -1113,7 +1135,7 @@ def api_studio_process():
             "mtime": time.time(),
             "tool": tool,
             "created_at_formatted": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "source_file": source_filename,
+            "source_file": orig_source_label,
         }
         save_downloads_meta(meta)
 
