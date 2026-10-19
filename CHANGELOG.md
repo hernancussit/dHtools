@@ -6,6 +6,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [1.6.1] - 2026-09-29
 
+### 🎬 Estudio Multimedia & Gobernanza de Almacenamiento
+- **Suite Completa de Pruebas Automatizadas (`tests/test_media_studio_suite.py`):**
+  - 19 nuevas pruebas unitarias y de integración que certifican todas las funciones del Estudio Multimedia: conversión a múltiples formatos de audio y video, GIFs con paleta adaptativa, perfiles de compresión para redes, recortes con previsualización, normalización acústica EBU R128 y concatenación/fusión de archivos con fallback transcode.
+- **Control Estricto de Cuotas en el Estudio:**
+  - Integración de `check_user_storage_quota` al inicio de `/api/studio/process`, denegando la operación con HTTP 403 Forbidden a usuarios que hayan alcanzado su límite de almacenamiento hasta que liberen espacio.
+- **Limpieza Inmediata de Subidas Temporales:**
+  - Eliminación automática de archivos de entrada temporales subidos mediante `multipart/form-data` al finalizar o fallar el proceso FFmpeg, evitando duplicar el consumo de disco.
+- **Sincronización Automática de Metadatos en Purga TTL:**
+  - Reconciliación de `downloads_meta.json` tanto en `cleanup_loop` periódico como en `purge_downloads` de emergencia para purgar automáticamente entradas cuyos archivos expiraron o fueron eliminados físicamente, liberando de inmediato la cuota del usuario.
+- **Corrección de Diseño en "Mis Archivos":**
+  - Ajuste responsivo de botones de acción y títulos extensos en las tarjetas y carpetas de descargas para prevenir desbordamientos y solapamientos en pantallas móviles y de escritorio.
+
 ### 🔒 Seguridad & Hardening de Plugins Cloud (`plugins/`)
 - **Protección contra Fuga de Secretos en el DOM/HTML (`plugins/dropbox/`, `plugins/onedrive/`):**
   - Enmascaramiento de `app_secret` (Dropbox) y `client_secret` (OneDrive) en las plantillas HTML de ajustes. Los secretos configurados en el servidor ya no se envían al cliente ni se imprimen en el DOM, utilizando placeholders `••••••••` informativos y preservando los valores preexistentes si el campo se deja vacío.
