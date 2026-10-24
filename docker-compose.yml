@@ -6,6 +6,7 @@ services:
       - potprovider
     ports:
       - "127.0.0.1:5000:5000"
+      - "127.0.0.1:8899:8899"
     env_file:
       - .env
     volumes:
@@ -25,8 +26,8 @@ services:
     environment:
       API_URL: "http://cobalt:9000/"
       COOKIE_PATH: "/cookies.json"
-      HTTP_PROXY: ${COBALT_HTTP_PROXY:-}
-      HTTPS_PROXY: ${COBALT_HTTPS_PROXY:-}
+      HTTP_PROXY: ${COBALT_HTTP_PROXY:-http://dhtools:8899}
+      HTTPS_PROXY: ${COBALT_HTTPS_PROXY:-http://dhtools:8899}
       NO_PROXY: "127.0.0.1,localhost,cobalt,dhtools,potprovider"
     volumes:
       - ./cobalt_cookies.json:/cookies.json

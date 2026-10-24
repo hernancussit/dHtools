@@ -1604,7 +1604,8 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
     # 2. Smart Routing for Cobalt v11:
     # Prioritize Cobalt for native social networks (TikTok, Instagram, Twitter/X, Reddit, etc.)
     # For YouTube, only attempt Cobalt if authenticated cookies are synchronized
-    cobalt_eligible = (proxy_mode != "always" and not playlist_mode and start_time is None and end_time is None and subtitles == "none")
+    has_active_proxy = bool(proxy_url and proxy_mode in ("always", "failsafe"))
+    cobalt_eligible = (not playlist_mode and start_time is None and end_time is None and subtitles == "none")
     should_try_cobalt = False
     if cobalt_eligible:
         if platform in COBALT_NATIVE_PLATFORMS:
@@ -1615,10 +1616,10 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
             else:
                 append_job_log(job_id, f"[*] [{platform}] Derivando directamente a yt-dlp (con PO Token & Deno)...")
         elif platform == "Instagram":
-            if has_cobalt_instagram_cookies():
+            if has_cobalt_instagram_cookies() or has_active_proxy:
                 should_try_cobalt = True
             else:
-                append_job_log(job_id, "[*] [Instagram] Sin cookies en Cobalt. Derivando directamente a yt-dlp (extracción nativa Polaris & DASH 1080p)...")
+                append_job_log(job_id, "[*] [Instagram] Sin cookies ni proxy en Cobalt. Derivando directamente a yt-dlp (extracción nativa Polaris & DASH 1080p)...")
                 should_try_cobalt = False
         else:
             should_try_cobalt = True

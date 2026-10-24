@@ -70,6 +70,8 @@ def start_background_threads():
             threading.Thread(target=background_queue_worker, daemon=True).start()
             threading.Thread(target=cleanup_loop, daemon=True).start()
             threading.Thread(target=auto_update_loop, daemon=True).start()
+            from core.proxy_bridge import start_proxy_bridge
+            start_proxy_bridge()
             telegram_bot.start()
             plugin_manager.start_background_plugins()
             _threads_started = True
