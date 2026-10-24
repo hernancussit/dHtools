@@ -1036,6 +1036,7 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
             "downloadMode": "auto",
             "filenameStyle": "pretty",
             "convertGif": True,
+            "alwaysProxy": True,
         }
         if is_audio_quality(quality):
             payload["downloadMode"] = "audio"

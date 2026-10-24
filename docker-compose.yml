@@ -25,6 +25,9 @@ services:
     environment:
       API_URL: "http://cobalt:9000/"
       COOKIE_PATH: "/cookies.json"
+      HTTP_PROXY: ${COBALT_HTTP_PROXY:-}
+      HTTPS_PROXY: ${COBALT_HTTPS_PROXY:-}
+      NO_PROXY: "127.0.0.1,localhost,cobalt,dhtools,potprovider"
     volumes:
       - ./cobalt_cookies.json:/cookies.json
     ports:
