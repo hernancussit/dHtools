@@ -4,7 +4,22 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-## [2.0.0-dev] - 2026-10-19
+## [2.0.0-dev] - 2026-10-24
+
+### 🌐 Puente Dinámico de Proxy Unificado & Fortalecimiento de Cobalt v11 (Instagram & Redes)
+- **Puente Proxy Interno (`core/proxy_bridge.py` & `:8899`):**
+  - Implementación de un proxy HTTP interno ligero que se ejecuta como hilo demonio en segundo plano, unificando la salida de **yt-dlp** y **Cobalt v11** bajo la misma configuración administrativa.
+  - **Traducción Universal de Protocolos:** Traduce solicitudes HTTP/CONNECT de Cobalt automáticamente a esquemas `socks5h://`, `socks5://`, `socks4://`, `http://` y `https://` con o sin credenciales, permitiendo a Cobalt usar enlaces residenciales y proxies MikroTik/SSH que antes eran incompatibles.
+  - **Conmutación en Caliente (Hot-Reloading):** Los cambios de URL o modos de enrutamiento (*Desactivado, Failsafe, Siempre Activo*) guardados en el panel web aplican inmediatamente a la siguiente petición sin necesidad de editar `.env` ni reiniciar contenedores.
+  - **Orquestación Docker (`docker-compose.yml`):** Mapeo de `HTTP_PROXY: ${COBALT_HTTP_PROXY:-http://dhtools:8899}` y `HTTPS_PROXY` en el contenedor `cobalt-api`, con exclusión en `NO_PROXY` para tráfico interno inter-contenedor.
+- **Optimización de Descargas de Instagram (`core/downloader.py` & `core/utils.py`):**
+  - **Normalización de URLs:** Limpieza regex en `normalize_url()` de parámetros de rastreo agresivos de Meta (`?mdxt=...`, `?igsh=...`, etc.) para entregar una URL canónica limpia.
+  - **Tunelización Forzada (`alwaysProxy: true`):** Envío de `alwaysProxy: true` a la API de Cobalt para que el flujo de video se descargue a través de la IP residencial/proxy y se entregue localmente a dHtools, evitando rechazos de CDN por discrepancias de IP.
+  - **Guardia Anti-Imágenes (Falsos Positivos de Meta):** Detección y rechazo inmediato de portadas estáticas (`.jpg`, `.jpeg`, `.png`, `.webp`) devueltas por Meta ante peticiones de video, escalando automáticamente a la extracción nativa de `yt-dlp` (Polaris & DASH 1080p).
+  - **Síntesis FFmpeg Foto + Audio:** Fusión automática en MP4 cuando una publicación de Instagram contiene una foto con música oficial adjunta.
+  - **Sincronización de Sesiones:** Detección automática de cookies autenticadas de Instagram (`has_cobalt_instagram_cookies()`) a partir de `cookies.txt` y enrutamiento inteligente según presencia de cookies o proxy.
+- **Suite de Pruebas Automatizadas (`tests/test_proxy_bridge.py`):**
+  - 5 pruebas unitarias e integradas certificando conexiones directas, túneles SOCKS5 autenticados con resolución remota, proxies HTTP con `CONNECT` y ciclo completo de handshake de proxy bridge.
 
 ### 🔍 Buscador Multimedia Integrado
 - **Motor de Búsqueda Multiplataforma (`core/downloader.py`):**

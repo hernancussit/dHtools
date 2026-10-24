@@ -27,12 +27,12 @@ Está construida sobre una **arquitectura modular de Flask Blueprints**, pensada
 ## 🚀 Características Principales
 
 ### 🎯 Extracción Multiplataforma Inteligente
-- **Motor en Cascada Inteligente (4 Niveles):** Combina de manera transparente **Cobalt v11 Oficial**, **SpotDL / Deezer nativo**, **yt-dlp core** y un **Túnel Residencial de Contingencia (Tier 4 / Failsafe)**.
+- **Motor en Cascada Inteligente (4 Niveles):** Combina de manera transparente **Cobalt v11 Oficial** (con tunelización `alwaysProxy` y descarte estricto de carátulas para Instagram), **SpotDL / Deezer nativo**, **yt-dlp core** y un **Túnel Residencial de Contingencia (Tier 4 / Failsafe)**.
 - **Evasión Antibot & Tokens PO:** Microservicio `pot-provider` estabilizado junto al runtime `Deno` para resolver desafíos JavaScript y generar tokens Proof-of-Origin automáticos.
-- **Selector Inteligente de Proxy de Descargas (SOCKS5 / MikroTik / HTTP):** Control de enrutamiento con 3 modalidades configurables desde el panel de administración:
+- **Selector Inteligente de Proxy de Descargas & Puente Unificado (Proxy Bridge):** Control de enrutamiento con 3 modalidades configurables desde el panel de administración, alimentando en tiempo real tanto a `yt-dlp` como a `Cobalt v11` mediante un puente interno dinámico (`core/proxy_bridge.py` en `:8899`) que traduce automáticamente protocolos SOCKS5, SOCKS5h, SOCKS4 y HTTP/HTTPS:
   - 🛡️ **Directo (Desactivado):** Operación a máxima velocidad del VPS sin intermediarios.
   - ⚡ **Respaldo Automático (Failsafe) [Recomendado]:** Evasión reactiva automática si YouTube o cualquier servicio bloquea la IP del datacenter o estrangula la calidad SABR a 360p, protegiendo el consumo del enlace residencial.
-  - 🌐 **Proxy Global:** Enrutamiento obligatorio del 100% de las extracciones y descargas multimedia a través del proxy configurado.
+  - 🌐 **Proxy Global:** Enrutamiento obligatorio del 100% de las extracciones y descargas multimedia a través del proxy configurado para todos los motores.
   - 🔬 **Telemetría y Diagnóstico en Vivo:** Medición de latencia HTTP, ping TCP (RTT) y prueba canary directa contra YouTube mostrando la IP pública detectada y el ISP.
 - **Calidades de Video Ultra HD:** Descargas en 4K (2160p), 2K (1440p), Full HD (1080p), 720p y 480p con selección de contenedor (`MP4` / `MKV`) y subtítulos incrustados.
 - **Suite de Audio Hi-Fi:** Extracción directa con carátulas en alta resolución y metadatos ID3 automáticos en calidades `128 kbps`, `192 kbps`, `256 kbps` y `320 kbps (CBR MP3)`.

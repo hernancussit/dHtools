@@ -54,6 +54,10 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 ---
 
 ## 🎯 Versión `v2.0.0` — Experiencia de Usuario, Búsqueda, Scheduler & Aceleración GPU
+- [x] **Puente Dinámico de Proxy Unificado (Proxy Bridge) & Fortalecimiento de Cobalt:**
+  - Enrutamiento transparente y simultáneo para `yt-dlp` y `Cobalt v11` gobernado exclusivamente desde el panel de control web (`/admin`) sin requerir reinicio de contenedores ni edición de `.env`.
+  - Soporte universal de protocolos: traducción en tiempo real de peticiones de Cobalt hacia proxies `socks5h://`, `socks5://`, `socks4://`, `http://` y `https://`.
+  - Fortalecimiento de descargas de Instagram: normalización de URLs (limpieza de tracking `mdxt`/`igsh`), guardia estricta contra falsos positivos de carátulas estáticas `.jpg` ante peticiones de video con escalamiento a DASH 1080p nativo, síntesis FFmpeg foto+música y tunelización `alwaysProxy: true`.
 - [x] **Buscador Multimedia Integrado:**
   - Búsqueda directa de videos y canciones dentro de la interfaz sin necesidad de abrir plataformas externas para copiar enlaces.
   - Multiplataforma: soporte nativo simultáneo para YouTube (`ytsearch`), Deezer (API oficial con previews de audio de 30s en alta calidad) y SoundCloud (`scsearch`).

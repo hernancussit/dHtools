@@ -232,8 +232,8 @@ Para acceder a videos restringidos por edad (+18) o contenido exclusivo para mie
 
 ---
 
-### 4.7. Selector de Modos de Proxy de Descargas & Enlace Residencial
-Para garantizar disponibilidad ininterrumpida frente a bloqueos antibot de YouTube a nivel de ASN (bloqueo por Datacenter / `UNPLAYABLE`), o degradaciones forzadas SABR a 360p en descargas Full HD, **dHtools** incorpora un sistema avanzado de enrutamiento proxy configurable en 3 modos operativos desde el panel de administración (`/admin` -> **"🛡️ Proxy de Descargas"**):
+### 4.7. Selector de Modos de Proxy de Descargas & Puente Dinámico Unificado (Proxy Bridge)
+Para garantizar disponibilidad ininterrumpida frente a bloqueos antibot a nivel de ASN (bloqueo por Datacenter / `UNPLAYABLE`), o degradaciones forzadas SABR a 360p en descargas Full HD, **dHtools** incorpora un sistema avanzado de enrutamiento proxy configurable en 3 modos operativos desde el panel de administración (`/admin` -> **"🛡️ Proxy de Descargas"**):
 
 #### 1. Modos de Operación Disponibles:
 - 🛡️ **Directo (Desactivado - `disabled`):**
@@ -244,18 +244,28 @@ Para garantizar disponibilidad ininterrumpida frente a bloqueos antibot de YouTu
   - **Activación reactiva autónoma:** Únicamente si el intento directo falla debido a bloqueos de IP (detección de bots, HTTP 403, Cloudflare) o si YouTube estrangula la calidad máxima a 360p por directivas SABR, el sistema conmuta automáticamente al proxy de respaldo.
   - **Preservación de cuota y ancho de banda:** Protege conexiones hogareñas o proxies con límite de datos, ya que más del 90% del tráfico se atiende en el datacenter sin consumir el enlace proxy.
 - 🌐 **Proxy Global (`always`):**
-  - **Enrutamiento forzado del 100%:** Todas las extracciones, inspecciones previas y descargas de medios de yt-dlp son derivadas obligatoriamente a través del proxy configurado desde el primer intento.
-  - Ideal cuando la IP pública del servidor VPS se encuentra totalmente vetada por YouTube o cuando se requiere una salida geográfica estricta permanente.
+  - **Enrutamiento forzado del 100%:** Todas las extracciones, inspecciones previas y descargas de medios de yt-dlp y Cobalt son derivadas obligatoriamente a través del proxy configurado desde el primer intento.
+  - Ideal cuando la IP pública del servidor VPS se encuentra totalmente vetada por YouTube o redes sociales, o cuando se requiere una salida geográfica estricta permanente.
 
-#### 2. Protocolos y Compatibilidad de Transporte:
+#### 2. Arquitectura del Puente Dinámico Unificado (`core/proxy_bridge.py`):
+Para resolver la limitación de **Cobalt v11** (que solo soporta proxies HTTP/HTTPS y no maneja SOCKS5 ni resolución dinámica por petición), dHtools incorpora un **Proxy Bridge nativo** en segundo plano:
+- **Puerto Interno (`:8899`):** El servicio corre como hilo demonio sin sobrecarga dentro del contenedor `dhtools`, exponiendo un endpoint HTTP proxy estándar para la red de Docker.
+- **Traducción Universal de Protocolos:** Intercepta solicitudes HTTP y túneles `CONNECT` salientes de Cobalt y los traduce automáticamente al protocolo configurado en el panel administrativo:
+  - `socks5h://` y `socks5://` (con o sin autenticación de usuario y contraseña).
+  - `socks4://` y `socks4a://`.
+  - `http://` y `https://` con autenticación `Proxy-Authorization: Basic`.
+  - Conexión directa TCP cuando el proxy está en modo *Desactivado*.
+- **Conmutación en Caliente (Hot-Reloading):** En cada nueva conexión, el puente consulta `get_download_proxy_config()`. Cualquier cambio de URL, credenciales o modo guardado en el panel web tiene efecto inmediato en la siguiente petición sin necesidad de reiniciar contenedores ni editar archivos `.env`.
+
+#### 3. Protocolos y Compatibilidad de Transporte:
 El subsistema de proxy de dHtools es compatible de forma nativa con múltiples esquemas de red:
-- **`socks5h://` (Recomendado):** Resuelve los nombres de dominio (DNS) de forma remota en el endpoint del proxy, garantizando consistencia geográfica ante las redes CDN de YouTube y evitando fugas de DNS (*DNS leaks*).
+- **`socks5h://` (Recomendado):** Resuelve los nombres de dominio (DNS) de forma remota en el endpoint del proxy, garantizando consistencia geográfica ante las redes CDN y evitando fugas de DNS (*DNS leaks*).
 - **`socks5://`, `http://` y `https://`:** Soporte universal con autenticación mediante credenciales (`usuario:contraseña@host:puerto`). En la interfaz administrativa y respuestas de API, la contraseña se enmascara de forma segura (`••••••••`).
 - **Túnel Inverso SSH:** Permite conectar cualquier equipo hogareño (PC, Raspberry Pi o NAS) hacia el VPS mediante redirección reversa dinámica (`ssh -N -f -R 127.0.0.1:28443:127.0.0.1:1080`) sin requerir apertura de puertos en el router hogareño ni lidiar con CGNAT.
 - **VPN de Malla (Tailscale / WireGuard):** Permite interconectar el VPS con una máquina casera de forma encriptada punto a punto (ej. `socks5h://100.x.y.z:1080`).
 - **Routers con SOCKS5 (MikroTik RouterOS / OpenWrt):** Enrutadores de red con servicio de proxy interno securizados mediante firewall hacia la IP del VPS.
 
-#### 3. Diagnóstico en Vivo & Telemetría RTT:
+#### 4. Diagnóstico en Vivo & Telemetría RTT:
 El panel de administración incluye una suite de diagnóstico en tiempo real accesible con el botón **"Probar Conexión"**:
 - **Ping TCP Directo (RTT):** Mide la latencia de ida y vuelta a nivel de socket de red contra el host y puerto del proxy en milisegundos.
 - **Tiempo de Respuesta HTTP:** Mide el tiempo total en resolver una consulta externa segura a través del túnel proxy.
@@ -267,7 +277,13 @@ El panel de administración incluye una suite de diagnóstico en tiempo real acc
 ### 4.8. Optimización del Motor Cobalt v11 & Enrutamiento Inteligente por Plataforma
 El motor **Cobalt v11** se ejecuta como un microservicio independiente en `:9000` y ofrece una velocidad de procesamiento inigualable en redes sociales gracias a su conexión directa con las CDNs de origen:
 1. **Enrutamiento Inteligente por Plataforma:**
-   - **Redes Sociales (Tier 1 Prioritario):** En enlaces de **TikTok, Instagram Reels, Twitter/X, Reddit, Pinterest, SoundCloud, Vimeo, Facebook, Bilibili, etc.**, la Cascada Inteligente ejecuta directamente Cobalt v11 sin pasar por yt-dlp, obteniendo streams limpios sin marcas de agua en cuestión de milisegundos.
+   - **Redes Sociales (Tier 1 Prioritario):** En enlaces de **TikTok, Twitter/X, Reddit, Pinterest, SoundCloud, Vimeo, Facebook, Bilibili, etc.**, la Cascada Inteligente ejecuta directamente Cobalt v11 sin pasar por yt-dlp, obteniendo streams limpios sin marcas de agua en cuestión de milisegundos.
+   - **Instagram Especializado (Reels / Posts / Audio):**
+     - **Normalización de URLs:** Regex en `normalize_url()` que limpia parámetros de rastreo agresivos de Meta (`?mdxt=...`, `?igsh=...`, etc.) para entregar una URL canónica limpia.
+     - **Toma de Decisiones Inteligente:** Si Cobalt cuenta con cookies de Instagram sincronizadas (`has_cobalt_instagram_cookies()`) o si existe un proxy activo (`has_active_proxy`), se intenta la extracción acelerada con Cobalt. Si no se dispone de ninguno, el sistema deriva directamente a `yt-dlp` (con extracción nativa Polaris & DASH 1080p).
+     - **Tunelización Forzada (`alwaysProxy: true`):** Garantiza que los bytes del video se descarguen a través del túnel del proxy residencial y se entreguen localmente a dHtools por la red interna de Docker, evitando rechazos de CDN por discrepancias de IP.
+     - **Guardia Estricta Anti-Imágenes:** Meta suele entregar solo la imagen OpenGraph (`og:image`) de baja resolución en lugar del video MP4 ante bloqueos. Cobalt en dHtools valida la extensión final; si se recibe `.jpg`, `.jpeg`, `.png` o `.webp` en una petición de video, descarta la imagen y conmuta automáticamente a `yt-dlp`.
+     - **Síntesis FFmpeg Foto + Música:** En publicaciones de Instagram compuestas por foto estática con pista musical adjunta, Cobalt extrae ambos recursos y FFmpeg los fusiona automáticamente en un video MP4 coherente.
    - **YouTube Especializado:** En YouTube sobre IPs de centros de datos comerciales (VPS), Cobalt requiere autenticación para evitar el bloqueo `error.api.youtube.login`. La cascada detecta automáticamente si existen cookies sincronizadas:
      - Si hay cookies de YouTube activas, Cobalt intenta la extracción rápida.
      - Si no hay cookies, el sistema deriva directamente a `yt-dlp` (con suite Deno, PO Tokens y Failsafe Residencial), eliminando demoras innecesarias por intentos fallidos.
