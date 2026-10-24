@@ -66,7 +66,7 @@ COBALT_AUDIO_BITRATES = {
 }
 
 COBALT_NATIVE_PLATFORMS = {
-    "TikTok", "Instagram", "Twitter / X", "Twitter", "Reddit", "Pinterest", "SoundCloud",
+    "TikTok", "Twitter / X", "Twitter", "Reddit", "Pinterest", "SoundCloud",
     "Vimeo", "Facebook", "Dailymotion", "Twitch", "Bilibili", "Snapchat", "Tumblr"
 }
 
@@ -440,13 +440,16 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
 
 
 def normalize_url(url: str) -> str:
-
     url = url.strip()
     # Normalize YouTube Shorts to standard watch URL for maximum compatibility
     shorts_match = re.match(r"^https?://(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]+)", url)
     if shorts_match:
         video_id = shorts_match.group(1)
         return f"https://www.youtube.com/watch?v={video_id}"
+    # Normalize Instagram URLs by stripping tracking parameters (mdxt, igsh, utm, etc.)
+    ig_match = re.match(r"^https?://(?:www\.)?instagram\.com/((?:reel|reels|p|tv)/[a-zA-Z0-9_-]+)", url)
+    if ig_match:
+        return f"https://www.instagram.com/{ig_match.group(1)}/"
     return url
 
 
@@ -1149,6 +1152,9 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                     if fext:
                         ext = fext.lower()
 
+            if ext.lower() in ('.jpg', '.jpeg', '.png', '.webp') and not is_audio_quality(quality):
+                raise RuntimeError(f"Cobalt devolvió una imagen estática ({ext}) en lugar del video solicitado.")
+
             out_path = os.path.join(job_dir, base_name + ext)
 
             downloaded = 0
@@ -1606,6 +1612,9 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
                 should_try_cobalt = True
             else:
                 append_job_log(job_id, f"[*] [{platform}] Derivando directamente a yt-dlp (con PO Token & Deno)...")
+        elif platform == "Instagram":
+            append_job_log(job_id, "[*] [Instagram] Derivando directamente a yt-dlp (extracción nativa Polaris & DASH 1080p)...")
+            should_try_cobalt = False
         else:
             should_try_cobalt = True
 
