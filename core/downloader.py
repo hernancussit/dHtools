@@ -22,7 +22,8 @@ from core.utils import (
     record_download_meta, save_queue_state,
     get_disk_status, format_bytes, safe_filename,
     is_audio_quality, format_seconds, get_residential_proxy_config,
-    get_download_proxy_config, has_cobalt_youtube_cookies
+    get_download_proxy_config, has_cobalt_youtube_cookies,
+    has_cobalt_instagram_cookies
 )
 from core.plugin_manager import plugin_manager
 
@@ -1613,8 +1614,11 @@ def run_download_cascade(job_id: str, url: str, quality: str, playlist_mode: boo
             else:
                 append_job_log(job_id, f"[*] [{platform}] Derivando directamente a yt-dlp (con PO Token & Deno)...")
         elif platform == "Instagram":
-            append_job_log(job_id, "[*] [Instagram] Derivando directamente a yt-dlp (extracción nativa Polaris & DASH 1080p)...")
-            should_try_cobalt = False
+            if has_cobalt_instagram_cookies():
+                should_try_cobalt = True
+            else:
+                append_job_log(job_id, "[*] [Instagram] Sin cookies en Cobalt. Derivando directamente a yt-dlp (extracción nativa Polaris & DASH 1080p)...")
+                should_try_cobalt = False
         else:
             should_try_cobalt = True
 

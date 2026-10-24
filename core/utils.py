@@ -1160,3 +1160,11 @@ def has_cobalt_youtube_cookies() -> bool:
     return bool(st.get("has_youtube_auth", False))
 
 
+def has_cobalt_instagram_cookies() -> bool:
+    """Checks if Cobalt has at least one authenticated Instagram cookie string synchronized."""
+    st = get_cobalt_cookies_status()
+    services = st.get("services", {})
+    return bool("instagram" in services and services["instagram"] > 0)
+
+
+
