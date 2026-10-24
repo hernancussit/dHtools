@@ -73,23 +73,32 @@ class TestProxyBridge(unittest.TestCase):
             self.assertIn(b"Proxy-Authorization: Basic", sent)
 
     def test_bridge_connect_flow(self):
-        # Test connecting to the live bridge server with a CONNECT request
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect(("127.0.0.1", self.test_port))
-        
-        # When proxy is disabled, mock create_outgoing_connection to return a fake socket pair
-        with patch("core.proxy_bridge.create_outgoing_connection") as mock_out:
-            fake_remote = MagicMock()
-            mock_out.return_value = fake_remote
-            
-            client.sendall(b"CONNECT api.instagram.com:443 HTTP/1.1\r\nHost: api.instagram.com:443\r\n\r\n")
-            resp = client.recv(1024)
-            self.assertIn(b"200 Connection Established", resp)
-            mock_out.assert_called_once()
-            args, kwargs = mock_out.call_args
-            self.assertEqual(args[0], "api.instagram.com")
-            self.assertEqual(args[1], 443)
-        client.close()
+        client, server_side = socket.socketpair()
+        try:
+            with patch("core.proxy_bridge.create_outgoing_connection") as mock_out:
+                fake_remote = MagicMock()
+                # Simulate remote closing immediately after establishment
+                fake_remote.recv.return_value = b""
+                mock_out.return_value = fake_remote
+
+                client.sendall(b"CONNECT api.instagram.com:443 HTTP/1.1\r\nHost: api.instagram.com:443\r\n\r\n")
+                t = threading.Thread(
+                    target=_handle_client_connection,
+                    args=(server_side, ("127.0.0.1", 12345)),
+                    daemon=True
+                )
+                t.start()
+
+                resp = client.recv(1024)
+                self.assertIn(b"200 Connection Established", resp)
+                mock_out.assert_called_once()
+                args, _ = mock_out.call_args
+                self.assertEqual(args[0], "api.instagram.com")
+                self.assertEqual(args[1], 443)
+                t.join(timeout=1.0)
+        finally:
+            client.close()
+            server_side.close()
 
 if __name__ == "__main__":
     unittest.main()
