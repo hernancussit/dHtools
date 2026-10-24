@@ -4760,15 +4760,16 @@ async function inspectUrl(url, mode = 'quick') {
       renderPlaylistItems(inspectedPlaylistItems, 'quick');
       renderPlaylistItems(inspectedPlaylistItems, 'adv');
     } else {
-      appendUserConsole(`[+] Video/Pista detectada: '${data.title}' (${data.platform || 'Web'})`);
+      const isImg = data.type === 'image';
+      appendUserConsole(`[+] ${isImg ? 'Imagen/Foto detectada' : 'Video/Pista detectada'}: '${data.title}' (${data.platform || 'Web'})`);
       document.getElementById('quickPlaylistExplorer').style.display = 'none';
       const advExp = document.getElementById('advPlaylistExplorer');
       if (advExp) advExp.style.display = 'none';
 
       const previewCard = document.getElementById('quickPreviewCard');
-      document.getElementById('quickPreviewTitle').textContent = data.title || 'Contenido detectado';
-      document.getElementById('quickPreviewPlatform').textContent = data.platform || 'Web';
-      document.getElementById('quickPreviewDuration').textContent = data.duration ? `⏱️ ${Math.floor(data.duration/60)}:${(data.duration%60).toString().padStart(2,'0')}` : '';
+      document.getElementById('quickPreviewTitle').textContent = data.title || (isImg ? 'Imagen detectada' : 'Contenido detectado');
+      document.getElementById('quickPreviewPlatform').textContent = (data.platform || 'Web') + (isImg ? ' (Foto)' : '');
+      document.getElementById('quickPreviewDuration').textContent = data.duration ? `⏱️ ${Math.floor(data.duration/60)}:${(data.duration%60).toString().padStart(2,'0')}` : (isImg ? '📷 Imagen estática' : '');
       const img = document.getElementById('quickPreviewImg');
       if (data.thumbnail) {
         img.src = data.thumbnail;
@@ -5291,6 +5292,7 @@ function pollSingleJob(jobId, onFinish) {
           showToast(`¡Se completaron ${data.files_count || 'todos los'} archivos individualmente!`, 'success');
         } else {
           finishBtn.href = `/api/files/${jobId}`;
+          finishBtn.setAttribute('download', data.filename || '');
           finishBtn.style.display = 'inline-flex';
           showToast('¡Descarga completada con éxito!', 'success');
         }
@@ -5695,6 +5697,15 @@ function isVideoFile(filename) {
 function isAudioFile(filename) {
   return /\.(mp3|m4a|aac|opus|ogg|flac|wav|wma)$/i.test(filename || '');
 }
+function isImageFile(filename) {
+  return /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(filename || '');
+}
+function getFileIcon(filename) {
+  if (isImageFile(filename)) return '🖼️';
+  if (isVideoFile(filename)) return '🎬';
+  if (isAudioFile(filename)) return '🎵';
+  return '📄';
+}
 function isPlayableFile(filename) {
   return isAudioFile(filename) || isVideoFile(filename);
 }
@@ -5735,7 +5746,7 @@ function renderRecentDownloads(data) {
                   <div class="folder-file-card">
                     <div>
                       <div class="folder-file-title" title="${sub.filename}">
-                        <span style="flex-shrink:0;">📄</span>
+                        <span style="flex-shrink:0;">${getFileIcon(sub.filename)}</span>
                         <span style="overflow-wrap:anywhere; word-break:break-word; flex:1;">${sub.filename}</span>
                         ${sub.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.65rem; padding:1px 5px; border-radius:4px; flex-shrink:0;">☁️ Nube</span>` : ''}
                       </div>
@@ -5780,7 +5791,7 @@ function renderRecentDownloads(data) {
         <div class="recent-card">
           <div>
             <div class="recent-card-title" title="${item.filename}">
-              <span style="flex-shrink:0;">📄</span>
+              <span style="flex-shrink:0;">${getFileIcon(item.filename)}</span>
               <span style="overflow-wrap:anywhere; word-break:break-word; flex:1;">${item.filename}</span>
               ${item.offloaded ? `<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.68rem; padding:1px 5px; border-radius:4px; flex-shrink:0;">☁️ En la nube</span>` : ''}
             </div>

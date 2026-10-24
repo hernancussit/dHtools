@@ -52,6 +52,10 @@ CONTENT_TYPE_EXT = {
     "audio/mp4": ".m4a",
     "audio/ogg": ".ogg",
     "audio/webm": ".webm",
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
 }
 
 COBALT_AUDIO_BITRATES = {
@@ -294,6 +298,12 @@ def format_friendly_error(err_str: str) -> str:
         return "Este video tiene restricción de edad de YouTube. Requiere una sesión activa con cookies válidas en Administración."
     if "this video is private" in err_lower or "private video" in err_lower:
         return "El video es privado o requiere permisos especiales de acceso en YouTube."
+    if "there is no video in this post" in err_lower:
+        return "La publicación de Instagram no contiene flujo de video (es una foto o galería de imágenes estáticas)."
+    if "redirected to the login page" in err_lower or "rate-limit for accessing posts anonymously" in err_lower:
+        return "Instagram bloqueó el acceso anónimo y requiere inicio de sesión. Podés configurar cookies de Instagram en el archivo cookies.txt desde Administración."
+    if "instagram sent an empty media response" in err_lower or "this content is only available for registered users" in err_lower:
+        return "Instagram requiere inicio de sesión para acceder a este contenido (post privado o restringido). Subí cookies de Instagram en Administración."
     if "no se generó ningún archivo" in err_lower:
         return "No se pudo generar el archivo. Los servidores de streaming denegaron o limitaron las fuentes de video."
     return err
@@ -1053,8 +1063,24 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
             items = data.get("picker") or []
             if not items:
                 raise RuntimeError("Cobalt devolvió varias opciones pero ninguna usable")
-            chosen = next((it for it in items if it.get("type") == "video"), items[0])
-            stream_url = chosen.get("url")
+
+            video_items = [it for it in items if it.get("type") == "video"]
+            photo_items = [it for it in items if it.get("type") == "photo"]
+
+            if not is_audio_quality(quality):
+                if video_items:
+                    chosen = video_items[0]
+                    stream_url = chosen.get("url")
+                    if len(video_items) > 1 or photo_items:
+                        append_job_log(job_id, f"[*] [Cobalt v11] Carrusel detectado ({len(video_items)} video(s), {len(photo_items)} foto(s)). Extrayendo video prioritario...")
+                else:
+                    append_job_log(job_id, f"[!] [{platform}] La publicación no contiene flujo de video nativo (es una galería/imagen fija con {len(photo_items)} foto(s)).")
+                    append_job_log(job_id, "[*] Descargando imagen original en máxima resolución...")
+                    chosen = items[0]
+                    stream_url = chosen.get("url")
+            else:
+                chosen = next((it for it in items if it.get("type") == "video"), items[0])
+                stream_url = chosen.get("url")
         elif status in ("tunnel", "redirect"):
             stream_url = data.get("url")
         else:
@@ -1256,6 +1282,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
     try:
         outtmpl = os.path.join(job_dir, "%(playlist_index&{:02d} - |)s%(title).100B.%(ext)s")
 
+        is_ig = detect_platform(url) == "Instagram"
         ydl_opts = {
             "outtmpl": outtmpl,
             "progress_hooks": [hook],
@@ -1263,8 +1290,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             "match_filter": match_filter_cancel,
             "quiet": True,
             "no_warnings": True,
-            "noplaylist": not playlist_mode,
-            "ignoreerrors": bool(playlist_mode),
+            "noplaylist": (not playlist_mode) if not is_ig else False,
+            "ignoreerrors": bool(playlist_mode or is_ig),
             "socket_timeout": 15,
             "retries": 3,
             "fragment_retries": 5,
@@ -1343,6 +1370,11 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 if JOBS.get(job_id, {}).get("status") == "cancelled":
                     return
             raise RuntimeError("No se generó ningún archivo")
+
+        if is_ig and not is_audio_quality(quality):
+            only_images = all(os.path.splitext(f)[1].lower() in ('.jpg', '.jpeg', '.webp', '.png') for f in files)
+            if only_images:
+                append_job_log(job_id, "[*] [Instagram] La publicación contiene imágenes estáticas (no se detectó stream de video reproducible).")
 
         # Check if single video download from YouTube was forced to 360p (SABR) on datacenter IP
         is_yt = detect_platform(url) == "YouTube"

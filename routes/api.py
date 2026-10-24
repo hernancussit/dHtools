@@ -199,9 +199,13 @@ def info():
         })
     else:
         thumbs = result.get("thumbnails") or []
+        has_video_formats = bool(result.get("formats"))
+        is_image = bool(platform == "Instagram" and not has_video_formats and not result.get("duration"))
+        media_type = "image" if is_image else "video"
+        default_title = "Imagen" if is_image else "Video"
         return jsonify({
-            "type": "video",
-            "title": result.get("title", "Video"),
+            "type": media_type,
+            "title": result.get("title") or default_title,
             "duration": result.get("duration"),
             "platform": platform,
             "thumbnail": thumbs[-1]["url"] if thumbs else result.get("thumbnail"),
