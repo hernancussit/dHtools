@@ -1059,6 +1059,12 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
             raw_code = (data.get("error") or {}).get("code", "error.unknown")
             msg = COBALT_ERROR_TRANSLATIONS.get(raw_code, f"Error de Cobalt: {raw_code}")
             raise RuntimeError(msg)
+
+        audio_stream_url = data.get("audio")
+        out_path = None
+        base_name = safe_filename(video_title) or "descarga"
+        ext = f".{video_format.lower() if video_format else 'mp4'}"
+
         if status == "picker":
             items = data.get("picker") or []
             if not items:
@@ -1073,29 +1079,63 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                     stream_url = chosen.get("url")
                     if len(video_items) > 1 or photo_items:
                         append_job_log(job_id, f"[*] [Cobalt v11] Carrusel detectado ({len(video_items)} video(s), {len(photo_items)} foto(s)). Extrayendo video prioritario...")
+                elif audio_stream_url and photo_items:
+                    # Publicación con foto fija y música de fondo (sticker de audio de Instagram)
+                    append_job_log(job_id, "[*] [Cobalt v11] Publicación con foto y música detectada. Generando video MP4 con audio sincronizado...")
+                    with JOBS_LOCK:
+                        JOBS[job_id]["status"] = "downloading"
+                    temp_photo = os.path.join(job_dir, "temp_ig_photo.jpg")
+                    temp_audio = os.path.join(job_dir, "temp_ig_audio.mp3")
+                    with requests.get(photo_items[0].get("url"), stream=True, timeout=60) as r_p:
+                        r_p.raise_for_status()
+                        with open(temp_photo, "wb") as f_p:
+                            for chunk in r_p.iter_content(chunk_size=1024 * 128):
+                                f_p.write(chunk)
+                    with requests.get(audio_stream_url, stream=True, timeout=60) as r_a:
+                        r_a.raise_for_status()
+                        with open(temp_audio, "wb") as f_a:
+                            for chunk in r_a.iter_content(chunk_size=1024 * 128):
+                                f_a.write(chunk)
+                    ext = ".mp4"
+                    out_path = os.path.join(job_dir, base_name + ext)
+                    with JOBS_LOCK:
+                        JOBS[job_id]["status"] = "processing"
+                    append_job_log(job_id, "[*] Procesando con FFmpeg: fusionando imagen y música en video MP4...")
+                    merge_cmd = [
+                        "ffmpeg", "-y", "-loop", "1", "-i", temp_photo, "-i", temp_audio,
+                        "-c:v", "libx264", "-tune", "stillimage", "-c:a", "aac", "-b:a", "192k",
+                        "-pix_fmt", "yuv420p", "-shortest", out_path
+                    ]
+                    subprocess.run(merge_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                    stream_url = None
                 else:
-                    append_job_log(job_id, f"[!] [{platform}] La publicación no contiene flujo de video nativo (es una galería/imagen fija con {len(photo_items)} foto(s)).")
-                    append_job_log(job_id, "[*] Descargando imagen original en máxima resolución...")
-                    chosen = items[0]
-                    stream_url = chosen.get("url")
+                    # No video and no audio; user asked for a video. Let yt-dlp try!
+                    raise RuntimeError("Cobalt solo encontró fotos fijas en esta publicación. Derivando a yt-dlp para verificar...")
             else:
-                chosen = next((it for it in items if it.get("type") == "video"), items[0])
-                stream_url = chosen.get("url")
+                if audio_stream_url:
+                    stream_url = audio_stream_url
+                    append_job_log(job_id, "[*] [Cobalt v11] Extrayendo pista de audio oficial del post...")
+                elif video_items:
+                    chosen = video_items[0]
+                    stream_url = chosen.get("url")
+                else:
+                    raise RuntimeError("Cobalt no encontró flujos de audio ni video en esta publicación.")
         elif status in ("tunnel", "redirect"):
             stream_url = data.get("url")
         else:
             raise RuntimeError(f"Respuesta inesperada de Cobalt: {status}")
 
-        if not stream_url:
+        if not stream_url and not out_path:
             raise RuntimeError("Cobalt no devolvió un link de descarga")
 
-        with JOBS_LOCK:
-            JOBS[job_id]["status"] = "downloading"
+        if stream_url and not out_path:
+            with JOBS_LOCK:
+                JOBS[job_id]["status"] = "downloading"
 
-        append_job_log(job_id, f"[*] [Cobalt v11] Descargando stream directo desde CDN ({platform})...")
-        with requests.get(stream_url, stream=True, timeout=300) as r:
-            r.raise_for_status()
-            total = int(r.headers.get("Content-Length") or 0)
+            append_job_log(job_id, f"[*] [Cobalt v11] Descargando stream directo desde CDN ({platform})...")
+            with requests.get(stream_url, stream=True, timeout=300) as r:
+                r.raise_for_status()
+                total = int(r.headers.get("Content-Length") or 0)
 
             cd = r.headers.get("Content-Disposition", "")
             base_name = safe_filename(video_title) or "descarga"
