@@ -17,181 +17,72 @@ logger = logging.getLogger("dHtools.CloudSync")
 
 def test_s3_connection(config: dict) -> Tuple[bool, str]:
     """Tests connectivity and permissions to an S3-compatible bucket."""
-    if not config:
-        return False, "Configuración S3 vacía"
-
-    bucket = (config.get("bucket_name") or config.get("bucket") or "").strip()
-    key_id = (config.get("access_key") or "").strip()
-    secret = (config.get("secret_key") or "").strip()
-    endpoint = (config.get("endpoint_url") or "").strip() or None
-    region = (config.get("region") or "").strip() or "us-east-1"
-
-    if not bucket:
-        return False, "Falta especificar el nombre del Bucket S3"
-    if not key_id or not secret:
-        return False, "Faltan credenciales Access Key o Secret Key"
-
     try:
-        import boto3
-        from botocore.config import Config
-        from botocore.exceptions import ClientError, EndpointConnectionError
-    except ImportError:
-        return False, "Librería boto3 no instalada en el entorno"
-
-    try:
-        boto_cfg = Config(
-            region_name=region,
-            signature_version="s3v4",
-            retries={"max_attempts": 2, "mode": "standard"},
-            connect_timeout=10,
-            read_timeout=10,
-        )
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=key_id,
-            aws_secret_access_key=secret,
-            endpoint_url=endpoint,
-            config=boto_cfg,
-        )
-        # Attempt to verify bucket access
-        s3.head_bucket(Bucket=bucket)
-        dest_desc = f"Bucket '{bucket}' en {endpoint or 'AWS S3'}"
-        return True, f"Conexión S3 exitosa ({dest_desc})"
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "Desconocido")
-        msg = e.response.get("Error", {}).get("Message", str(e))
-        if error_code in ("403", "AccessDenied"):
-            return False, f"Acceso denegado (403): Verificá Access Key, Secret Key y permisos del Bucket '{bucket}'."
-        if error_code in ("404", "NoSuchBucket"):
-            return False, f"El bucket '{bucket}' no existe o el nombre es incorrecto."
-        return False, f"Error de S3 ({error_code}): {msg}"
-    except EndpointConnectionError:
-        return False, f"No se pudo conectar al endpoint S3: {endpoint}"
+        from plugins.s3_storage import s3_client
+        return s3_client.test_connection(config)
     except Exception as e:
+        logger.error(f"Error delegating to s3_client: {e}")
         return False, f"Error al verificar S3: {str(e)}"
+
+
+def test_webdav_connection(config: dict) -> Tuple[bool, str]:
+    """Tests connectivity and credentials for a WebDAV / Nextcloud server."""
+    try:
+        from plugins.webdav_storage import webdav_client
+        return webdav_client.test_connection(config)
+    except Exception as e:
+        logger.error(f"Error delegating to webdav_client: {e}")
+        return False, f"Error WebDAV: {str(e)}"
+
+
+def test_ftp_connection(config: dict) -> Tuple[bool, str]:
+    """Tests connectivity and credentials for an FTP / FTPS server."""
+    try:
+        from plugins.ftp_storage import ftp_client
+        return ftp_client.test_connection(config)
+    except Exception as e:
+        logger.error(f"Error delegating to ftp_client: {e}")
+        return False, f"Error FTP: {str(e)}"
 
 
 def upload_to_s3(filepath: str, filename: str, config: dict) -> Tuple[bool, str]:
     """Uploads a local file to an S3-compatible bucket using multipart streaming."""
-    if not filepath or not os.path.isfile(filepath):
-        return False, "Archivo local no encontrado"
-
-    bucket = (config.get("bucket_name") or config.get("bucket") or "").strip()
-    key_id = (config.get("access_key") or "").strip()
-    secret = (config.get("secret_key") or "").strip()
-    endpoint = (config.get("endpoint_url") or "").strip() or None
-    region = (config.get("region") or "").strip() or "us-east-1"
-    remote_dir = (config.get("remote_dir") or config.get("prefix") or "").strip("/ ")
-
-    if not bucket or not key_id or not secret:
-        return False, "Configuración S3 incompleta (bucket o credenciales faltantes)"
-
     try:
-        import boto3
-        from boto3.s3.transfer import TransferConfig
-        from botocore.config import Config
-    except ImportError:
-        return False, "Librería boto3 no disponible"
-
-    object_key = f"{remote_dir}/{filename}" if remote_dir else filename
-
-    try:
-        boto_cfg = Config(
-            region_name=region,
-            signature_version="s3v4",
-            retries={"max_attempts": 3, "mode": "standard"},
-        )
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=key_id,
-            aws_secret_access_key=secret,
-            endpoint_url=endpoint,
-            config=boto_cfg,
-        )
-
-        # 10MB chunk threshold for multipart upload, 4 concurrent threads
-        transfer_config = TransferConfig(
-            multipart_threshold=10 * 1024 * 1024,
-            max_concurrency=4,
-            multipart_chunksize=10 * 1024 * 1024,
-            use_threads=True,
-        )
-
-        s3.upload_file(
-            Filename=filepath,
-            Bucket=bucket,
-            Key=object_key,
-            Config=transfer_config,
-        )
-        return True, f"s3://{bucket}/{object_key}"
+        from plugins.s3_storage import s3_client
+        ok, res = s3_client.upload_file_multipart(filepath, filename, config)
+        if ok:
+            return True, res.get("s3_uri", "")
+        return False, res.get("error", "Error subiendo a S3")
     except Exception as e:
+        logger.error(f"Error delegating upload_to_s3: {e}")
         return False, f"Error subiendo a S3: {e}"
 
 
 def upload_to_webdav(filepath: str, filename: str, config: dict) -> Tuple[bool, str]:
     """Uploads a local file to a WebDAV / Nextcloud server via HTTP PUT."""
-    if not filepath or not os.path.isfile(filepath):
-        return False, "Archivo local no encontrado"
-
-    base_url = (config.get("url") or "").rstrip("/")
-    remote_path = (config.get("remote_path") or "").strip("/ ")
-    username = config.get("username", "")
-    password = config.get("password", "")
-
-    if not base_url:
-        return False, "Falta URL WebDAV"
-
-    target_url = f"{base_url}/{remote_path}/{filename}" if remote_path else f"{base_url}/{filename}"
-    auth = (username, password) if username else None
-
     try:
-        with open(filepath, "rb") as f:
-            resp = requests.put(target_url, data=f, auth=auth, timeout=300)
-        if resp.status_code in (200, 201, 204):
-            return True, target_url
-        return False, f"WebDAV respondió HTTP {resp.status_code}"
+        from plugins.webdav_storage import webdav_client
+        ok, res = webdav_client.upload_file(filepath, filename, config)
+        if ok:
+            return True, res.get("web_link", "")
+        return False, res.get("error", "Error subiendo a WebDAV")
     except Exception as e:
+        logger.error(f"Error delegating upload_to_webdav: {e}")
         return False, f"Error WebDAV: {e}"
 
 
 def upload_to_ftp(filepath: str, filename: str, config: dict) -> Tuple[bool, str]:
     """Uploads a local file to an FTP server."""
-    if not filepath or not os.path.isfile(filepath):
-        return False, "Archivo local no encontrado"
-
-    host = config.get("host")
-    port = int(config.get("port", 21))
-    username = config.get("username", "anonymous")
-    password = config.get("password", "")
-    remote_dir = (config.get("remote_dir") or "/").strip()
-
-    if not host:
-        return False, "Falta host FTP"
-
     try:
-        ftp = ftplib.FTP()
-        ftp.connect(host, port, timeout=60)
-        ftp.login(username, password)
-
-        if remote_dir and remote_dir != "/":
-            # Navigate or create directories recursively
-            parts = [p for p in remote_dir.split("/") if p]
-            for part in parts:
-                try:
-                    ftp.cwd(part)
-                except Exception:
-                    try:
-                        ftp.mkd(part)
-                        ftp.cwd(part)
-                    except Exception:
-                        pass
-
-        with open(filepath, "rb") as f:
-            ftp.storbinary(f"STOR {filename}", f)
-        ftp.quit()
-        return True, f"ftp://{host}:{port}{remote_dir.rstrip('/')}/{filename}"
+        from plugins.ftp_storage import ftp_client
+        ok, res = ftp_client.upload_file(filepath, filename, config)
+        if ok:
+            return True, res.get("ftp_url", "")
+        return False, res.get("error", "Error subiendo a FTP")
     except Exception as e:
+        logger.error(f"Error delegating upload_to_ftp: {e}")
         return False, f"Error FTP: {e}"
+
 
 
 def execute_cloud_sync(filepath: str, filename: str, job_info: dict = None, user_cloud_cfg: dict = None):

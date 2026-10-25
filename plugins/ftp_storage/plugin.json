@@ -1,0 +1,11 @@
+{
+  "id": "ftp_storage",
+  "name": "FTP / FTPS Storage",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "Sincronización directa y subida de archivos hacia servidores FTP / FTPS con gestión recursiva de directorios.",
+  "icon": "🌐",
+  "status": "official",
+  "enabled": true,
+  "settings_url": "/plugin/ftp_storage/settings"
+}

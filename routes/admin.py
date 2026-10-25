@@ -1200,35 +1200,18 @@ def admin_cloud_sync_test():
 
 
     if service == "ftp":
-        host = config.get("host")
-        port = int(config.get("port", 21))
-        user = config.get("username", "anonymous")
-        pwd = config.get("password", "")
-        if not host:
-            return jsonify({"error": "Falta host FTP"}), 400
-        try:
-            ftp = ftplib.FTP()
-            ftp.connect(host, port, timeout=6)
-            ftp.login(user, pwd)
-            ftp.quit()
-            return jsonify({"success": True, "message": "Conexión FTP exitosa"})
-        except Exception as e:
-            return jsonify({"error": f"Error conectando a FTP: {e}"}), 400
+        from core.cloud_sync import test_ftp_connection
+        ok, msg = test_ftp_connection(config)
+        if ok:
+            return jsonify({"success": True, "message": msg})
+        return jsonify({"error": msg}), 400
 
     if service == "webdav":
-        url = config.get("url")
-        if not url:
-            return jsonify({"error": "Falta URL WebDAV"}), 400
-        try:
-            auth = (config.get("username", ""), config.get("password", "")) if config.get("username") else None
-            r = requests.request("PROPFIND", url, auth=auth, headers={"Depth": "0"}, timeout=6)
-            if r.status_code in (200, 207, 301, 302, 401):
-                if r.status_code == 401:
-                    return jsonify({"error": "Autenticación WebDAV fallida (401)"}), 400
-                return jsonify({"success": True, "message": f"Servidor WebDAV respondió HTTP {r.status_code}"})
-            return jsonify({"error": f"WebDAV respondió HTTP {r.status_code}"}), 400
-        except Exception as e:
-            return jsonify({"error": f"Error WebDAV: {e}"}), 400
+        from core.cloud_sync import test_webdav_connection
+        ok, msg = test_webdav_connection(config)
+        if ok:
+            return jsonify({"success": True, "message": msg})
+        return jsonify({"error": msg}), 400
 
     if service in ("s3", "minio", "r2", "b2", "wasabi"):
         from core.cloud_sync import test_s3_connection

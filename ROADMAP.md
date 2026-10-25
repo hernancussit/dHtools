@@ -46,7 +46,7 @@ Este documento centraliza la planificación de nuevas características, mejoras 
 
 ### ☁️ Integración Directa con Proveedores Cloud Principales
 - [x] **Google Drive [EXPERIMENTAL]:** Implementado como **Plugin Oficial Bundled** (`plugins/google_drive/`) con soporte para Service Account, OAuth2, streaming resumable por bloques de 10 MB (RAM-Safe), selector de carpetas y modo Safe Offload.
-- [ ] **Modularización de Conectores Cloud (v1.6.0+):** Extracción planificada de los conectores S3, WebDAV y FTP hacia plugins oficiales independientes (`plugins/s3_storage`, `plugins/webdav_storage`, etc.) una vez estabilizado el ecosistema del Plugin Manager.
+- [x] **Modularización de Conectores Cloud (v1.6.0+):** Extracción completada de los conectores S3, WebDAV y FTP hacia plugins oficiales independientes (`plugins/s3_storage`, `plugins/webdav_storage`, `plugins/ftp_storage`) integrados al ecosistema del Plugin Manager, con aislamiento multiusuario, modo Safe Offload, prevención IDOR y enmascaramiento estricto de secretos.
 - [x] **Microsoft OneDrive / SharePoint:** Implementado como **Plugin Oficial Bundled** (`plugins/onedrive/`) con soporte para cuentas personales y M365/SharePoint mediante Microsoft Graph API, streaming resumable por fragmentos (RAM-Safe), selector de carpetas y modo Safe Offload.
 - [x] **Dropbox:** Implementado como **Plugin Oficial Bundled** (`plugins/dropbox/`) con soporte para API v2 oficial, sesiones de subida por bloques (`upload_session`, RAM-Safe), enlaces compartidos automáticos, selector de carpetas y modo Safe Offload.
 

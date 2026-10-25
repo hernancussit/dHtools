@@ -115,6 +115,70 @@ class TestPluginSecurityAudit(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(secret_value.encode(), resp.data, "Google client_secret no debe exponerse en el HTML")
 
+    def test_s3_secret_key_not_exposed_in_html(self):
+        """Verifica que secret_key de S3 Storage nunca se envíe en texto plano en el HTML."""
+        instance = self.manager._instances.get("s3_storage")
+        self.assertIsNotNone(instance)
+
+        secret_value = "AWS_SECRET_ACCESS_KEY_TOPSECRET_999"
+        instance.save_user_config("alice", {
+            "enabled": True,
+            "bucket_name": "alice-bucket",
+            "access_key": "AKIA12345",
+            "secret_key": secret_value
+        })
+
+        with self.client.session_transaction() as sess:
+            sess["username"] = "alice"
+            sess["role"] = "downloader"
+
+        resp = self.client.get("/plugin/s3_storage/settings")
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn(secret_value.encode(), resp.data, "S3 secret_key nunca debe exponerse en el DOM/HTML")
+
+    def test_webdav_password_not_exposed_in_html(self):
+        """Verifica que password de WebDAV Storage nunca se envíe en texto plano en el HTML."""
+        instance = self.manager._instances.get("webdav_storage")
+        self.assertIsNotNone(instance)
+
+        secret_value = "WEBDAV_SUPER_SECRET_PASSWORD_XYZ"
+        instance.save_user_config("alice", {
+            "enabled": True,
+            "url": "https://nextcloud.alice.com/dav",
+            "username": "alice",
+            "password": secret_value
+        })
+
+        with self.client.session_transaction() as sess:
+            sess["username"] = "alice"
+            sess["role"] = "downloader"
+
+        resp = self.client.get("/plugin/webdav_storage/settings")
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn(secret_value.encode(), resp.data, "WebDAV password nunca debe exponerse en el DOM/HTML")
+
+    def test_ftp_password_not_exposed_in_html(self):
+        """Verifica que password de FTP Storage nunca se envíe en texto plano en el HTML."""
+        instance = self.manager._instances.get("ftp_storage")
+        self.assertIsNotNone(instance)
+
+        secret_value = "FTP_SUPER_SECRET_PASSWORD_123"
+        instance.save_user_config("alice", {
+            "enabled": True,
+            "host": "ftp.alice.com",
+            "username": "alice",
+            "password": secret_value
+        })
+
+        with self.client.session_transaction() as sess:
+            sess["username"] = "alice"
+            sess["role"] = "downloader"
+
+        resp = self.client.get("/plugin/ftp_storage/settings")
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn(secret_value.encode(), resp.data, "FTP password nunca debe exponerse en el DOM/HTML")
+
+
     # =========================================================================
     # 2. PREVENCIÓN DE IDOR Y DESTRUCCIÓN DE ARCHIVOS AJENOS (SAFE OFFLOAD)
     # =========================================================================
@@ -197,6 +261,95 @@ class TestPluginSecurityAudit(unittest.TestCase):
         self.assertIn("No tienes permiso", res.get("error", ""))
         self.assertTrue(os.path.exists(dummy_file))
 
+    def test_s3_idor_prevention_on_upload_job(self):
+        """Un usuario 'bob' no debe poder transferir ni borrar en S3 un archivo de 'alice'."""
+        instance = self.manager._instances.get("s3_storage")
+        self.assertIsNotNone(instance)
+
+        dummy_file = os.path.join(self.test_dir, "alice_s3_doc.mp4")
+        with open(dummy_file, "w") as f:
+            f.write("Alice private s3 video")
+
+        job_id = "job_sec_s3_1"
+        with JOBS_LOCK:
+            JOBS[job_id] = {
+                "owner": "alice",
+                "filepath": dummy_file,
+                "filename": "alice_s3_doc.mp4",
+                "status": "finished"
+            }
+
+        instance.save_user_config("bob", {
+            "enabled": True,
+            "bucket_name": "bob-bucket",
+            "access_key": "k",
+            "secret_key": "s"
+        })
+
+        ok, res = instance.upload_job_for_user(job_id=job_id, username="bob")
+        self.assertFalse(ok)
+        self.assertEqual(res.get("status_code"), 403)
+        self.assertIn("No tienes permiso", res.get("error", ""))
+        self.assertTrue(os.path.exists(dummy_file), "El archivo local no debe borrarse")
+
+    def test_webdav_idor_prevention_on_upload_job(self):
+        """Un usuario 'bob' no debe poder transferir ni borrar en WebDAV un archivo de 'alice'."""
+        instance = self.manager._instances.get("webdav_storage")
+        self.assertIsNotNone(instance)
+
+        dummy_file = os.path.join(self.test_dir, "alice_webdav_doc.mp4")
+        with open(dummy_file, "w") as f:
+            f.write("Alice private webdav video")
+
+        job_id = "job_sec_webdav_1"
+        with JOBS_LOCK:
+            JOBS[job_id] = {
+                "owner": "alice",
+                "filepath": dummy_file,
+                "filename": "alice_webdav_doc.mp4",
+                "status": "finished"
+            }
+
+        instance.save_user_config("bob", {
+            "enabled": True,
+            "url": "https://nextcloud.bob.com/dav"
+        })
+
+        ok, res = instance.upload_job_for_user(job_id=job_id, username="bob")
+        self.assertFalse(ok)
+        self.assertEqual(res.get("status_code"), 403)
+        self.assertIn("No tienes permiso", res.get("error", ""))
+        self.assertTrue(os.path.exists(dummy_file), "El archivo local no debe borrarse")
+
+    def test_ftp_idor_prevention_on_upload_job(self):
+        """Un usuario 'bob' no debe poder transferir ni borrar en FTP un archivo de 'alice'."""
+        instance = self.manager._instances.get("ftp_storage")
+        self.assertIsNotNone(instance)
+
+        dummy_file = os.path.join(self.test_dir, "alice_ftp_doc.mp4")
+        with open(dummy_file, "w") as f:
+            f.write("Alice private ftp video")
+
+        job_id = "job_sec_ftp_1"
+        with JOBS_LOCK:
+            JOBS[job_id] = {
+                "owner": "alice",
+                "filepath": dummy_file,
+                "filename": "alice_ftp_doc.mp4",
+                "status": "finished"
+            }
+
+        instance.save_user_config("bob", {
+            "enabled": True,
+            "host": "ftp.bob.com"
+        })
+
+        ok, res = instance.upload_job_for_user(job_id=job_id, username="bob")
+        self.assertFalse(ok)
+        self.assertEqual(res.get("status_code"), 403)
+        self.assertIn("No tienes permiso", res.get("error", ""))
+        self.assertTrue(os.path.exists(dummy_file), "El archivo local no debe borrarse")
+
     # =========================================================================
     # 3. PREVENCIÓN DE PATH TRAVERSAL EN GOOGLE DRIVE CLIENT
     # =========================================================================
@@ -245,9 +398,41 @@ class TestPluginSecurityAudit(unittest.TestCase):
         res_gd_up = self.client.post("/plugin/google_drive/api/upload-job", json={"job_id": "job_123"})
         self.assertEqual(res_gd_up.status_code, 401)
 
+        # 4. S3 Storage API
+        res_s3 = self.client.post("/plugin/s3_storage/api/settings", json={"enabled": True})
+        self.assertEqual(res_s3.status_code, 401)
+        self.assertFalse(res_s3.get_json()["success"])
+
+        res_s3_up = self.client.post("/plugin/s3_storage/api/upload/job_123")
+        self.assertEqual(res_s3_up.status_code, 401)
+
+        # 5. WebDAV Storage API
+        res_wd = self.client.post("/plugin/webdav_storage/api/settings", json={"enabled": True})
+        self.assertEqual(res_wd.status_code, 401)
+        self.assertFalse(res_wd.get_json()["success"])
+
+        res_wd_up = self.client.post("/plugin/webdav_storage/api/upload/job_123")
+        self.assertEqual(res_wd_up.status_code, 401)
+
+        # 6. FTP Storage API
+        res_ftp = self.client.post("/plugin/ftp_storage/api/settings", json={"enabled": True})
+        self.assertEqual(res_ftp.status_code, 401)
+        self.assertFalse(res_ftp.get_json()["success"])
+
+        res_ftp_up = self.client.post("/plugin/ftp_storage/api/upload/job_123")
+        self.assertEqual(res_ftp_up.status_code, 401)
+
     def test_unauthenticated_settings_views_redirect_to_login(self):
         """Las vistas de configuración de plugins deben redirigir a /login si no hay usuario."""
-        for endpoint in ["/plugin/dropbox/settings", "/plugin/onedrive/settings", "/plugin/google_drive/settings"]:
+        endpoints = [
+            "/plugin/dropbox/settings",
+            "/plugin/onedrive/settings",
+            "/plugin/google_drive/settings",
+            "/plugin/s3_storage/settings",
+            "/plugin/webdav_storage/settings",
+            "/plugin/ftp_storage/settings"
+        ]
+        for endpoint in endpoints:
             resp = self.client.get(endpoint)
             self.assertEqual(resp.status_code, 302, f"{endpoint} debe redirigir si no está autenticado")
             self.assertIn("login", resp.location.lower(), f"{endpoint} debe redirigir a login")

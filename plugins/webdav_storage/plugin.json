@@ -1,0 +1,11 @@
+{
+  "id": "webdav_storage",
+  "name": "WebDAV / Nextcloud Storage",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "Sincronización y transferencia de archivos vía WebDAV para Nextcloud, ownCloud y servidores WebDAV estándar.",
+  "icon": "📁",
+  "status": "official",
+  "enabled": true,
+  "settings_url": "/plugin/webdav_storage/settings"
+}

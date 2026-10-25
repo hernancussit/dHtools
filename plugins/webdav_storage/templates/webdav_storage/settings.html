@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebDAV / Nextcloud Storage — dHtools</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-surface: #111728;
+      --bg-card: rgba(17, 23, 40, 0.85);
+      --bg-input: #1a2238;
+      --border-color: #263352;
+      --text-primary: #f3f4f6;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-webdav: #0284c7;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-rose: #f43f5e;
+      --radius-lg: 14px;
+      --radius-md: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.10) 0px, transparent 50%);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(38, 51, 82, 0.7);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-brand .icon-badge {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 15px rgba(2, 132, 199, 0.35);
+      border: 1px solid rgba(2, 132, 199, 0.4);
+    }
+
+    .header-brand h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header-brand p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+    }
+    .btn-back:hover {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border-color: var(--accent-cyan);
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-primary);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: var(--accent-webdav);
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-webdav);
+      cursor: pointer;
+    }
+
+    .hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-input);
+      border-color: var(--accent-cyan);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88rem;
+      z-index: 1000;
+    }
+    .toast.success { border-color: var(--accent-green); color: var(--accent-green); }
+    .toast.error { border-color: var(--accent-rose); color: var(--accent-rose); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-brand">
+        <div class="icon-badge">📁</div>
+        <div>
+          <h1>WebDAV / Nextcloud Storage</h1>
+          <p>Sincronización oficial con Nextcloud, ownCloud y servidores WebDAV estándar</p>
+        </div>
+      </div>
+      <a href="/" class="btn-back">← Volver a dHtools</a>
+    </header>
+
+    <div class="card">
+      <div class="card-title">⚙️ Configuración WebDAV (Usuario: {{ username }})</div>
+      <form id="webdavForm">
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="enabled" {% if config.enabled %}checked{% endif %}>
+            <span>Habilitar integración con WebDAV para este usuario</span>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="auto_upload" {% if config.auto_upload %}checked{% endif %}>
+              <span>Subida automática al finalizar descargas</span>
+            </label>
+            <div class="hint">Transfiere copias de respaldo a WebDAV automáticamente.</div>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="safe_offload" {% if config.safe_offload %}checked{% endif %}>
+              <span>Modo Safe Offload ("Subir y Mover")</span>
+            </label>
+            <div class="hint">Libera espacio en el VPS borrando el archivo local tras verificar la subida.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="url">URL WebDAV *</label>
+          <input type="text" id="url" value="{{ config.url }}" placeholder="https://nube.midominio.com/remote.php/dav/files/usuario/" required>
+          <div class="hint">URL endpoint WebDAV completa (ej: ruta WebDAV de Nextcloud u ownCloud).</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="username">Usuario WebDAV</label>
+            <input type="text" id="username_field" value="{{ config.username }}" placeholder="usuario_nextcloud">
+          </div>
+          <div class="form-group">
+            <label for="password">Contraseña o Token de Aplicación</label>
+            <input type="password" id="password" value="" placeholder="{% if config.has_password %}(Contraseña protegida - Dejar en blanco para no cambiar){% else %}Contraseña o Token WebDAV{% endif %}">
+            <div class="hint">Por seguridad, la contraseña nunca se envía al navegador en texto plano.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="remote_path">Ruta de Carpeta Remota</label>
+          <input type="text" id="remote_path" value="{{ config.remote_path }}" placeholder="dHtools">
+          <div class="hint">Carpeta de destino dentro de tu almacenamiento WebDAV.</div>
+        </div>
+
+        <div class="btn-group">
+          <button type="submit" class="btn btn-primary" id="btnSave">💾 Guardar Configuración</button>
+          <button type="button" class="btn btn-secondary" id="btnTest">⚡ Probar Conexión</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast ' + type;
+      t.style.display = 'flex';
+      setTimeout(() => { t.style.display = 'none'; }, 4000);
+    }
+
+    document.getElementById('webdavForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        enabled: document.getElementById('enabled').checked,
+        auto_upload: document.getElementById('auto_upload').checked,
+        safe_offload: document.getElementById('safe_offload').checked,
+        url: document.getElementById('url').value.trim(),
+        username: document.getElementById('username_field').value.trim(),
+        password: document.getElementById('password').value.trim(),
+        remote_path: document.getElementById('remote_path').value.trim()
+      };
+
+      try {
+        const res = await fetch('/plugin/webdav_storage/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || 'Configuración WebDAV guardada con éxito.', 'success');
+          document.getElementById('password').placeholder = '(Contraseña protegida - Dejar en blanco para no cambiar)';
+          document.getElementById('password').value = '';
+        } else {
+          showToast(data.error || 'Error guardando configuración.', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al guardar: ' + err, 'error');
+      }
+    });
+
+    document.getElementById('btnTest').addEventListener('click', async () => {
+      const btn = document.getElementById('btnTest');
+      btn.disabled = true;
+      btn.textContent = '⏳ Probando...';
+      const payload = {
+        url: document.getElementById('url').value.trim(),
+        username: document.getElementById('username_field').value.trim(),
+        password: document.getElementById('password').value.trim(),
+        remote_path: document.getElementById('remote_path').value.trim()
+      };
+
+      try {
+        const res = await fetch('/plugin/webdav_storage/api/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || 'Conexión WebDAV exitosa.', 'success');
+        } else {
+          showToast(data.error || 'Fallo de conexión WebDAV.', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al probar conexión: ' + err, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Probar Conexión';
+      }
+    });
+  </script>
+</body>
+</html>

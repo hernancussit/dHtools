@@ -4,7 +4,22 @@ Todos los cambios notables en este proyecto se documentarán en este archivo.
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-## [2.0.0-dev] - 2026-10-24
+## [2.0.0-dev] - 2026-10-25
+
+### ☁️ Modularización de Conectores Cloud (S3, WebDAV & FTP Storage)
+- **Extracción a Plugins Oficiales Bundled (`plugins/`):**
+  - **S3 Object Storage (`plugins/s3_storage`):** Plugin oficial con soporte universal para AWS S3, MinIO, Cloudflare R2, Backblaze B2 y Wasabi mediante streaming multipart (`boto3.s3.transfer.TransferConfig`, RAM-Safe), verificación dinámica de permisos con `head_bucket`, modo Safe Offload y tarjeta interactiva en `/admin`.
+  - **WebDAV / Nextcloud Storage (`plugins/webdav_storage`):** Plugin oficial compatible con Nextcloud, ownCloud y servidores WebDAV estándar mediante streaming binario `PUT`, validación `PROPFIND` / `OPTIONS`, soporte para subcarpetas remotas y modo Safe Offload.
+  - **FTP / FTPS Storage (`plugins/ftp_storage`):** Plugin oficial compatible con servidores FTP y FTPS (TLS) con navegación y creación recursiva de directorios remotos, verificación de credenciales y modo Safe Offload.
+- **Seguridad Estricta & Prevención de Vulnerabilidades:**
+  - **Enmascaramiento de Secretos en HTML:** Claves privadas (`secret_key`) y contraseñas (`password`) son sanitizadas antes de renderizar las vistas en el navegador, previniendo cualquier exposición accidental en el DOM/HTML.
+  - **Prevención de IDOR (Insecure Direct Object References):** Validación rigurosa de pertenencia de trabajos en `upload_job_for_user`. Usuarios no privilegiados solo pueden transferir y eliminar sus propias descargas.
+  - **Autenticación Estricta:** Rechazo inmediato con HTTP `401 Unauthorized` ante peticiones sin sesión activa en las APIs (`/api/settings`, `/api/upload`, `/api/test`) y redirección HTTP `302` a `/login` en vistas de configuración.
+  - **Aislamiento Multi-Usuario en Disco:** Directorios privados `users_data/<username>/` protegidos con permisos `0o700` y archivos `config.json` con `0o600`.
+- **Compatibilidad Hacia Atrás (`core/cloud_sync.py` & `routes/admin.py`):**
+  - Delegación transparente de `test_s3_connection`, `test_webdav_connection`, `test_ftp_connection`, `upload_to_s3`, `upload_to_webdav` y `upload_to_ftp` hacia los módulos de cliente modularizados sin romper llamadas heredadas del servidor ni el Bot de Telegram.
+- **Suite de Pruebas Automatizadas:**
+  - Creación de 25 nuevas pruebas unitarias e integradas (`tests/test_s3_storage_plugin.py`, `tests/test_webdav_storage_plugin.py`, `tests/test_ftp_storage_plugin.py`) y ampliación de `tests/test_plugin_security_audit.py`, alcanzando 156 pruebas totales aprobadas con 0 fallos.
 
 ### 🌐 Puente Dinámico de Proxy Unificado & Fortalecimiento de Cobalt v11 (Instagram & Redes)
 - **Puente Proxy Interno (`core/proxy_bridge.py` & `:8899`):**

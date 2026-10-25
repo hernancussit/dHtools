@@ -58,6 +58,18 @@ plugins/dropbox/config.json
 plugins/dropbox/token.json
 plugins/dropbox/users_data/
 
+!plugins/s3_storage/
+plugins/s3_storage/config.json
+plugins/s3_storage/users_data/
+
+!plugins/webdav_storage/
+plugins/webdav_storage/config.json
+plugins/webdav_storage/users_data/
+
+!plugins/ftp_storage/
+plugins/ftp_storage/config.json
+plugins/ftp_storage/users_data/
+
 
 
 

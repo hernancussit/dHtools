@@ -1,0 +1,11 @@
+{
+  "id": "s3_storage",
+  "name": "S3 Object Storage",
+  "version": "1.0.0",
+  "author": "dHtools Team",
+  "description": "Sincronización y streaming multipart con almacenamiento compatible con S3 (AWS, MinIO, Cloudflare R2, Backblaze B2, Wasabi).",
+  "icon": "🪣",
+  "status": "official",
+  "enabled": true,
+  "settings_url": "/plugin/s3_storage/settings"
+}
