@@ -242,6 +242,15 @@ def cleanup_loop():
                         mtime = os.path.getmtime(entry_path)
                     except OSError:
                         continue
+                    # Purge corrupt 0-byte orphan files
+                    if os.path.isfile(entry_path):
+                        try:
+                            if os.path.getsize(entry_path) == 0:
+                                os.remove(entry_path)
+                                continue
+                        except OSError:
+                            pass
+
                     if mtime < cutoff:
                         if os.path.isdir(entry_path):
                             shutil.rmtree(entry_path, ignore_errors=True)
@@ -256,7 +265,10 @@ def cleanup_loop():
                         existing_entries = set(os.listdir(DOWNLOAD_DIR))
                         updated = False
                         for jid in list(meta.keys()):
-                            has_file = any(e.startswith(jid) for e in existing_entries)
+                            has_file = any(
+                                e.startswith(jid) and os.path.isfile(os.path.join(DOWNLOAD_DIR, e)) and os.path.getsize(os.path.join(DOWNLOAD_DIR, e)) > 0
+                                for e in existing_entries
+                            )
                             is_cloud_offloaded = meta[jid].get("cloud_offloaded", False)
                             if not has_file and not is_cloud_offloaded:
                                 meta.pop(jid, None)
@@ -968,6 +980,9 @@ def run_download_music(job_id: str, url: str, quality: str, deezer_arl: str = ""
         if proc.returncode != 0:
             raise RuntimeError(f"FFmpeg error: {proc.stderr[:200]}")
 
+        if not os.path.exists(final_path) or os.path.getsize(final_path) == 0:
+            raise RuntimeError("El archivo de audio descargado está vacío (0 bytes).")
+
         with JOBS_LOCK:
             JOBS[job_id].update({
                 "status": "finished",
@@ -1142,59 +1157,62 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
                 r.raise_for_status()
                 total = int(r.headers.get("Content-Length") or 0)
 
-            cd = r.headers.get("Content-Disposition", "")
-            base_name = safe_filename(video_title) or "descarga"
-            ext = CONTENT_TYPE_EXT.get((r.headers.get("Content-Type") or "").split(";")[0].strip(), f".{video_format.lower() if video_format else 'mp4'}")
-            if 'filename="' in cd:
-                orig_fn = cd.split('filename="')[1].split('"')[0]
-                if orig_fn:
-                    fname, fext = os.path.splitext(orig_fn)
-                    if fname:
-                        base_name = safe_filename(fname)
-                    if fext:
-                        ext = fext.lower()
+                cd = r.headers.get("Content-Disposition", "")
+                base_name = safe_filename(video_title) or "descarga"
+                ext = CONTENT_TYPE_EXT.get((r.headers.get("Content-Type") or "").split(";")[0].strip(), f".{video_format.lower() if video_format else 'mp4'}")
+                if 'filename="' in cd:
+                    orig_fn = cd.split('filename="')[1].split('"')[0]
+                    if orig_fn:
+                        fname, fext = os.path.splitext(orig_fn)
+                        if fname:
+                            base_name = safe_filename(fname)
+                        if fext:
+                            ext = fext.lower()
 
-            if ext.lower() in ('.jpg', '.jpeg', '.png', '.webp') and not is_audio_quality(quality):
-                raise RuntimeError(f"Cobalt devolvió una imagen estática ({ext}) en lugar del video solicitado.")
+                if ext.lower() in ('.jpg', '.jpeg', '.png', '.webp') and not is_audio_quality(quality):
+                    raise RuntimeError(f"Cobalt devolvió una imagen estática ({ext}) en lugar del video solicitado.")
 
-            out_path = os.path.join(job_dir, base_name + ext)
+                out_path = os.path.join(job_dir, base_name + ext)
 
-            downloaded = 0
-            last_update = time.time()
-            last_downloaded = 0
-            with open(out_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=1024 * 256):
-                    with JOBS_LOCK:
-                        if JOBS.get(job_id, {}).get("status") == "cancelled":
-                            return
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    now = time.time()
-                    if now - last_update >= 0.5:
-                        speed = (downloaded - last_downloaded) / (now - last_update)
-                        tg_chat = None
+                downloaded = 0
+                last_update = time.time()
+                last_downloaded = 0
+                with open(out_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 256):
                         with JOBS_LOCK:
-                            job = JOBS.get(job_id)
-                            if job:
-                                job["file_percent"] = int(downloaded * 100 / total) if total else 0
-                                job["percent"] = job["file_percent"]
-                                job["speed"] = format_speed(speed)
-                                job["completed_count"] = 0
-                                tg_chat = job.get("telegram_chat_id")
-                        if tg_chat:
-                            try:
-                                from core.telegram_bot import telegram_bot
-                                telegram_bot.notify_progress(job_id, job["percent"], job.get("speed"), None)
-                            except Exception:
-                                pass
-                        last_update = now
-                        last_downloaded = downloaded
+                            if JOBS.get(job_id, {}).get("status") == "cancelled":
+                                return
+                        if not chunk:
+                            continue
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        now = time.time()
+                        if now - last_update >= 0.5:
+                            speed = (downloaded - last_downloaded) / (now - last_update)
+                            tg_chat = None
+                            with JOBS_LOCK:
+                                job = JOBS.get(job_id)
+                                if job:
+                                    job["file_percent"] = int(downloaded * 100 / total) if total else 0
+                                    job["percent"] = job["file_percent"]
+                                    job["speed"] = format_speed(speed)
+                                    job["completed_count"] = 0
+                                    tg_chat = job.get("telegram_chat_id")
+                            if tg_chat:
+                                try:
+                                    from core.telegram_bot import telegram_bot
+                                    telegram_bot.notify_progress(job_id, job["percent"], job.get("speed"), None)
+                                except Exception:
+                                    pass
+                            last_update = now
+                            last_downloaded = downloaded
 
         with JOBS_LOCK:
             if JOBS.get(job_id, {}).get("status") == "cancelled":
                 return
+
+        if not out_path or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+            raise RuntimeError("El archivo descargado por Cobalt está vacío (0 bytes).")
 
         final_name = base_name + ext
         final_path = os.path.join(DOWNLOAD_DIR, f"{job_id}_{final_name}")
@@ -1498,6 +1516,10 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             final_path = os.path.join(DOWNLOAD_DIR, final_filename)
             shutil.move(os.path.join(job_dir, files[0]), final_path)
             final_name = files[0]
+
+            if not os.path.exists(final_path) or os.path.getsize(final_path) == 0:
+                raise RuntimeError("El archivo descargado está vacío (0 bytes).")
+
             with JOBS_LOCK:
                 JOBS[job_id].update({
                     "status": "finished",
