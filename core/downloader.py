@@ -13,7 +13,7 @@ from urllib.parse import urlparse, parse_qs, urlencode
 from core.config import (
     COOKIES_FILE, DOWNLOAD_DIR, COBALT_URL,
     AUTO_UPDATE_INTERVAL_HOURS, CLEANUP_CHECK_INTERVAL_MINUTES,
-    CLEANUP_AFTER_HOURS
+    CLEANUP_AFTER_HOURS, PLAYER_CLIENTS_ENV
 )
 import core.state
 from core.state import JOBS, JOBS_LOCK, QUEUE_LIST, QUEUE_LOCK, ACTIVE_WORKER_JOB
@@ -325,11 +325,13 @@ def format_friendly_error(err_str: str) -> str:
 def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, proxy_url: str = None):
     """Prueba combinaciones de clientes y credenciales en orden optimizado:
     Para YouTube:
-    1) default con PO Token + Deno sin cookies (para evitar la degradación a 360p del experimento SABR)
-    2) default con cookies (si existen en el servidor, para videos restringidos/privados o con login)
-    3) mweb (cliente web móvil, alta calidad sin restricciones de SABR en web)
-    4) web_embedded, tv_downgraded
-    5) tv
+    1) Clientes primarios (web, mweb, web_embedded) con cookies si existen.
+    2) Clientes primarios sin cookies con POT provider y Deno JS challenge.
+    3) yt-dlp default con cookies.
+    4) yt-dlp default sin cookies.
+    5) tv_downgraded, tv.
+    Para URLs explícitas de YouTube Music (music.youtube.com):
+    Usa web_music prioritariamente.
     Para otras plataformas:
     Usa cookies de inmediato si están configuradas.
     """
@@ -338,17 +340,36 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
 
     candidates = []
     if is_yt:
+        is_music_url = "music.youtube.com" in url.lower()
+        is_playlist = (
+            "playlist?list=" in url.lower()
+            or "&list=" in url.lower()
+            or "list=" in url.lower()
+            or (ydl_opts_base.get("noplaylist") is False)
+        )
+
+        if is_music_url:
+            primary_clients = ["web_music", "web", "mweb"]
+        elif PLAYER_CLIENTS_ENV and PLAYER_CLIENTS_ENV != "default":
+            primary_clients = [c.strip() for c in PLAYER_CLIENTS_ENV.split(",") if c.strip()]
+        else:
+            primary_clients = ["web", "mweb", "web_embedded"]
+
         if has_cookies:
-            # 1. Combined client list: web_music provides 1080p for music videos; web, mweb, web_embedded for general videos
-            candidates.append((["web_music", "web", "mweb", "web_embedded"], True))
-            candidates.append((["web", "mweb", "web_embedded"], True))
-        # 2. Try without cookies using POT provider and Deno JS challenge solving
-        candidates.append((["web_music", "web", "mweb"], False))
-        candidates.append((["web", "mweb"], False))
+            candidates.append((primary_clients, True))
+        candidates.append((primary_clients, False))
+        if has_cookies:
+            candidates.append((["default"], True))
+        candidates.append((["default"], False))
         if has_cookies:
             candidates.append((["tv_downgraded", "tv"], True))
         candidates.append((["tv_downgraded", "tv"], False))
-        candidates.append((["default"], has_cookies))
+
+        # Only consider web_music for non-playlist, non-music URLs as a late fallback
+        if not is_playlist and not is_music_url:
+            if has_cookies:
+                candidates.append((["web_music", "web"], True))
+            candidates.append((["web_music", "web"], False))
     else:
         candidates.append((["default"], has_cookies))
 
@@ -396,6 +417,22 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
                 res = ydl.extract_info(url, download=download)
                 if not res:
                     raise yt_dlp.utils.DownloadError("El cliente no pudo extraer el video o no devolvió datos.")
+
+                # If this is a download execution, verify that at least one output file was actually generated!
+                # When all items in a playlist are skipped (e.g. format unavailable / Video unavailable with ignoreerrors=True),
+                # yt-dlp returns an info_dict but job_dir contains 0 files.
+                if job_id and download:
+                    job_dir = os.path.join(DOWNLOAD_DIR, job_id)
+                    if os.path.isdir(job_dir):
+                        produced = [
+                            f for f in os.listdir(job_dir)
+                            if not f.endswith(".part") and not f.endswith(".ytdl")
+                        ]
+                        if not produced:
+                            raise yt_dlp.utils.DownloadError(
+                                f"El cliente {client_name} no produjo ningún archivo descargable en el directorio de trabajo."
+                            )
+
                 if job_id and not download:
                     append_job_log(job_id, f"[+] Metadatos obtenidos exitosamente vía {client_name}.")
                 return res
@@ -442,6 +479,17 @@ def extract_with_fallback(url, ydl_opts_base, download, job_id: str = None, prox
                 with yt_dlp.YoutubeDL(p_opts) as ydl:
                     res = ydl.extract_info(url, download=download)
                     if res:
+                        if job_id and download:
+                            job_dir = os.path.join(DOWNLOAD_DIR, job_id)
+                            if os.path.isdir(job_dir):
+                                produced = [
+                                    f for f in os.listdir(job_dir)
+                                    if not f.endswith(".part") and not f.endswith(".ytdl")
+                                ]
+                                if not produced:
+                                    raise yt_dlp.utils.DownloadError(
+                                        "Proxy de Respaldo no produjo ningún archivo descargable."
+                                    )
                         return res
         except Exception as pe:
             last_exc = pe
@@ -1247,6 +1295,37 @@ def run_download_cobalt(job_id: str, url: str, quality: str, video_title: str = 
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
+class YtDlpJobLogger:
+    """Captura advertencias y errores por elemento de yt-dlp durante la descarga."""
+    def __init__(self, job_id: str):
+        self.job_id = job_id
+        self._logged_messages = set()
+
+    def debug(self, msg):
+        pass
+
+    def info(self, msg):
+        pass
+
+    def warning(self, msg):
+        pass
+
+    def error(self, msg):
+        msg_str = str(msg).strip()
+        if not msg_str:
+            return
+        if msg_str in self._logged_messages:
+            return
+        self._logged_messages.add(msg_str)
+        if len(self._logged_messages) > 100:
+            self._logged_messages.clear()
+
+        clean = msg_str.replace("ERROR: ", "").strip()
+        first_line = clean.splitlines()[0] if clean else ""
+        if any(w in first_line.lower() for w in ("unavailable", "private", "not available", "restricted", "blocked", "deleted", "requiere", "denied")):
+            append_job_log(self.job_id, f"[!] Aviso en elemento: {first_line}")
+
+
 def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total_count: int = 0,
                   start_time=None, end_time=None, video_format="mp4", subtitles="none",
                   owner: str = "admin", user_cloud_sync: dict = None,
@@ -1257,6 +1336,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
     append_job_log(job_id, f"[*] [yt-dlp] Iniciando proceso de descarga ({quality})...")
 
     completed_ids = set()
+    started_ids = set()
     last_log_milestone = [-1]
     last_log_time = [0.0]
     first_chunk_logged = [False]
@@ -1281,14 +1361,17 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             info = d.get("info_dict") or {}
             playlist_index = info.get("playlist_index")
             playlist_count = info.get("playlist_count") or total_count
-            video_id = info.get("id")
+            video_id = info.get("id") or info.get("display_id")
+            video_title = info.get("title") or ""
 
             if playlist_count:
                 job["total_count"] = playlist_count
             if playlist_index:
                 job["current_index"] = playlist_index
-            if info.get("title"):
-                job["current_title"] = info.get("title")
+            if video_title:
+                job["current_title"] = video_title
+
+            is_multi = playlist_mode or bool(playlist_count and playlist_count > 1)
 
             if d["status"] == "downloading":
                 total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
@@ -1305,9 +1388,31 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                         "time": time.strftime("%H:%M:%S"),
                         "text": "[+] Conexión establecida con el servidor multimedia. Transfiriendo datos..."
                     })
+                # Per-item start announcement for playlists
+                if is_multi and video_id and video_id not in started_ids:
+                    started_ids.add(video_id)
+                    curr_num = playlist_index or len(started_ids)
+                    total_num = playlist_count or total_count or "?"
+                    title_disp = f"'{video_title}'" if video_title else f"ID: {video_id}"
+                    if "logs" not in job:
+                        job["logs"] = []
+                    job["logs"].append({
+                        "time": time.strftime("%H:%M:%S"),
+                        "text": f"[*] [Playlist {curr_num}/{total_num}] Descargando elemento: {title_disp}..."
+                    })
             elif d["status"] == "finished":
-                if video_id:
+                if video_id and video_id not in completed_ids:
                     completed_ids.add(video_id)
+                    if is_multi:
+                        curr_num = len(completed_ids)
+                        total_num = playlist_count or total_count or "?"
+                        title_disp = f"'{video_title}'" if video_title else f"ID: {video_id}"
+                        if "logs" not in job:
+                            job["logs"] = []
+                        job["logs"].append({
+                            "time": time.strftime("%H:%M:%S"),
+                            "text": f"[+] [Playlist {curr_num}/{total_num}] Elemento completado: {title_disp}"
+                        })
                 job["completed_count"] = len(completed_ids)
                 job["status"] = "processing"
                 job["speed"] = None
@@ -1329,7 +1434,8 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             # Periodic user-friendly console logging
             milestone = job["percent"] // 10
             now = time.time()
-            if (milestone > last_log_milestone[0] and job["percent"] > 0) or (now - last_log_time[0] >= 5.0 and job["percent"] > 0):
+            has_progress = (job["percent"] > 0) or (job.get("file_percent", 0) > 0)
+            if has_progress and (milestone > last_log_milestone[0] or (now - last_log_time[0] >= 5.0)):
                 last_log_milestone[0] = milestone
                 last_log_time[0] = now
                 if "logs" not in job:
@@ -1337,9 +1443,17 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
                 speed_str = job.get("speed") or "estable"
                 from core.utils import format_seconds
                 eta_str = f" - Restante: {format_seconds(job.get('eta_seconds'))}" if job.get("eta_seconds") else ""
+                if is_multi:
+                    c_idx = job.get("current_index") or (len(completed_ids) + 1)
+                    t_cnt = playlist_count or total_count or "?"
+                    item_pct = job.get("file_percent", 0)
+                    progress_msg = f"[+] Progreso Playlist: {job['percent']}% (Ítem {c_idx}/{t_cnt}: {item_pct}%) - Velocidad: {speed_str}{eta_str}"
+                else:
+                    progress_msg = f"[+] Progreso: {job['percent']}% (Velocidad: {speed_str}{eta_str})"
+
                 job["logs"].append({
                     "time": time.strftime("%H:%M:%S"),
-                    "text": f"[+] Progreso: {job['percent']}% (Velocidad: {speed_str}{eta_str})"
+                    "text": progress_msg
                 })
                 if len(job["logs"]) > 150:
                     job["logs"] = job["logs"][-150:]
@@ -1356,6 +1470,7 @@ def run_download(job_id: str, url: str, quality: str, playlist_mode: bool, total
             "match_filter": match_filter_cancel,
             "quiet": True,
             "no_warnings": True,
+            "logger": YtDlpJobLogger(job_id),
             "noplaylist": (not playlist_mode) if not is_ig else False,
             "ignoreerrors": bool(playlist_mode or is_ig),
             "socket_timeout": 15,
